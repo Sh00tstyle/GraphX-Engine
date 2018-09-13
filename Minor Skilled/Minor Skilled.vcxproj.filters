@@ -15,5 +15,13 @@
     <ClCompile Include="source\glad.c">
       <Filter>source</Filter>
     </ClCompile>
+    <ClCompile Include="source\Shader.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="source\Shader.h">
+      <Filter>source</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
