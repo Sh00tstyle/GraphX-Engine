@@ -23,5 +23,8 @@
     <ClInclude Include="source\Shader.h">
       <Filter>source</Filter>
     </ClInclude>
+    <ClInclude Include="source\stb_image.h">
+      <Filter>source</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
