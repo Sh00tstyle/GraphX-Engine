@@ -27,11 +27,12 @@ void Mesh::draw(Shader * shader) {
 
 		std::string number;
 		std::string name = textures[i].type;
-		if(name == "texture_diffuse") number = std::to_string(diffuseNr++);
-		else if(name == "texture_specular") number = std::to_string(specularNr++);
-		else if(name == "texture_height") number = std::to_string(heightNr++);
+		if(name == "textureDiffuse") number = std::to_string(diffuseNr++);
+		else if(name == "textureSpecular") number = std::to_string(specularNr++);
+		else if(name == "textureHeight") number = std::to_string(heightNr++);
 
-		shader->setFloat((name + number).c_str(), i);
+		shader->setFloat("material." + (name + number), i);
+
 		glBindTexture(GL_TEXTURE_2D, textures[i].id);
 	}
 

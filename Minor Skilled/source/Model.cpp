@@ -72,6 +72,9 @@ Mesh* Model::_processMesh(aiMesh * mesh, const aiScene * scene) {
 		} else
 			vertex.uv = glm::vec2(0.0f, 0.0f);
 
+		/**
+		//causes crashes, since not every model has it (i believe)
+
 		//tangent
 		vector.x = mesh->mTangents[i].x;
 		vector.y = mesh->mTangents[i].y;
@@ -83,6 +86,7 @@ Mesh* Model::_processMesh(aiMesh * mesh, const aiScene * scene) {
 		vector.y = mesh->mBitangents[i].y;
 		vector.z = mesh->mBitangents[i].z;
 		vertex.bitangent = vector;
+		/**/
 
 		newVertices.push_back(vertex); //add vertex to the vector
 	}
@@ -100,19 +104,19 @@ Mesh* Model::_processMesh(aiMesh * mesh, const aiScene * scene) {
 		aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
 
 		//diffuse maps
-		std::vector<Texture> diffuseMaps = _loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
+		std::vector<Texture> diffuseMaps = _loadMaterialTextures(material, aiTextureType_DIFFUSE, "textureDiffuse");
 		newTextures.insert(newTextures.end(), diffuseMaps.begin(), diffuseMaps.end());
 
 		//specular maps
-		std::vector<Texture> specularMaps = _loadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular");
+		std::vector<Texture> specularMaps = _loadMaterialTextures(material, aiTextureType_SPECULAR, "textureSpecular");
 		newTextures.insert(newTextures.end(), specularMaps.begin(), specularMaps.end());
 
 		//normal maps
-		std::vector<Texture> normalMaps = _loadMaterialTextures(material, aiTextureType_HEIGHT, "texture_normal");
+		std::vector<Texture> normalMaps = _loadMaterialTextures(material, aiTextureType_HEIGHT, "textureNormal");
 		newTextures.insert(newTextures.end(), normalMaps.begin(), normalMaps.end());
 
 		//height maps
-		std::vector<Texture> heightMaps = _loadMaterialTextures(material, aiTextureType_AMBIENT, "texture_height");
+		std::vector<Texture> heightMaps = _loadMaterialTextures(material, aiTextureType_AMBIENT, "textureHeight");
 		newTextures.insert(newTextures.end(), heightMaps.begin(), heightMaps.end());
 	}
 
@@ -162,7 +166,7 @@ unsigned int Model::_textureFromFile(const char * filepath, const std::string & 
 
 	//load texture from file
 	int width, height, nrComponents;
-	unsigned char* textureData = stbi_load(filepath, &width, &height, &nrComponents, 0);
+	unsigned char* textureData = stbi_load(filename.c_str(), &width, &height, &nrComponents, 0);
 
 	if(textureData) {
 		//identify format
@@ -185,7 +189,7 @@ unsigned int Model::_textureFromFile(const char * filepath, const std::string & 
 		stbi_image_free(textureData); //free memory
 
 	} else {
-		std::cout << "Texture failed to load at path: " << filepath << std::endl;
+		std::cout << "Texture failed to load at path: " << filename << std::endl;
 		stbi_image_free(textureData); //free memory
 	}
 

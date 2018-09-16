@@ -2,8 +2,8 @@
 
 //material struct
 struct Material {
-    sampler2D diffuse;
-    sampler2D specular;
+    sampler2D textureDiffuse1;
+    sampler2D textureSpecular1;
     float shininess;
 };
 
@@ -70,30 +70,31 @@ void main() {
     vec3 result = CalculateDirLight(dirLight, normal, lookDirection);
 
     //add point lights
-    for(int i = 0; i < POINT_LIGHT_AMT; i++) {
-        result += CalculatePointLight(pointLights[i], normal, lookDirection);
-    }
+    //for(int i = 0; i < POINT_LIGHT_AMT; i++) {
+    //    result += CalculatePointLight(pointLights[i], normal, lookDirection);
+    //}
 
     //add spot light
-    result += CalculateSpotLight(spotLight, normal, lookDirection);
+    //result += CalculateSpotLight(spotLight, normal, lookDirection);
 
     fragColor = vec4(result, 1.0f);
+    //fragColor = texture(material.textureDiffuse1, texCoords);
 }
 
 vec3 CalculateDirLight(DirLight light, vec3 normal, vec3 lookDirection) {
     vec3 lightDirection = normalize(-light.direction);
 
     //calculate ambient
-    vec3 ambient = light.ambient * vec3(texture(material.diffuse, texCoords));
+    vec3 ambient = light.ambient * vec3(texture(material.textureDiffuse1, texCoords));
 
     //calculate diffuse
     float difference = max(dot(normal, lightDirection), 0.0f); //cosine of the angle between the normal and the light direction (dot)
-    vec3 diffuse = light.diffuse * difference * vec3(texture(material.diffuse, texCoords));
+    vec3 diffuse = light.diffuse * difference * vec3(texture(material.textureDiffuse1, texCoords));
 
     //calculate specular
     vec3 reflectDirection = reflect(-lightDirection, normal);
     float specularity = pow(max(dot(lookDirection, reflectDirection), 0.0f), material.shininess);
-    vec3 specular = light.specular * specularity * vec3(texture(material.specular, texCoords));
+    vec3 specular = light.specular * specularity * vec3(texture(material.textureSpecular1, texCoords));
 
     return (ambient + diffuse + specular);
 }
@@ -102,16 +103,16 @@ vec3 CalculatePointLight(PointLight light, vec3 normal, vec3 lookDirection) {
     vec3 lightDirection = normalize(light.position - fragPos);
 
     //calculate ambient
-    vec3 ambient = light.ambient * vec3(texture(material.diffuse, texCoords));
+    vec3 ambient = light.ambient * vec3(texture(material.textureDiffuse1, texCoords));
 
     //calculate diffuse
     float difference = max(dot(normal, lightDirection), 0.0f); //cosine of the angle between the normal and the light direction (dot)
-    vec3 diffuse = light.diffuse * difference * vec3(texture(material.diffuse, texCoords));
+    vec3 diffuse = light.diffuse * difference * vec3(texture(material.textureDiffuse1, texCoords));
 
     //calculate specular
     vec3 reflectDirection = reflect(-lightDirection, normal);
     float specularity = pow(max(dot(lookDirection, reflectDirection), 0.0f), material.shininess);
-    vec3 specular = light.specular * specularity * vec3(texture(material.specular, texCoords));
+    vec3 specular = light.specular * specularity * vec3(texture(material.textureSpecular1, texCoords));
 
     //calculate attenuation
     float distance = length(light.position - fragPos);
@@ -128,16 +129,16 @@ vec3 CalculateSpotLight(SpotLight light, vec3 normal, vec3 lookDirection) {
     vec3 lightDirection = normalize(light.position - fragPos);
 
     //calculate ambient
-    vec3 ambient = light.ambient * vec3(texture(material.diffuse, texCoords));
+    vec3 ambient = light.ambient * vec3(texture(material.textureDiffuse1, texCoords));
 
     //calculate diffuse
     float difference = max(dot(normal, lightDirection), 0.0f); //cosine of the angle between the normal and the light direction (dot)
-    vec3 diffuse = light.diffuse * difference * vec3(texture(material.diffuse, texCoords));
+    vec3 diffuse = light.diffuse * difference * vec3(texture(material.textureDiffuse1, texCoords));
 
     //calculate specular
     vec3 reflectDirection = reflect(-lightDirection, normal);
     float specularity = pow(max(dot(lookDirection, reflectDirection), 0.0f), material.shininess);
-    vec3 specular = light.specular * specularity * vec3(texture(material.specular, texCoords));
+    vec3 specular = light.specular * specularity * vec3(texture(material.textureSpecular1, texCoords));
 
     //calculate spotlight
     float theta = dot(lightDirection, normalize(-light.direction));
