@@ -63,11 +63,11 @@ vec3 CalculatePointLight(PointLight light, vec3 normal, vec3 lookDirection);
 vec3 CalculateSpotLight(SpotLight light, vec3 normal, vec3 lookDirection);
 
 void main() {
-    vec3 normal = normalize(fragNormal);
-    vec3 lookDirection = normalize(cameraPos - fragPos);
+    //vec3 normal = normalize(fragNormal);
+    //vec3 lookDirection = normalize(cameraPos - fragPos);
 
     //add directional light
-    vec3 result = CalculateDirLight(dirLight, normal, lookDirection);
+    //vec3 result = CalculateDirLight(dirLight, normal, lookDirection);
 
     //add point lights
     //for(int i = 0; i < POINT_LIGHT_AMT; i++) {
@@ -77,8 +77,16 @@ void main() {
     //add spot light
     //result += CalculateSpotLight(spotLight, normal, lookDirection);
 
-    fragColor = vec4(result, 1.0f);
-    //fragColor = texture(material.textureDiffuse1, texCoords);
+    //fragColor = vec4(result, 1.0f);
+    fragColor = texture(material.textureDiffuse1, texCoords);
+
+    //visualizze z-buffer
+    //float z = gl_FragCoord.z * 2.0f - 1.0f; //range of -1 and 1
+    //float far = 100.f;
+    //float near = 0.1f;
+    //float depth = (2.0f * near * far) / (far + near - z * (far - near)) / far;
+
+    //fragColor = vec4(vec3(depth), 1.0f);
 }
 
 vec3 CalculateDirLight(DirLight light, vec3 normal, vec3 lookDirection) {
