@@ -1,15 +1,24 @@
 #version 330 core
 
-in vec2 texCoord;
+in vec3 fragPos;
+in vec3 fragNormal;
 
-uniform sampler2D texture1;
+uniform vec3 cameraPos;
+uniform samplerCube cubemap;
 
 out vec4 fragColor;
 
 void main() {
-    vec4 texColor = texture(texture1, texCoord);
+    //reflection
+    //vec3 lookDirection = normalize(fragPos - cameraPos);
+    //vec3 reflection = reflect(lookDirection, normalize(fragNormal));
 
-    //if(texColor.a < 0.1f) discard;
+    //fragColor = vec4(texture(cubemap, reflection).rgb, 1.0f);
 
-    fragColor = texColor;
+    //refraction
+    float ratio = 1.0f / 1.52f;
+    vec3 lookDirection = normalize(fragPos - cameraPos);
+    vec3 refraction = refract(lookDirection, normalize(fragNormal), ratio);
+
+    fragColor = vec4(texture(cubemap, refraction).rgb, 1.0f);
 }
