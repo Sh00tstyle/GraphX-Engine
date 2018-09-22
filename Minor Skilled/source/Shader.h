@@ -17,6 +17,8 @@ public:
 
 	// constructor reads and builds the shader
 	Shader(const GLchar* vertexPath, const GLchar* fragmentPath);
+	Shader(const GLchar* vertexPath, const GLchar* geometryPath, const GLchar* fragmentPath); //overloaded constructor for geometry shader support
+
 	// use/activate the shader
 	void use();
 	// utility uniform functions

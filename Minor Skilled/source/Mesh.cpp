@@ -31,7 +31,7 @@ void Mesh::draw(Shader * shader) {
 		else if(name == "textureSpecular") number = std::to_string(specularNr++);
 		else if(name == "textureHeight") number = std::to_string(heightNr++);
 
-		shader->setFloat("material." + (name + number), i);
+		shader->setFloat(/*"material." + */(name + number), i);
 
 		glBindTexture(GL_TEXTURE_2D, textures[i].id);
 	}
