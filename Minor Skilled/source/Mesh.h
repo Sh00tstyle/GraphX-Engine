@@ -34,6 +34,7 @@ class Mesh {
 		Mesh(std::vector<Vertex> pVertices, std::vector<unsigned int> pIndices, std::vector<Texture> pTextures);
 
 		void draw(Shader* shader);
+		void drawInstanced(Shader* shader, unsigned int amount);
 
 	private:
 		unsigned int VBO; //vertex buffer object, stores the vertex data

@@ -4,14 +4,28 @@
 
 #include "stb_image.h"
 
-Model::Model(std::string filepath, bool gamma) : gammaCorrection(gamma) {
+Model::Model(std::string filepath, bool gamma) : _gammaCorrection(gamma) {
 	_loadModel(filepath); //load the model
 }
 
 void Model::draw(Shader * shader) {
-	for(unsigned int i = 0; i < meshes.size(); i++) {
-		meshes[i]->draw(shader);
+	for(unsigned int i = 0; i < _meshes.size(); i++) {
+		_meshes[i]->draw(shader);
 	}
+}
+
+void Model::drawInstanced(Shader * shader, unsigned int amount) {
+	for(unsigned int i = 0; i < _meshes.size(); i++) {
+		_meshes[i]->drawInstanced(shader, amount);
+	}
+}
+
+unsigned int Model::getMeshCount() {
+	return _meshes.size();
+}
+
+Mesh * Model::getMeshAt(unsigned int index) {
+	return _meshes[index];
 }
 
 void Model::_loadModel(std::string filepath) {
@@ -23,7 +37,7 @@ void Model::_loadModel(std::string filepath) {
 		return;
 	}
 
-	directory = filepath.substr(0, filepath.find_last_of('/'));
+	_directory = filepath.substr(0, filepath.find_last_of('/'));
 
 	_processNode(scene->mRootNode, scene);
 }
@@ -32,7 +46,7 @@ void Model::_processNode(aiNode * node, const aiScene * scene) {
 	//process all meshes of the node
 	for(unsigned int i = 0; i < node->mNumMeshes; i++) {
 		aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
-		meshes.push_back(_processMesh(mesh, scene));
+		_meshes.push_back(_processMesh(mesh, scene));
 	}
 
 	//process all meshes of the children
@@ -133,9 +147,9 @@ std::vector<Texture> Model::_loadMaterialTextures(aiMaterial * material, aiTextu
 		bool skip = false;
 
 		//check if the texture has been loaded already
-		for(unsigned int j = 0; j < texturesLoaded.size(); j++) {
-			if(std::strcmp(texturesLoaded[j].path.data(), str.C_Str()) == 0) { //???
-				textures.push_back(texturesLoaded[j]);
+		for(unsigned int j = 0; j < _texturesLoaded.size(); j++) {
+			if(std::strcmp(_texturesLoaded[j].path.data(), str.C_Str()) == 0) { //???
+				textures.push_back(_texturesLoaded[j]);
 				skip = true;
 				break;
 			}
@@ -144,12 +158,12 @@ std::vector<Texture> Model::_loadMaterialTextures(aiMaterial * material, aiTextu
 		//load texture if it hasnt been already
 		if(!skip) {
 			Texture texture;
-			texture.id = _textureFromFile(str.C_Str(), directory);
+			texture.id = _textureFromFile(str.C_Str(), _directory);
 			texture.type = typeName;
 			texture.path = str.C_Str();
 
 			textures.push_back(texture);
-			texturesLoaded.push_back(texture);
+			_texturesLoaded.push_back(texture);
 		}
 	}
 

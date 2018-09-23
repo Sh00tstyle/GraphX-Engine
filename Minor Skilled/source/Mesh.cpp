@@ -44,6 +44,34 @@ void Mesh::draw(Shader * shader) {
 	glBindVertexArray(0);
 }
 
+void Mesh::drawInstanced(Shader * shader, unsigned int amount) {
+	unsigned int diffuseNr = 1;
+	unsigned int specularNr = 1;
+	unsigned int normalNr = 1;
+	unsigned int heightNr = 1;
+
+	for(unsigned int i = 0; i < textures.size(); i++) {
+		glActiveTexture(GL_TEXTURE0 + i); //activate the correct texture unit
+
+		std::string number;
+		std::string name = textures[i].type;
+		if(name == "textureDiffuse") number = std::to_string(diffuseNr++);
+		else if(name == "textureSpecular") number = std::to_string(specularNr++);
+		else if(name == "textureHeight") number = std::to_string(heightNr++);
+
+		shader->setFloat(/*"material." + */(name + number), i);
+
+		glBindTexture(GL_TEXTURE_2D, textures[i].id);
+	}
+
+	glActiveTexture(GL_TEXTURE0);
+
+	//draw mesh instanced
+	glBindVertexArray(VAO);
+	glDrawElementsInstanced(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0, amount);
+	glBindVertexArray(0);
+}
+
 void Mesh::_setupMesh() {
 	//generate vertex array and buffer objects
 	glGenVertexArrays(1, &VAO);
