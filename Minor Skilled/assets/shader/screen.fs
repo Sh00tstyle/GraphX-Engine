@@ -6,6 +6,11 @@ uniform sampler2D screenTexture;
 
 out vec4 fragColor;
 
+void main() {
+    fragColor = texture(screenTexture, texCoord);
+}
+
+/**
 const float offset = 1.0f / 300.0f;
 
 void main() {
@@ -30,22 +35,18 @@ void main() {
     );
 
     //sharpen kernel
-    /**
     float kernel[9] = float[](
         -1, -1, -1,
         -1, 9, -1,
         -1, -1, -1
     );
-    /**/
 
     //blur kernel
-    /**
     float kernel[9] = float[](
         1.0f / 16.0f, 2.0f / 16.0f, 1.0f / 16.0f,
         2.0f / 16.0f, 4.0f / 16.0f, 2.0f / 16.0f,
         1.0f / 16.0f, 2.0f / 16.0f, 1.0f / 16.0f
     );
-    /**/
 
     //edge detection kernel
     float kernel[9] = float[](
@@ -62,3 +63,4 @@ void main() {
 
     fragColor = vec4(color, 1.0f);
 }
+/**/
