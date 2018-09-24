@@ -3,11 +3,23 @@
 in vec2 texCoord;
 
 uniform sampler2D screenTexture;
+uniform float nearPlane;
+uniform float farPlane;
 
 out vec4 fragColor;
 
+float linearizeDepth(float depth) {
+    //required when using a perspective projection matrix instead of an orthographic one
+    float z = depth * 2.0f - 1.0f; //normal device coordinates
+    return (2.0f * nearPlane * farPlane) / (farPlane + nearPlane - z * (farPlane - nearPlane));
+}
+
 void main() {
-    fragColor = texture(screenTexture, texCoord);
+    //fragColor = texture(screenTexture, texCoord);
+    
+    float depthValue = texture(screenTexture, texCoord).x; //we have to use x or r here
+    //fragColor = vec4(vec3(linearizeDepth(depthValue) / farPlane), 1.0f); //perspective
+    fragColor = vec4(vec3(depthValue), 1.0f); //orthographic
 }
 
 /**
