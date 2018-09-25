@@ -30,7 +30,7 @@ Mesh * Model::getMeshAt(unsigned int index) {
 
 void Model::_loadModel(std::string filepath) {
 	Assimp::Importer importer;
-	const aiScene* scene = importer.ReadFile(filepath, aiProcess_Triangulate | aiProcess_FlipUVs);
+	const aiScene* scene = importer.ReadFile(filepath, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace); //also calculate tangent space
 
 	if(!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
 		std::cout << "ERROR::ASSIMP::" << importer.GetErrorString() << std::endl;
@@ -86,21 +86,17 @@ Mesh* Model::_processMesh(aiMesh * mesh, const aiScene * scene) {
 		} else
 			vertex.uv = glm::vec2(0.0f, 0.0f);
 
-		/**
-		//causes crashes, since not every model has it (i believe)
-
-		//tangent
+		//tangents
 		vector.x = mesh->mTangents[i].x;
 		vector.y = mesh->mTangents[i].y;
 		vector.z = mesh->mTangents[i].z;
 		vertex.tangent = vector;
 
-		//bitangent
+		//bitangents
 		vector.x = mesh->mBitangents[i].x;
 		vector.y = mesh->mBitangents[i].y;
 		vector.z = mesh->mBitangents[i].z;
 		vertex.bitangent = vector;
-		/**/
 
 		newVertices.push_back(vertex); //add vertex to the vector
 	}
@@ -184,14 +180,22 @@ unsigned int Model::_textureFromFile(const char * filepath, const std::string & 
 
 	if(textureData) {
 		//identify format
-		GLenum format;
-		if(nrComponents == 1) format = GL_RED;
-		else if(nrComponents == 3) format = GL_RGB;
-		else if(nrComponents == 4) format = GL_RGBA;
+		GLenum internalFormat;
+		GLenum dataFormat;
+
+		if(nrComponents == 1) {
+			internalFormat = dataFormat = GL_RED;
+		} else if(nrComponents == 3) {
+			internalFormat = gamma ? GL_SRGB : GL_RGB;
+			dataFormat = GL_RGB;
+		} else if(nrComponents == 4) {
+			internalFormat = gamma ? GL_SRGB_ALPHA : GL_RGBA;
+			dataFormat = GL_RGBA;
+		}
 
 		//load texture into opengl
 		glBindTexture(GL_TEXTURE_2D, textureID);
-		glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, textureData);
+		glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, dataFormat, GL_UNSIGNED_BYTE, textureData);
 		glGenerateMipmap(GL_TEXTURE_2D);
 
 		//set texture filter options
