@@ -5,19 +5,13 @@ in vec3 fragPos;
 in vec3 fragNormal;
 
 //material parameters
-/**
 uniform vec3 albedo;
 uniform float metallic;
 uniform float roughness;
 uniform float ao;
 
-/**/
-uniform sampler2D albedoMap;
-uniform sampler2D normalMap;
-uniform sampler2D metallicMap;
-uniform sampler2D roughnessMap;
-uniform sampler2D aoMap;
-/**/
+//IBL
+uniform samplerCube irradianceMap;
 
 //lights
 uniform vec3 lightPositions[4];
@@ -28,30 +22,6 @@ uniform vec3 cameraPos;
 const float PI = 3.14159265359;
 
 out vec4 fragColor;
-
-/**/
-vec3 getNormalFromMap() {
-    //Easy trick to get tangent-normals to world-space to keep PBR code simplified.
-    //Don't worry if you don't get what's going on; you generally want to do normal 
-    //mapping the usual way for performance anways; I do plan make a note of this 
-    //technique somewhere later in the normal mapping tutorial.
-    //Should be per fragment normal (?)
-
-    vec3 tangentNormal = texture(normalMap, texCoord).xyz * 2.0f - 1.0f;
-
-    vec3 Q1  = dFdx(fragPos);
-    vec3 Q2  = dFdy(fragPos);
-    vec2 st1 = dFdx(texCoord);
-    vec2 st2 = dFdy(texCoord);
-
-    vec3 N   = normalize(fragNormal);
-    vec3 T  = normalize(Q1 * st2.t - Q2 * st1.t);
-    vec3 B  = -normalize(cross(N, T));
-    mat3 TBN = mat3(T, B, N);
-
-    return normalize(TBN * tangentNormal);
-}
-/**/
 
 float DistributionGGX(vec3 N, vec3 H, float roughness) {
     float a = roughness * roughness;
@@ -90,17 +60,9 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0) {
 }
 
 void main() {		
-    /**/
-    vec3 albedo = pow(texture(albedoMap, texCoord).rgb, vec3(2.2f)); //convert to linear space
-    //vec3 albedo = texture(albedoMap, texCoord).rgb;
-    vec3 N = getNormalFromMap();
-    float metallic = texture(metallicMap, texCoord).r;
-    float roughness = texture(roughnessMap, texCoord).r;
-    float ao = texture(aoMap, texCoord).r;
-    /**/
-
-    //vec3 N = normalize(fragNormal);
+    vec3 N = normalize(fragNormal);
     vec3 V = normalize(cameraPos - fragPos);
+    vec3 R = reflect(-V, N);
 
     //calculate reflectance at normal incidence; if dia-electric (like plastic) use F0 
     //of 0.04 and if it's a metal, use the albedo color as F0 (metallic workflow)    
@@ -121,7 +83,7 @@ void main() {
         //Cook-Torrance BRDF
         float NDF = DistributionGGX(N, H, roughness);   
         float G   = GeometrySmith(N, V, L, roughness);      
-        vec3 F    = fresnelSchlick(clamp(dot(H, V), 0.0f, 1.0f), F0);
+        vec3 F    = fresnelSchlick(max(dot(H, V), 0.0f), F0);
            
         vec3 nominator    = NDF * G * F; 
         float denominator = 4.0f * max(dot(N, V), 0.0f) * max(dot(N, L), 0.0f) + 0.001; //0.001 to prevent division by zero
@@ -147,9 +109,14 @@ void main() {
         Lo += (kD * albedo / PI + specular) * radiance * NdotL;  // note that we already multiplied the BRDF by the Fresnel (kS) so we won't multiply by kS again
     }   
     
-    //ambient lighting (note that the next IBL tutorial will replace 
-    //this ambient lighting with environment lighting).
-    vec3 ambient = vec3(0.03f) * albedo * ao;
+    //ambient lighting (we now use IBL as the ambient term)
+    vec3 kS = fresnelSchlick(max(dot(N, V), 0.0f), F0);
+    vec3 kD = 1.0f - kS;
+    kD *= 1.0f - metallic;	  
+    vec3 irradiance = texture(irradianceMap, N).rgb;
+    vec3 diffuse      = irradiance * albedo;
+    vec3 ambient = (kD * diffuse) * ao;
+    //vec3 ambient = vec3(0.002);
 
     vec3 color = ambient + Lo;
 

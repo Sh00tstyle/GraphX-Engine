@@ -7,5 +7,11 @@ uniform samplerCube cubemap;
 out vec4 fragColor;
 
 void main() {
-    fragColor = texture(cubemap, textureDir);
+    vec3 color = texture(cubemap, textureDir).rgb;
+
+    //HDR tonemap and gamma correct
+    color = color / (color + vec3(1.0f));
+    color = pow(color, vec3(1.0f/2.2f));
+
+    fragColor = vec4(color, 1.0f);
 }
