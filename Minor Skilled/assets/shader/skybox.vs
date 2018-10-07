@@ -9,5 +9,9 @@ out vec3 textureDir;
 
 void main() {
     textureDir = aVertex;
-    gl_Position = projectionMatrix * viewMatrix * vec4(aVertex, 1.0f);
+
+    mat4 rotView = mat4(mat3(viewMatrix));
+    vec4 clipPos = projectionMatrix * rotView * vec4(aVertex, 1.0f);
+
+    gl_Position = clipPos.xyww;
 }

@@ -24,7 +24,7 @@ void main() {
     up            = cross(N, right);
        
     float sampleDelta = 0.025f;
-    float nrSamples = 0.0f;
+    float sampleAmt = 0.0f;
 
     for(float phi = 0.0f; phi < 2.0f * PI; phi += sampleDelta) {
         for(float theta = 0.0f; theta < 0.5f * PI; theta += sampleDelta) {
@@ -35,11 +35,11 @@ void main() {
             vec3 sampleVec = tangentSample.x * right + tangentSample.y * up + tangentSample.z * N; 
 
             irradiance += texture(environmentMap, sampleVec).rgb * cos(theta) * sin(theta);
-            nrSamples++;
+            sampleAmt++;
         }
     }
 
-    irradiance = PI * irradiance * (1.0 / float(nrSamples));
+    irradiance = PI * irradiance * (1.0f / float(sampleAmt));
     
-    fragColor = vec4(irradiance, 1.0);
+    fragColor = vec4(irradiance, 1.0f);
 }
