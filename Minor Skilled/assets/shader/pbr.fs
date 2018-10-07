@@ -5,10 +5,18 @@ in vec3 fragPos;
 in vec3 fragNormal;
 
 //material parameters
+/**
 uniform vec3 albedo;
 uniform float metallic;
 uniform float roughness;
 uniform float ao;
+/**/
+
+uniform sampler2D albedoMap;
+uniform sampler2D normalMap;
+uniform sampler2D metallicMap;
+uniform sampler2D roughnessMap;
+uniform sampler2D aoMap;
 
 //IBL
 uniform samplerCube irradianceMap;
@@ -24,6 +32,22 @@ uniform vec3 cameraPos;
 const float PI = 3.14159265359;
 
 out vec4 fragColor;
+
+vec3 getNormalFromMap() {
+    vec3 tangentNormal = texture(normalMap, texCoord).xyz * 2.0f - 1.0f;
+
+    vec3 Q1  = dFdx(fragPos);
+    vec3 Q2  = dFdy(fragPos);
+    vec2 st1 = dFdx(texCoord);
+    vec2 st2 = dFdy(texCoord);
+
+    vec3 N   = normalize(fragNormal);
+    vec3 T  = normalize(Q1 * st2.t - Q2 * st1.t);
+    vec3 B  = -normalize(cross(N, T));
+    mat3 TBN = mat3(T, B, N);
+
+    return normalize(TBN * tangentNormal);
+}
 
 float DistributionGGX(vec3 N, vec3 H, float roughness) {
     float a = roughness * roughness;
@@ -65,8 +89,16 @@ vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
     return F0 + (max(vec3(1.0f - roughness), F0) - F0) * pow(1.0f - cosTheta, 5.0f);
 }
 
-void main() {		
-    vec3 N = normalize(fragNormal);
+void main() {
+    //material properties
+    vec3 albedo = pow(texture(albedoMap, texCoord).rgb, vec3(2.2f));
+    float metallic = texture(metallicMap, texCoord).r;
+    float roughness = texture(roughnessMap, texCoord).r;
+    float ao = texture(aoMap, texCoord).r;
+
+    //input lighting data
+    vec3 N = getNormalFromMap();
+    //vec3 N = normalize(fragNormal);
     vec3 V = normalize(cameraPos - fragPos);
     vec3 R = reflect(-V, N);
 
