@@ -7,42 +7,216 @@
     <Filter Include="source">
       <UniqueIdentifier>{d9940890-c526-4975-be5c-c8cd8a23623e}</UniqueIdentifier>
     </Filter>
+    <Filter Include="source\Application">
+      <UniqueIdentifier>{bd6fc9ff-af3b-4260-a813-e93fe745d536}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\Components">
+      <UniqueIdentifier>{61589f5f-f4de-4dd1-9ea1-947f916c1828}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\Engine">
+      <UniqueIdentifier>{2c947f6a-e33a-42af-aa91-f3b64b9477ca}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\Materials">
+      <UniqueIdentifier>{586e9d14-a96c-4772-9640-8200f47f56bd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\Utility">
+      <UniqueIdentifier>{85b7ea7c-8b01-470f-8463-cb0df6cbb125}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\UI">
+      <UniqueIdentifier>{526035ea-a5e2-4c6d-b162-9195042aaf4e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\Systems">
+      <UniqueIdentifier>{ce5b861a-32d8-488e-ba0b-a36b7518f964}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="source\main.cpp">
-      <Filter>source</Filter>
+    <ClCompile Include="source\Engine\Camera.cpp">
+      <Filter>source\Engine</Filter>
     </ClCompile>
-    <ClCompile Include="source\glad.c">
-      <Filter>source</Filter>
+    <ClCompile Include="source\Engine\Shader.cpp">
+      <Filter>source\Engine</Filter>
     </ClCompile>
-    <ClCompile Include="source\Shader.cpp">
-      <Filter>source</Filter>
+    <ClCompile Include="source\Application\main.cpp">
+      <Filter>source\Application</Filter>
     </ClCompile>
-    <ClCompile Include="source\Camera.cpp">
-      <Filter>source</Filter>
+    <ClCompile Include="source\Engine\glad.c">
+      <Filter>source\Engine</Filter>
     </ClCompile>
-    <ClCompile Include="source\Mesh.cpp">
-      <Filter>source</Filter>
+    <ClCompile Include="source\Engine\Scene.cpp">
+      <Filter>source\Engine</Filter>
     </ClCompile>
-    <ClCompile Include="source\Model.cpp">
-      <Filter>source</Filter>
+    <ClCompile Include="source\Application\DemoScene.cpp">
+      <Filter>source\Application</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Engine\Window.cpp">
+      <Filter>source\Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Engine\Node.cpp">
+      <Filter>source\Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Engine\World.cpp">
+      <Filter>source\Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Engine\System.cpp">
+      <Filter>source\Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Utility\Filepath.cpp">
+      <Filter>source\Utility</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Utility\Time.cpp">
+      <Filter>source\Utility</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Utility\Input.cpp">
+      <Filter>source\Utility</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Engine\Component.cpp">
+      <Filter>source\Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Systems\MovementSystem.cpp">
+      <Filter>source\Systems</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Systems\CameraSystem.cpp">
+      <Filter>source\Systems</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Systems\RenderSystem.cpp">
+      <Filter>source\Systems</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Components\LightComponent.cpp">
+      <Filter>source\Components</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Components\TransformComponent.cpp">
+      <Filter>source\Components</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Components\RenderComponent.cpp">
+      <Filter>source\Components</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Components\CameraComponent.cpp">
+      <Filter>source\Components</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Engine\Entity.cpp">
+      <Filter>source\Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Engine\EntityManager.cpp">
+      <Filter>source\Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Engine\Material.cpp">
+      <Filter>source\Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Engine\Texture.cpp">
+      <Filter>source\Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Materials\ColorMaterial.cpp">
+      <Filter>source\Materials</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Materials\TextureMaterial.cpp">
+      <Filter>source\Materials</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Engine\Model.cpp">
+      <Filter>source\Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Engine\Mesh.cpp">
+      <Filter>source\Engine</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="source\Shader.h">
-      <Filter>source</Filter>
+    <ClInclude Include="source\Engine\Camera.h">
+      <Filter>source\Engine</Filter>
     </ClInclude>
-    <ClInclude Include="source\stb_image.h">
-      <Filter>source</Filter>
+    <ClInclude Include="source\Engine\Shader.h">
+      <Filter>source\Engine</Filter>
     </ClInclude>
-    <ClInclude Include="source\Camera.h">
-      <Filter>source</Filter>
+    <ClInclude Include="source\Engine\stb_image.h">
+      <Filter>source\Engine</Filter>
     </ClInclude>
-    <ClInclude Include="source\Mesh.h">
-      <Filter>source</Filter>
+    <ClInclude Include="source\Engine\Scene.h">
+      <Filter>source\Engine</Filter>
     </ClInclude>
-    <ClInclude Include="source\Model.h">
-      <Filter>source</Filter>
+    <ClInclude Include="source\Application\DemoScene.h">
+      <Filter>source\Application</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Engine\Window.h">
+      <Filter>source\Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Engine\Node.h">
+      <Filter>source\Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Engine\World.h">
+      <Filter>source\Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Engine\System.h">
+      <Filter>source\Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Utility\Filepath.h">
+      <Filter>source\Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Utility\Time.h">
+      <Filter>source\Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Utility\Input.h">
+      <Filter>source\Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Utility\Key.h">
+      <Filter>source\Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Utility\MouseButton.h">
+      <Filter>source\Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Engine\Component.h">
+      <Filter>source\Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Utility\ComponentType.h">
+      <Filter>source\Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Systems\MovementSystem.h">
+      <Filter>source\Systems</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Systems\CameraSystem.h">
+      <Filter>source\Systems</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Systems\RenderSystem.h">
+      <Filter>source\Systems</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Utility\LightType.h">
+      <Filter>source\Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Components\LightComponent.h">
+      <Filter>source\Components</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Components\TransformComponent.h">
+      <Filter>source\Components</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Components\RenderComponent.h">
+      <Filter>source\Components</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Components\CameraComponent.h">
+      <Filter>source\Components</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Engine\Entity.h">
+      <Filter>source\Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Engine\EntityManager.h">
+      <Filter>source\Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Engine\Material.h">
+      <Filter>source\Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Engine\Texture.h">
+      <Filter>source\Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Materials\ColorMaterial.h">
+      <Filter>source\Materials</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Materials\TextureMaterial.h">
+      <Filter>source\Materials</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Engine\Vertex.h">
+      <Filter>source\Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Engine\Model.h">
+      <Filter>source\Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Engine\Mesh.h">
+      <Filter>source\Engine</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
