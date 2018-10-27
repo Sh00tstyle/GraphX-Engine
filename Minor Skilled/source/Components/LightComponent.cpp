@@ -1,6 +1,6 @@
 #include "LightComponent.h"
 
-LightComponent::LightComponent() {
+LightComponent::LightComponent():Component(ComponentType::Light) {
 }
 
 LightComponent::~LightComponent() {

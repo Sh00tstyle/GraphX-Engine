@@ -7,5 +7,5 @@ ComponentType Component::getComponentType() {
 	return _componentType;
 }
 
-Component::Component() {
+Component::Component(ComponentType type):_componentType(type) {
 }

@@ -2,19 +2,23 @@
 #define TEXTURE_H
 
 #include <string>
+#include <vector>
+
+#include "../Utility/TextureFilter.h"
 
 class Texture {
 public:
-	Texture();
-	Texture(std::string path, bool sRGB = false);
 	~Texture();
 
 	unsigned int getID();
 
-private:
-	unsigned int _id;
+	static Texture* LoadTexture(std::string path, TextureFilter filter = TextureFilter::Repeat, bool sRGB = false);
+	static Texture* LoadCubemap(std::vector<std::string> faces);
 
-	void _loadFromFile(std::string path, bool sRGB = false);
+private:
+	Texture();
+
+	unsigned int _id;
 };
 
 #endif

@@ -8,9 +8,7 @@ class World: public Node {
 		World();
 		~World();
 
-		virtual void setParent(Node* node);
-		virtual void addChild(Node* node);
-		virtual void update();
+		void update();
 
 };
 

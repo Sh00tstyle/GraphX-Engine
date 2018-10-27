@@ -82,6 +82,7 @@
     <ClInclude Include="source\Utility\Key.h" />
     <ClInclude Include="source\Utility\LightType.h" />
     <ClInclude Include="source\Utility\MouseButton.h" />
+    <ClInclude Include="source\Utility\TextureFilter.h" />
     <ClInclude Include="source\Utility\Time.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

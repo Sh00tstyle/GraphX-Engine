@@ -218,5 +218,8 @@
     <ClInclude Include="source\Engine\Mesh.h">
       <Filter>source\Engine</Filter>
     </ClInclude>
+    <ClInclude Include="source\Utility\TextureFilter.h">
+      <Filter>source\Utility</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

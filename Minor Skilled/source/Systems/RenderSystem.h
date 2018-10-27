@@ -8,7 +8,7 @@ class RenderSystem :public System {
 		RenderSystem();
 		~RenderSystem();
 
-		virtual void render();
+		virtual void render(glm::mat4 viewMatrix, glm::mat4 projectionMatrix);
 
 };
 

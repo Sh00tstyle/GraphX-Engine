@@ -11,6 +11,7 @@ public:
 	~CameraComponent();
 
 	glm::mat4 projectionMatrix;
+	float fieldOfView;
 
 };
 

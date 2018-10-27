@@ -10,7 +10,7 @@ class Component {
 		ComponentType getComponentType();
 
 	protected:
-		Component(); //protected constructor to make it impossible to intantiate from this container class
+		Component(ComponentType type); //protected constructor to make it impossible to intantiate from this container class
 
 		ComponentType _componentType;
 };

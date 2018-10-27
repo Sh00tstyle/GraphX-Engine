@@ -9,5 +9,5 @@ System::~System() {
 void System::update() {
 }
 
-void System::render() {
+void System::render(glm::mat4 viewMatrix, glm::mat4 projectionMatrix) {
 }

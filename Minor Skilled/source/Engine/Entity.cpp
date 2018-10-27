@@ -39,7 +39,7 @@ std::vector<Component*> Entity::getComponents(std::bitset<8> mask) {
 	for(std::map<ComponentType, Component*>::iterator it = _components.begin(); it != _components.end(); it++) {
 		currentMask = it->first;
 
-		if((currentMask & mask) == currentMask) components.push_back(it->second);
+		if((currentMask & mask) == currentMask) components.push_back(it->second); //add each requested component from the mask
 	}
 
 	return components; //return copy
