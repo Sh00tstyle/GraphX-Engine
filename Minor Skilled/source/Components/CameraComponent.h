@@ -11,8 +11,10 @@ public:
 	~CameraComponent();
 
 	glm::mat4 projectionMatrix;
-	float fieldOfView;
 
+	float fieldOfView;
+	float movementSpeed; 
+	float rotationSpeed;
 };
 
 #endif

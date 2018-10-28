@@ -79,5 +79,7 @@ void Window::_framebufferSizeCallback(GLFWwindow* window, int width, int height)
 	ScreenWidth = width;
 	ScreenHeight = height;
 
+	//TODO: update the projection matrix
+
 	glViewport(0, 0, width, height);
 }

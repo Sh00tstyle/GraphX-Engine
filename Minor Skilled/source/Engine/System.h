@@ -13,7 +13,7 @@ class System {
 		~System();
 
 		virtual void update();
-		virtual void render(glm::mat4 viewMatrix, glm::mat4 projectionMatrix);
+		virtual void render(glm::mat4 cameraModel, glm::mat4 projectionMatrix);
 
 	protected:
 		System(std::bitset<8> requirements);

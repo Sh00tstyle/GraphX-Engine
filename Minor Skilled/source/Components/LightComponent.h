@@ -12,14 +12,18 @@ class LightComponent : public Component {
 		~LightComponent();
 
 		LightType lightType;
-		glm::vec3 lightColor;
+
 		glm::vec3 lightDirection;
+
+		glm::vec3 lightAmbient;
+		glm::vec3 lightDiffuse;
+		glm::vec3 lightSpecular;
+
 		float constantAttenuation;
 		float linearAttenuation;
 		float quadraticAttenuation;
 		float innerCutoff;
 		float outerCutoff;
-
 };
 
 #endif

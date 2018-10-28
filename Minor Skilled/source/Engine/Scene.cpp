@@ -46,12 +46,9 @@ void Scene::initialize() {
 	_window = new Window(1280, 720, "Rendering Engine", 4);
 	_world = new World(); //scene graph
 
-	//add systems
+	//add basic systems
 	CameraSystem* cameraSystem = new CameraSystem();
 	_systems.push_back(cameraSystem);
-
-	MovementSystem* movementSystem = new MovementSystem();
-	_systems.push_back(movementSystem);
 
 	RenderSystem* renderSystem = new RenderSystem();
 	_systems.push_back(renderSystem);
@@ -76,11 +73,25 @@ void Scene::run() {
 }
 
 void Scene::update() {
+	std::vector<Entity*> transformEntities = EntityManager::GetEntitiesByMask(ComponentType::Transform);
+	TransformComponent* transformComponent;
+
+	//decompose all transforms before using them in the systems (experimental)
+	for(unsigned int i = 0; i < transformEntities.size(); i++) {
+		transformComponent = (TransformComponent*)transformEntities[i]->getComponent(ComponentType::Transform);
+		transformComponent->decompose();
+	}
+
+	//call update for all registered systems
 	for(unsigned int i = 0; i < _systems.size(); i++) {
 		_systems[i]->update();
 	}
 
-	_world->update(); //update scene graph transform components
+	//update scene graph (calculates world transforms only)
+	_world->update(); 
+
+	//resets the last mouse pos back to the current mouse pos
+	Input::ResetMousePos(); 
 }
 
 void Scene::render() {
@@ -91,10 +102,10 @@ void Scene::render() {
 	TransformComponent* cameraTransformComponent = (TransformComponent*)cameraEntity->getComponent(ComponentType::Transform);
 	CameraComponent* cameraComponent = (CameraComponent*)cameraEntity->getComponent(ComponentType::Camera);
 
-	glm::mat4 viewMatrix = glm::inverse(cameraTransformComponent->worldTransform);
+	glm::mat4 cameraModel = cameraTransformComponent->worldTransform;
 	glm::mat4 projectionMatrix = cameraComponent->projectionMatrix;
 
 	for(unsigned int i = 0; i < _systems.size(); i++) {
-		_systems[i]->render(viewMatrix, projectionMatrix);
+		_systems[i]->render(cameraModel, projectionMatrix);
 	}
 }

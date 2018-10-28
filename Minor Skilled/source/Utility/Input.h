@@ -13,6 +13,7 @@ class Input {
 		static void Initialize(GLFWwindow* window);
 
 		static void ProcessInput();
+		static void ResetMousePos();
 
 		static bool GetKey(Key key);
 		static bool GetKeyDown(Key key);
@@ -26,10 +27,13 @@ class Input {
 		static glm::vec2 GetCurrentMousePos();
 
 	private:
-		static glm::vec2 _LastMousePos;
 		static GLFWwindow* _Window;
 
-		static void _UpdateMouse();
+		static bool _FirstMouse;
+		static glm::vec2 _LastMousePos; //movement offset since the last frame
+		static glm::vec2 _CurrentMousePos;
+
+		static void _MouseCallback(GLFWwindow* window, double xPos, double yPos);
 };
 
 #endif

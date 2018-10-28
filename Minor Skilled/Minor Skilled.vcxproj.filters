@@ -28,11 +28,14 @@
     <Filter Include="source\Systems">
       <UniqueIdentifier>{ce5b861a-32d8-488e-ba0b-a36b7518f964}</UniqueIdentifier>
     </Filter>
+    <Filter Include="shaders\material shader">
+      <UniqueIdentifier>{af5c156a-3629-47a5-aa7c-ade957380ca8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="shaders\post processing shader">
+      <UniqueIdentifier>{d06180c2-66ce-47db-88a8-17b946dfab22}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="source\Engine\Camera.cpp">
-      <Filter>source\Engine</Filter>
-    </ClCompile>
     <ClCompile Include="source\Engine\Shader.cpp">
       <Filter>source\Engine</Filter>
     </ClCompile>
@@ -119,9 +122,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="source\Engine\Camera.h">
-      <Filter>source\Engine</Filter>
-    </ClInclude>
     <ClInclude Include="source\Engine\Shader.h">
       <Filter>source\Engine</Filter>
     </ClInclude>
@@ -221,5 +221,19 @@
     <ClInclude Include="source\Utility\TextureFilter.h">
       <Filter>source\Utility</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="assets\shaders\material shader\color.fs">
+      <Filter>shaders\material shader</Filter>
+    </None>
+    <None Include="assets\shaders\material shader\color.vs">
+      <Filter>shaders\material shader</Filter>
+    </None>
+    <None Include="assets\shaders\material shader\texture.fs">
+      <Filter>shaders\material shader</Filter>
+    </None>
+    <None Include="assets\shaders\material shader\texture.vs">
+      <Filter>shaders\material shader</Filter>
+    </None>
   </ItemGroup>
 </Project>

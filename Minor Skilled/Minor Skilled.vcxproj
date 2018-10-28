@@ -25,7 +25,6 @@
     <ClCompile Include="source\Components\LightComponent.cpp" />
     <ClCompile Include="source\Components\RenderComponent.cpp" />
     <ClCompile Include="source\Components\TransformComponent.cpp" />
-    <ClCompile Include="source\Engine\Camera.cpp" />
     <ClCompile Include="source\Engine\Component.cpp" />
     <ClCompile Include="source\Engine\Entity.cpp" />
     <ClCompile Include="source\Engine\EntityManager.cpp" />
@@ -55,7 +54,6 @@
     <ClInclude Include="source\Components\LightComponent.h" />
     <ClInclude Include="source\Components\RenderComponent.h" />
     <ClInclude Include="source\Components\TransformComponent.h" />
-    <ClInclude Include="source\Engine\Camera.h" />
     <ClInclude Include="source\Engine\Component.h" />
     <ClInclude Include="source\Engine\Entity.h" />
     <ClInclude Include="source\Engine\EntityManager.h" />
@@ -84,6 +82,12 @@
     <ClInclude Include="source\Utility\MouseButton.h" />
     <ClInclude Include="source\Utility\TextureFilter.h" />
     <ClInclude Include="source\Utility\Time.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="assets\shaders\material shader\color.fs" />
+    <None Include="assets\shaders\material shader\color.vs" />
+    <None Include="assets\shaders\material shader\texture.fs" />
+    <None Include="assets\shaders\material shader\texture.vs" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
