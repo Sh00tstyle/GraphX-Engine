@@ -54,18 +54,26 @@ void CameraSystem::_processInput(TransformComponent* transformComponent, CameraC
 	if(Input::GetKey(Key::LSHIFT)) translation.y = -movementSpeed * Time::DeltaTime;
 
 	//rotation
-	glm::mat4 yRotation = glm::mat4(1.0f);
-	glm::mat4 xRotation = glm::mat4(1.0f);
+	glm::mat4 yRotation = cameraComponent->rotY;
+	glm::mat4 xRotation = cameraComponent->rotX;
 	float rotationSpeed = cameraComponent->rotationSpeed;
 
-	if(std::abs(mouseOffset.x) > 0.0f) yRotation = glm::rotate(yRotation, glm::radians(mouseOffset.x * rotationSpeed * Time::DeltaTime), glm::vec3(0.0f, 1.0f, 0.0f));
-	if(std::abs(mouseOffset.y) > 0.0f) xRotation = glm::rotate(xRotation, glm::radians(mouseOffset.y * rotationSpeed * Time::DeltaTime), glm::vec3(1.0f, 0.0f, 0.0f));
+	if(std::abs(mouseOffset.x) >= 1.0f) {
+		yRotation = glm::rotate(yRotation, glm::radians(mouseOffset.x * rotationSpeed * Time::DeltaTime), glm::vec3(0.0f, 1.0f, 0.0f));
+		cameraComponent->rotY = yRotation;
+	}
 
-	//apply to transform
-	glm::mat4 transform = transformComponent->localTransform;
+	if(std::abs(mouseOffset.y) >= 1.0f) {
+		xRotation = glm::rotate(xRotation, glm::radians(mouseOffset.y * rotationSpeed * Time::DeltaTime), glm::vec3(1.0f, 0.0f, 0.0f));
+		cameraComponent->rotX = xRotation;
+	}
 
+	//reconstruct transform and apply to component
+	glm::mat4 transform = glm::mat4(1.0f);
+
+	transform = glm::translate(transform, transformComponent->getLocalPosition());
+	transform = transform * yRotation * xRotation;
 	transform = glm::translate(transform, translation);
-	transform = transform * yRotation/* * xRotation*/;
 
 	transformComponent->localTransform = transform;
 }

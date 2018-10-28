@@ -15,6 +15,8 @@ public:
 	float fieldOfView;
 	float movementSpeed; 
 	float rotationSpeed;
+	glm::mat4 rotX;
+	glm::mat4 rotY;
 };
 
 #endif

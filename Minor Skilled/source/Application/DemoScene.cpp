@@ -80,6 +80,8 @@ void DemoScene::_initializeScene() {
 	cameraComponent->projectionMatrix = glm::perspective(glm::radians(cameraComponent->fieldOfView), (float)Window::ScreenWidth / (float)Window::ScreenHeight, 0.1f, 100.0f);
 	cameraComponent->movementSpeed = 5.0f;
 	cameraComponent->rotationSpeed = 25.0f;
+	cameraComponent->rotX = glm::mat4(1.0f);
+	cameraComponent->rotY = glm::mat4(1.0f);
 
 	glm::mat4 transform1 = glm::mat4(1.0f);
 	transform1 = glm::translate(transform1, glm::vec3(0.0f, 0.0f, 0.0f));
