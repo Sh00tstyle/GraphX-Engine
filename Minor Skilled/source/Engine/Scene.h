@@ -12,15 +12,16 @@ class System;
 
 class Scene {
 	public:
-		Scene();
 		~Scene();
 
 		virtual void initialize();
 		virtual void run();
 
 	protected:
-		virtual void update();
-		virtual void render();
+		Scene();
+
+		virtual void _update();
+		virtual void _render();
 
 		Window* _window;
 		World* _world;

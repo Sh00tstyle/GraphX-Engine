@@ -16,6 +16,7 @@ class Texture;
 
 class TextureMaterial : public Material {
 	public:
+		TextureMaterial();
 		TextureMaterial(Texture* diffuseMap, Texture* specularMap, Texture* normalMap, Texture* emissionMap, float shininess);
 		~TextureMaterial();
 
@@ -36,8 +37,6 @@ class TextureMaterial : public Material {
 		virtual void draw(glm::mat4& modelMatrix, glm::mat4& viewMatrix, glm::mat4& projectionMatrix, glm::vec3& cameraPos, std::map<LightComponent*, glm::vec3>& lights);
 
 	private:
-		TextureMaterial();
-
 		static Shader* _shader;
 
 		Texture* _diffuseMap;

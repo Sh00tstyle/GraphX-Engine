@@ -64,15 +64,15 @@ void Scene::run() {
 
 		Input::ProcessInput();
 
-		update();
-		render();
+		_update();
+		_render();
 
 		_window->swapBuffers();
 		glfwPollEvents();
 	}
 }
 
-void Scene::update() {
+void Scene::_update() {
 	std::vector<Entity*> transformEntities = EntityManager::GetEntitiesByMask(ComponentType::Transform);
 	TransformComponent* transformComponent;
 
@@ -94,7 +94,7 @@ void Scene::update() {
 	Input::ResetMousePos(); 
 }
 
-void Scene::render() {
+void Scene::_render() {
 	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
