@@ -27,7 +27,7 @@ class LightComponent : public Component {
 		float innerCutoff;
 		float outerCutoff;
 
-		virtual void update(std::vector<Node*>& renderables, std::vector<Node*>& lights, std::vector<Node*>& cameras);
+		virtual void update();
 };
 
 #endif

@@ -14,7 +14,7 @@ class Component {
 		ComponentType getComponentType();
 		
 		void setOwner(Node* owner);
-		virtual void update(std::vector<Node*>& renderables, std::vector<Node*>& lights, std::vector<Node*>& cameras) = 0;
+		virtual void update() = 0;
 
 	protected:
 		Component(ComponentType type);

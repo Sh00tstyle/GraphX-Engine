@@ -15,7 +15,7 @@ class RenderComponent : public Component {
 		Model* model;
 		Material* material;
 
-		virtual void update(std::vector<Node*>& renderables, std::vector<Node*>& lights, std::vector<Node*>& cameras);
+		virtual void update();
 
 };
 

@@ -16,9 +16,7 @@ projectionMatrix(projectionMatrix), fieldOfView(fieldOfView), movementSpeed(move
 CameraComponent::~CameraComponent() {
 }
 
-void CameraComponent::update(std::vector<Node*>& renderables, std::vector<Node*>& lights, std::vector<Node*>& cameras) {
-	cameras.push_back(_owner);
-
+void CameraComponent::update() {
 	//mouse offset
 	glm::vec2 mouseOffset = Input::GetLastMousePos() - Input::GetCurrentMousePos();
 

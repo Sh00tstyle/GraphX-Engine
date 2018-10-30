@@ -8,6 +8,5 @@ LightComponent::LightComponent(LightType type):Component(ComponentType::Light), 
 LightComponent::~LightComponent() {
 }
 
-void LightComponent::update(std::vector<Node*>& renderables, std::vector<Node*>& lights, std::vector<Node*>& cameras) {
-	lights.push_back(_owner);
+void LightComponent::update() {
 }

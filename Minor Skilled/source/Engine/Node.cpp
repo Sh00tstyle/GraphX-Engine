@@ -69,13 +69,18 @@ void Node::addComponent(Component * component) {
 void Node::update(glm::mat4& parentTransform, std::vector<Node*>& renderables, std::vector<Node*>& lights, std::vector<Node*>& cameras) {
 	_transform->decompose();
 
+	//fill collections
+	if(hasComponent(ComponentType::Render)) renderables.push_back(this);
+	if(hasComponent(ComponentType::Light)) lights.push_back(this);
+	if(hasComponent(ComponentType::Camera)) cameras.push_back(this);
+
 	//update components
 	Component* component;
 
 	for(std::map<ComponentType, Component*>::iterator it = _components.begin(); it != _components.end(); it++) {
 		component = it->second;
 
-		if(component != nullptr) component->update(renderables, lights, cameras);
+		if(component != nullptr) component->update();
 	}
 
 	//calculate model matrix

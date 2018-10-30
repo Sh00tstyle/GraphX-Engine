@@ -12,6 +12,5 @@ RenderComponent::~RenderComponent() {
 	delete model;
 }
 
-void RenderComponent::update(std::vector<Node*>& renderables, std::vector<Node*>& lights, std::vector<Node*>& cameras) {
-	renderables.push_back(_owner);
+void RenderComponent::update() {
 }

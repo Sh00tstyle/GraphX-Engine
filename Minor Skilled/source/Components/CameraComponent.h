@@ -19,7 +19,7 @@ public:
 	glm::mat4 rotX;
 	glm::mat4 rotY;
 
-	virtual void update(std::vector<Node*>& renderables, std::vector<Node*>& lights, std::vector<Node*>& cameras);
+	virtual void update();
 };
 
 #endif
