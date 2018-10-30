@@ -1,16 +1,11 @@
 #include "Node.h"
 
-#include <iostream>
-#include <string>
-
-#include "../Engine/Entity.h"
-#include "../Engine/EntityManager.h"
-
-#include "../Components/TransformComponent.h"
+#include "../Engine/Component.h"
+#include "../Engine/Transform.h"
 
 #include "../Utility/ComponentType.h"
 
-Node::Node(std::string name, int id):_name(name), _id(id), _parent(nullptr) {
+Node::Node(glm::vec3 localPosition, std::string name):_transform(new Transform(localPosition)), _name(name), _parent(nullptr) {
 }
 
 Node::~Node() {
@@ -23,20 +18,30 @@ std::string Node::getName() {
 	return _name;
 }
 
-int Node::getID() {
-	return _id;
+Node* Node::getParent() {
+	return _parent;
 }
 
-Node * Node::getParent() {
-	return _parent;
+Transform* Node::getTransform() {
+	return _transform;
 }
 
 std::vector<Node*>* Node::getChildren() {
 	return &_children;
 }
 
-Node * Node::getChildAt(unsigned int index) {
+Node* Node::getChildAt(unsigned int index) {
 	return _children[index];
+}
+
+Component* Node::getComponent(ComponentType type) {
+	return _components[type];
+}
+
+bool Node::hasComponent(ComponentType type) {
+	std::bitset<8> typeMask = type;
+
+	return ((_componentMask & typeMask) == typeMask);
 }
 
 void Node::addChild(Node* node) {
@@ -45,23 +50,40 @@ void Node::addChild(Node* node) {
 	_children.push_back(node);
 }
 
-void Node::update(glm::mat4 parentTransform) {
-	//get relevant data
-	Entity* nodeEntity = EntityManager::GetEntityByID(_id); //can be cached, maybe use lazy init?
-	TransformComponent* transformComponent = (TransformComponent*)nodeEntity->getComponent(ComponentType::Transform); //can be cached, maybe use lazy init?
-
-	//calculate the world transform for this node
-	glm::mat4 worldTransform = parentTransform * transformComponent->localTransform;
-
-	//update the world transform in the component
-	transformComponent->worldTransform = worldTransform;
-
-	//print world position for debug
-	//glm::vec3 worldPos = transformComponent->getWorldPosition();
-	//std::cout << _name + " world pos: " + std::to_string(worldPos.x) + ", " + std::to_string(worldPos.y) + ", " + std::to_string(worldPos.z) << std::endl;
-
+void Node::removeChild(Node* node) {
 	for(unsigned int i = 0; i < _children.size(); i++) {
-		_children[i]->update(worldTransform); //pass world transform down to children
+		if(_children[i] == node) {
+			_children.erase(_children.begin() + i);
+			return;
+		}
+	}
+}
+
+void Node::addComponent(Component * component) {
+	_components[component->getComponentType()] = component;
+	component->setOwner(this);
+
+	_componentMask |= component->getComponentType();
+}
+
+void Node::update(glm::mat4& parentTransform, std::vector<Node*>& renderables, std::vector<Node*>& lights, std::vector<Node*>& cameras) {
+	_transform->decompose();
+
+	//update components
+	Component* component;
+
+	for(std::map<ComponentType, Component*>::iterator it = _components.begin(); it != _components.end(); it++) {
+		component = it->second;
+
+		if(component != nullptr) component->update(renderables, lights, cameras);
+	}
+
+	//calculate model matrix
+	_transform->worldTransform = parentTransform * _transform->localTransform;
+
+	//update children
+	for(unsigned int i = 0; i < _children.size(); i++) {
+		_children[i]->update(_transform->worldTransform, renderables, lights, cameras);
 	}
 }
 

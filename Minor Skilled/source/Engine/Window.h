@@ -17,6 +17,7 @@ class Window {
 		bool isOpen();
 		void close();
 		void swapBuffers();
+		void pollEvents();
 
 	private:
 		GLFWwindow* _glfwWindow;

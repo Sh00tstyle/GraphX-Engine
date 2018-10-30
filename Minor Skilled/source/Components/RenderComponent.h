@@ -3,16 +3,19 @@
 
 #include "../Engine/Component.h"
 
-#include "../Engine/Material.h"
-#include "../Engine/Model.h"
+class Node;
+class Model;
+class Material;
 
 class RenderComponent : public Component {
 	public:
-		RenderComponent();
+		RenderComponent(Model* model, Material* Material);
 		~RenderComponent();
 
 		Model* model;
 		Material* material;
+
+		virtual void update(std::vector<Node*>& renderables, std::vector<Node*>& lights, std::vector<Node*>& cameras);
 
 };
 

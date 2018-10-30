@@ -36,6 +36,10 @@ void Window::swapBuffers() {
 	glfwSwapBuffers(_glfwWindow);
 }
 
+void Window::pollEvents() {
+	glfwPollEvents();
+}
+
 void Window::_initializeGLFW(unsigned int msaa) {
 	int success = glfwInit();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);

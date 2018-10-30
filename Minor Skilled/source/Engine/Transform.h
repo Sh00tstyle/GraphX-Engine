@@ -5,17 +5,18 @@
 #include <glm/glm.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
 
-#include "../Engine/Component.h"
-
-class TransformComponent : public Component {
+class Transform {
 	public:
-		TransformComponent();
-		~TransformComponent();
+		Transform(glm::vec3 localPosition);
+		~Transform();
 
-		glm::mat4 localTransform; //use this for transform behaviour in systems
-		glm::mat4 worldTransform; //modifying this in a system will not do anything, since it is calculated based on the local transform in the scene graph
+		glm::mat4 localTransform;
+		glm::mat4 worldTransform;
 
 		void decompose();
+		void translate(glm::vec3 translation);
+		void rotate(float angle, glm::vec3 axis);
+		void scale(glm::vec3 scale);
 
 		glm::vec3 getLocalScale();
 		glm::quat getLocalRotation();

@@ -6,9 +6,11 @@
 #include "../Engine/Component.h"
 #include "../Utility/LightType.h"
 
+class Node;
+
 class LightComponent : public Component {
 	public:
-		LightComponent();
+		LightComponent(LightType type);
 		~LightComponent();
 
 		LightType lightType;
@@ -24,6 +26,8 @@ class LightComponent : public Component {
 		float quadraticAttenuation;
 		float innerCutoff;
 		float outerCutoff;
+
+		virtual void update(std::vector<Node*>& renderables, std::vector<Node*>& lights, std::vector<Node*>& cameras);
 };
 
 #endif
