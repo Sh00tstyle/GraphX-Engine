@@ -31,7 +31,7 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 	std::map<CameraComponent*, glm::mat4> cameraComponents;
 	std::map<LightComponent*, glm::vec3> lightComponents;
 
-	//fill collections with data
+	//fill collections with data (cheating a little by matching the components with their needed matrix/position)
 	for(unsigned int i = 0; i < renderables.size(); i++) {
 		renderComponents[(RenderComponent*)renderables[i]->getComponent(ComponentType::Render)] = renderables[i]->getTransform()->worldTransform;
 	}
@@ -47,20 +47,27 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 	//render each camera
 	glm::mat4 projectionMatrix;
 	glm::mat4 viewMatrix;
-	glm::mat4 modelMatrix;
 	glm::vec3 cameraPos;
 
+	glm::mat4 modelMatrix;
+	Material* material;
+	Model* model;
+
 	for(std::map<CameraComponent*, glm::mat4>::iterator cameraIt = cameraComponents.begin(); cameraIt != cameraComponents.end(); cameraIt++) {
+		//get relevant properties from the camera
 		projectionMatrix = cameraIt->first->projectionMatrix;
 		viewMatrix = glm::inverse(cameraIt->second);
 		cameraPos = glm::vec3(cameraIt->second[3]);
 
 		//render each renderable
 		for(std::map<RenderComponent*, glm::mat4>::iterator renderIt = renderComponents.begin(); renderIt != renderComponents.end(); renderIt++) {
+			//get renderable properties
 			modelMatrix = renderIt->second;
+			material = renderIt->first->material;
+			model = renderIt->first->model;
 
-			renderIt->first->material->draw(modelMatrix, viewMatrix, projectionMatrix, cameraPos, lightComponents);
-			renderIt->first->model->draw();
+			material->draw(modelMatrix, viewMatrix, projectionMatrix, cameraPos, lightComponents);
+			model->draw();
 		}
 	}
 }

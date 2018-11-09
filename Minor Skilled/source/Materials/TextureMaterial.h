@@ -16,23 +16,25 @@ class Texture;
 
 class TextureMaterial : public Material {
 	public:
-		TextureMaterial();
-		TextureMaterial(Texture* diffuseMap, Texture* specularMap, Texture* normalMap, Texture* emissionMap, float shininess);
+		TextureMaterial(Texture* diffuseMap, float shininess = 32.0f);
+		TextureMaterial(Texture* diffuseMap, Texture* specularMap = nullptr, Texture* normalMap = nullptr, Texture* heightMap = nullptr, Texture* emissionMap = nullptr, float shininess = 32.0f, float heightScale = 1.0f);
 		~TextureMaterial();
-
-		static TextureMaterial* LoadMaterial(std::string path);
 
 		Texture* getDiffuseMap();
 		Texture* getSpecularMap();
 		Texture* getNormalMap();
 		Texture* getEmissionMap();
+		Texture* getHeightMap();
 		float getShininess();
+		float getHeightScale();
 
 		void setDiffuseMap(Texture* diffuseMap);
 		void setSpecularMap(Texture* specularMap);
 		void setNormalMap(Texture* normalMap);
 		void setEmissionMap(Texture* emissionMap);
+		void setHeightMap(Texture* heightMap);
 		void setShininess(float shininess);
+		void setHeightScale(float heightScale);
 
 		virtual void draw(glm::mat4& modelMatrix, glm::mat4& viewMatrix, glm::mat4& projectionMatrix, glm::vec3& cameraPos, std::map<LightComponent*, glm::vec3>& lights);
 
@@ -42,8 +44,12 @@ class TextureMaterial : public Material {
 		Texture* _diffuseMap;
 		Texture* _specularMap;
 		Texture* _normalMap;
+		Texture* _heightMap;
 		Texture* _emissionMap;
 		float _shininess;
+		float _heightScale;
+
+		void _initShader();
 
 };
 

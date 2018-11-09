@@ -92,9 +92,9 @@ void ColorMaterial::draw(glm::mat4& modelMatrix, glm::mat4& viewMatrix, glm::mat
 		_shader->setVec3("lights[" + std::to_string(counter) + "].ambient", currentLight->lightAmbient);
 		_shader->setVec3("lights[" + std::to_string(counter) + "].specular", currentLight->lightSpecular);
 
-		_shader->setFloat("lights[" + std::to_string(counter) + "].constantAttenuation", currentLight->constantAttenuation);
-		_shader->setFloat("lights[" + std::to_string(counter) + "].linearAttenuation", currentLight->linearAttenuation);
-		_shader->setFloat("lights[" + std::to_string(counter) + "].quadraticAttentuation", currentLight->quadraticAttenuation);
+		_shader->setFloat("lights[" + std::to_string(counter) + "].constant", currentLight->constantAttenuation);
+		_shader->setFloat("lights[" + std::to_string(counter) + "].linear", currentLight->linearAttenuation);
+		_shader->setFloat("lights[" + std::to_string(counter) + "].quadratic", currentLight->quadraticAttenuation);
 		_shader->setFloat("lights[" + std::to_string(counter) + "].innerCutoff", currentLight->innerCutoff);
 		_shader->setFloat("lights[" + std::to_string(counter) + "].outerCutoff", currentLight->outerCutoff);
 

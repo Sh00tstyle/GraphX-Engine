@@ -1,10 +1,14 @@
 #include "CameraComponent.h"
 
+#include <iostream>
+
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
 #include "../Engine/Node.h"
 #include "../Engine/Transform.h"
+
+#include "../Components/LightComponent.h"
 
 #include "../Utility/Input.h"
 #include "../Utility/Time.h"
@@ -55,4 +59,13 @@ void CameraComponent::update() {
 	newTransform = glm::translate(newTransform, translation);
 
 	transform->localTransform = newTransform;
+
+	//update lights attached to the camera
+	if(_owner->hasComponent(ComponentType::Light)) {
+		LightComponent* lightComponent = (LightComponent*)_owner->getComponent(ComponentType::Light);
+		if(lightComponent->lightType != LightType::Spot) return; //no need to update the light component when the attached light is no spotlight
+
+		glm::vec3 cameraForward = newTransform[2]; //second row represent the (local) forward vector
+		lightComponent->lightDirection = cameraForward;
+	}
 }

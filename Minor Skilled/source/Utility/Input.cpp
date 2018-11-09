@@ -65,13 +65,13 @@ glm::vec2 Input::GetCurrentMousePos() {
 void Input::_MouseCallback(GLFWwindow * window, double xPos, double yPos) {
 	if(_FirstMouse) {
 		//initialize
-		_CurrentMousePos.x = xPos;
-		_CurrentMousePos.y = yPos;
+		_CurrentMousePos.x = (float)xPos;
+		_CurrentMousePos.y = (float)yPos;
 		_FirstMouse = false;
 	}
 
 	_LastMousePos = _CurrentMousePos;
 
-	_CurrentMousePos.x = xPos;
-	_CurrentMousePos.y = yPos;
+	_CurrentMousePos.x = (float)xPos;
+	_CurrentMousePos.y = (float)yPos;
 }

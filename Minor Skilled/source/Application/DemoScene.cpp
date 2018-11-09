@@ -46,27 +46,37 @@ void DemoScene::_initializeScene() {
 
 	//create materials
 	TextureMaterial* textureMaterial = new TextureMaterial(Texture::LoadTexture(Filepath::ModelPath + "cyborg/cyborg_diffuse.png"),
-														  Texture::LoadTexture(Filepath::ModelPath + "cyborg/cyborg_specular.png"),
-														  nullptr,
-														  nullptr,
-														  32.0f);
+														   Texture::LoadTexture(Filepath::ModelPath + "cyborg/cyborg_specular.png"),
+														   Texture::LoadTexture(Filepath::ModelPath + "cyborg/cyborg_normal.png"),
+														   Texture::LoadTexture(Filepath::ModelPath + "cyborg/cyborg_emission.png"),
+														   nullptr,
+														   32.0f,
+														   1.0f);
 
 	//create components for each entity and fill with data
-	CameraComponent* cameraComponent = new CameraComponent(glm::perspective(glm::radians(45.0f), (float)Window::ScreenWidth / (float)Window::ScreenHeight, 0.1f, 100.0f),
-														   45.0f,
-														   5.0f,
-														   25.0f);
-	LightComponent* lightComponent = new LightComponent(LightType::Directional);
-	RenderComponent* renderComponent = new RenderComponent(cyborgModel, textureMaterial);
+	CameraComponent* cameraComponent = new CameraComponent(glm::perspective(glm::radians(45.0f), (float)Window::ScreenWidth / (float)Window::ScreenHeight, 0.1f, 100.0f), 45.0f, 5.0f, 25.0f);
+	LightComponent* spotLightComponent = new LightComponent(LightType::Spot);
+	spotLightComponent->lightAmbient = glm::vec3(0.0f);
+	spotLightComponent->lightDiffuse = glm::vec3(1.0f);
+	spotLightComponent->lightSpecular = glm::vec3(1.0f);
+	spotLightComponent->constantAttenuation = 1.0f;
+	spotLightComponent->linearAttenuation = 0.09f;
+	spotLightComponent->quadraticAttenuation = 0.032f;
+	spotLightComponent->innerCutoff = glm::cos(glm::radians(12.5f));
+	spotLightComponent->outerCutoff = glm::cos(glm::radians(15.0f));
 
-	lightComponent->lightAmbient = glm::vec3(0.2f);
-	lightComponent->lightDiffuse = glm::vec3(0.5f);
-	lightComponent->lightSpecular = glm::vec3(1.0f);
-	lightComponent->lightDirection = glm::vec3(1.0f, 0.0f, 0.0f);
+	LightComponent* directionalLightComponent = new LightComponent(LightType::Directional);
+	directionalLightComponent->lightAmbient = glm::vec3(0.2f);
+	directionalLightComponent->lightDiffuse = glm::vec3(0.5f);
+	directionalLightComponent->lightSpecular = glm::vec3(1.0f);
+	directionalLightComponent->lightDirection = glm::vec3(-0.2f, -1.0f, -0.3f);
+
+	RenderComponent* renderComponent = new RenderComponent(cyborgModel, textureMaterial);
 
 	//add components to their respective nodes
 	mainCamera->addComponent(cameraComponent);
-	directionalLight->addComponent(lightComponent);
+	mainCamera->addComponent(spotLightComponent);
+	directionalLight->addComponent(directionalLightComponent);
 	cyborg->addComponent(renderComponent);
 
 	//add nodes to the world

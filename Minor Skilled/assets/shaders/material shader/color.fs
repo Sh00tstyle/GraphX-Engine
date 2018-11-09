@@ -16,9 +16,9 @@ struct Light {
     vec3 diffuse;
     vec3 specular;
 
-    float constantAttenuation;
-    float linearAttenuation;
-    float quadraticAttenuation;
+    float constant;
+    float linear;
+    float quadratic;
     float innerCutoff;
     float outerCutoff;
 };
@@ -42,20 +42,23 @@ uniform Material material;
 out vec4 fragColor;
 
 vec3 CalculateDirectionalLight(Light light, vec3 normal, vec3 viewDirection);
+vec3 CalculatePointLight(Light light, vec3 normal, vec3 viewDirection);
+vec3 CalculateSpotLight(Light light, vec3 normal, vec3 viewDirection);
 
 void main() {
     vec3 normal = normalize(fs_in.fragNormal);
     vec3 viewDirection = normalize(cameraPos - fs_in.fragPos);
 
+    //lighting
     vec3 result = vec3(0.0f);
 
     for(int i = 0; i < LIGHTAMOUNT; i++) {
         if(lights[i].type == DIRECTIONAL) {
             result += CalculateDirectionalLight(lights[i], normal, viewDirection);
         } else if(lights[i].type == POINT) {
-            //TODO
+            result += CalculatePointLight(lights[i], normal, viewDirection);
         } else if(lights[i].type == SPOT) {
-            //TODO
+            result += CalculateSpotLight(lights[i], normal, viewDirection);
         }
     }
 
@@ -68,12 +71,71 @@ vec3 CalculateDirectionalLight(Light light, vec3 normal, vec3 viewDirection) {
 
     //diffuse
     float difference = max(dot(normal, light.direction), 0.0f);
-    vec3 diffuse = light.diffuse * (difference * material.diffuse);
+    vec3 diffuse = light.diffuse * difference * material.diffuse;
 
     //specular
     vec3 halfwayDireciton = normalize(light.direction + viewDirection); //blinn-phong
     float specularity = pow(max(dot(normal, halfwayDireciton), 0.0f), material.shininess);
-    vec3 specular = light.specular * (specularity * material.specular);
+    vec3 specular = light.specular * specularity * material.specular;
+
+    return (ambient + diffuse + specular);
+}
+
+vec3 CalculatePointLight(Light light, vec3 normal, vec3 viewDirection) {
+    vec3 lightDirection = normalize(light.position - fs_in.fragPos);
+
+    //ambient
+    vec3 ambient = light.ambient * material.ambient;
+
+    //diffuse
+    float difference = max(dot(normal, lightDirection), 0.0f);
+    vec3 diffuse = light.diffuse * difference * material.diffuse;
+
+    //specular
+    vec3 halfwayDireciton = normalize(lightDirection + viewDirection); //blinn-phong
+    float specularity = pow(max(dot(normal, halfwayDireciton), 0.0f), material.shininess);
+    vec3 specular = light.specular * specularity * material.specular;
+
+    //attenuation
+    float distance = length(light.position - fs_in.fragPos);
+    float attenuation = 1.0f / (light.constant + light.linear * distance + light.quadratic * (distance * distance));
+
+    //combine results
+    ambient *= attenuation;
+    diffuse *= attenuation;
+    specular *= attenuation;
+
+    return (ambient + diffuse + specular);
+}
+
+vec3 CalculateSpotLight(Light light, vec3 normal, vec3 viewDirection) {
+    vec3 lightDirection = normalize(light.position - fs_in.fragPos);
+
+    //ambient
+    vec3 ambient = light.ambient * material.ambient;
+
+    //diffuse
+    float difference = max(dot(normal, lightDirection), 0.0f);
+    vec3 diffuse = light.diffuse * difference * material.diffuse;
+
+    //specular
+    vec3 halfwayDireciton = normalize(lightDirection + viewDirection); //blinn-phong
+    float specularity = pow(max(dot(normal, halfwayDireciton), 0.0f), material.shininess);
+    vec3 specular = light.specular * specularity * material.specular;
+
+    //attenuation
+    float distance = length(light.position - fs_in.fragPos);
+    float attenuation = 1.0f / (light.constant + light.linear * distance + light.quadratic * (distance * distance));
+
+    //spotlight
+    float theta = dot(lightDirection, normalize(light.direction));
+    float epsilon = light.innerCutoff - light.outerCutoff;
+    float intensity = clamp((theta - light.outerCutoff) / epsilon, 0.0f, 1.0f);
+
+    //combine results
+    ambient *= attenuation * intensity;
+    diffuse *= attenuation * intensity;
+    specular *= attenuation * intensity;
 
     return (ambient + diffuse + specular);
 }
