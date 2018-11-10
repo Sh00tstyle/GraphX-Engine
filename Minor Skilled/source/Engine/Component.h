@@ -14,6 +14,8 @@ class Component {
 		ComponentType getComponentType();
 		
 		void setOwner(Node* owner);
+		Node* getOwner();
+
 		virtual void update() = 0;
 
 	protected:

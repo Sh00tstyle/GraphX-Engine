@@ -1,16 +1,19 @@
 #version 330 core
 
-const int LIGHTAMOUNT = 10;
+const int LIGHTAMOUNT = 10; //TODO: replace with uniform buffer objects
 
+//light types
 const int DIRECTIONAL = 0;
 const int POINT = 1;
 const int SPOT = 2;
 
-struct Light {
-    int type;
+//blend modes
+const int OPAQUE = 0;
+const int CUTOUT = 1;
+const int TRANSPARENT = 2;
 
-    vec3 position;
-    vec3 direction;
+struct FragLight {
+    int type;
 
     vec3 ambient;
     vec3 diffuse;
@@ -35,6 +38,8 @@ struct Material {
     bool hasSpecular;
     bool hasNormal;
     bool hasHeight;
+
+    int blendMode;
 };
 
 in VS_OUT {
@@ -48,7 +53,7 @@ in VS_OUT {
     vec3 tangentFragNormal; //needed in case there is no normal map
 } fs_in;
 
-uniform Light lights[LIGHTAMOUNT];
+uniform FragLight fragLights[LIGHTAMOUNT];
 uniform Material material;
 
 out vec4 fragColor;
@@ -57,9 +62,9 @@ vec3 GetSpecular();
 vec3 GetNormal();
 vec2 ParallaxMapping(vec3 viewDirection);
 
-vec3 CalculateDirectionalLight(Light light, vec3 lightDir, vec3 normal, vec3 viewDirection, vec2 texCoord);
-vec3 CalculatePointLight(Light light, vec3 lightPos, vec3 normal, vec3 viewDirection, vec2 texCoord);
-vec3 CalculateSpotLight(Light light, vec3 lightPos, vec3 lightDir, vec3 normal, vec3 viewDirection, vec2 texCoord);
+vec3 CalculateDirectionalLight(FragLight light, vec3 lightDir, vec3 normal, vec3 viewDirection, vec2 texCoord);
+vec3 CalculatePointLight(FragLight light, vec3 lightPos, vec3 normal, vec3 viewDirection, vec2 texCoord);
+vec3 CalculateSpotLight(FragLight light, vec3 lightPos, vec3 lightDir, vec3 normal, vec3 viewDirection, vec2 texCoord);
 
 void main() {
     vec3 normal = GetNormal();
@@ -69,16 +74,38 @@ void main() {
     vec2 texCoord = ParallaxMapping(viewDirection);
     if(material.hasHeight && (texCoord.x > 1.0f || texCoord.y > 1.0f || texCoord.x < 0.0f || texCoord.y < 0.0f)) discard; //cutoff edges to avoid artifacts when using parallax mapping
 
+    //blend modes
+    float alpha = 1.0f; //default (opaque)
+
+    switch(material.blendMode) {
+        case CUTOUT:
+            //discard fragment with alpha below or equal to 0.1f
+            alpha = texture(material.diffuse, fs_in.texCoord).a;
+            if(alpha <= 0.1f) discard;
+            break;
+
+        case TRANSPARENT:
+            //sample alpha so it can be applied to the frag color
+            alpha = texture(material.diffuse, fs_in.texCoord).a;
+            break;
+    }
+
     //lighting (calculated in tangent space)
     vec3 result = vec3(0.0f);
 
     for(int i = 0; i < LIGHTAMOUNT; i++) {
-        if(lights[i].type == DIRECTIONAL) {
-            result += CalculateDirectionalLight(lights[i], fs_in.tangentLightDir[i], normal, viewDirection, texCoord);
-        } else if(lights[i].type == POINT) {
-            result += CalculatePointLight(lights[i], fs_in.tangentLightPos[i], normal, viewDirection, texCoord);
-        } else if(lights[i].type == SPOT) {
-            result += CalculateSpotLight(lights[i], fs_in.tangentLightPos[i], fs_in.tangentLightDir[i], normal, viewDirection, texCoord);
+        switch(fragLights[i].type) {
+            case DIRECTIONAL:
+                result += CalculateDirectionalLight(fragLights[i], fs_in.tangentLightDir[i], normal, viewDirection, texCoord);
+                break;
+
+            case POINT:
+                result += CalculatePointLight(fragLights[i], fs_in.tangentLightPos[i], normal, viewDirection, texCoord);
+                break;
+
+            case SPOT:
+                result += CalculateSpotLight(fragLights[i], fs_in.tangentLightPos[i], fs_in.tangentLightDir[i], normal, viewDirection, texCoord);
+                break;
         }
     }
 
@@ -86,7 +113,7 @@ void main() {
     vec3 emission = texture(material.emission, texCoord).rgb; //if there is no emission map, nothing will be added
     result += emission;
 
-    fragColor = vec4(result, 1.0f);
+    fragColor = vec4(result, alpha);
 }
 
 vec3 GetSpecular() {
@@ -160,7 +187,7 @@ vec2 ParallaxMapping(vec3 viewDirection) {
     return finalTexCoords;
 }
 
-vec3 CalculateDirectionalLight(Light light, vec3 lightDir, vec3 normal, vec3 viewDirection, vec2 texCoord) {
+vec3 CalculateDirectionalLight(FragLight light, vec3 lightDir, vec3 normal, vec3 viewDirection, vec2 texCoord) {
     //ambient
     vec3 ambient = light.ambient * texture(material.diffuse, texCoord).rgb;
 
@@ -177,7 +204,7 @@ vec3 CalculateDirectionalLight(Light light, vec3 lightDir, vec3 normal, vec3 vie
     return (ambient + diffuse + specular);
 }
 
-vec3 CalculatePointLight(Light light, vec3 lightPos, vec3 normal, vec3 viewDirection, vec2 texCoord) {
+vec3 CalculatePointLight(FragLight light, vec3 lightPos, vec3 normal, vec3 viewDirection, vec2 texCoord) {
     vec3 lightDirection = normalize(lightPos - fs_in.tangentFragPos);
 
     //ambient
@@ -204,7 +231,7 @@ vec3 CalculatePointLight(Light light, vec3 lightPos, vec3 normal, vec3 viewDirec
     return (ambient + diffuse + specular);
 }
 
-vec3 CalculateSpotLight(Light light, vec3 lightPos, vec3 lightDir, vec3 normal, vec3 viewDirection, vec2 texCoord) {
+vec3 CalculateSpotLight(FragLight light, vec3 lightPos, vec3 lightDir, vec3 normal, vec3 viewDirection, vec2 texCoord) {
     vec3 lightDirection = normalize(lightPos - fs_in.tangentFragPos);
 
     //ambient

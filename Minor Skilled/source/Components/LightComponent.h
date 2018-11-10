@@ -13,6 +13,8 @@ class LightComponent : public Component {
 		LightComponent(LightType type);
 		~LightComponent();
 
+		static const unsigned int LightAmount;
+
 		LightType lightType;
 
 		glm::vec3 lightDirection;

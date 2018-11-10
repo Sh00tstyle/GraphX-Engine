@@ -14,8 +14,10 @@ out VS_OUT {
 } vs_out;
 
 void main() {
+    mat3 normalMatrix = transpose(inverse(mat3(modelMatrix))); //fix normals non uniform scaling
+
     vs_out.fragPos = vec3(modelMatrix * vec4(aVertex, 1.0f));
-    vs_out.fragNormal = vec3(modelMatrix * vec4(aNormal, 0.0f));
+    vs_out.fragNormal = normalMatrix * aNormal; //Note: the normal matrix has no translation
 
     gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(aVertex, 1.0f);
 }

@@ -24,7 +24,7 @@ class ColorMaterial : public Material {
 		void setSpecularColor(glm::vec3 specularColor);
 		void setShininess(float shininess);
 
-		virtual void draw(glm::mat4& modelMatrix, glm::mat4& viewMatrix, glm::mat4& projectionMatrix, glm::vec3& cameraPos, std::map<LightComponent*, glm::vec3>& lights);
+		virtual void draw(glm::mat4& modelMatrix, glm::mat4& viewMatrix, glm::mat4& projectionMatrix, glm::vec3& cameraPos, std::vector<std::pair<LightComponent*, glm::vec3>>& lights);
 
 	private:
 		static Shader* _shader;

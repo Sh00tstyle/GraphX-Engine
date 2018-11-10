@@ -64,6 +64,7 @@
     <ClInclude Include="source\Engine\World.h" />
     <ClInclude Include="source\Materials\ColorMaterial.h" />
     <ClInclude Include="source\Materials\TextureMaterial.h" />
+    <ClInclude Include="source\Utility\BlendMode.h" />
     <ClInclude Include="source\Utility\ComponentType.h" />
     <ClInclude Include="source\Utility\Filepath.h" />
     <ClInclude Include="source\Utility\Input.h" />

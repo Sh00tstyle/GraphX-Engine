@@ -74,7 +74,7 @@ Texture * Texture::LoadTexture(std::string path, TextureFilter filter, bool sRGB
 	return texture; //texture id
 }
 
-Texture * Texture::LoadCubemap(std::vector<std::string> faces) {
+Texture * Texture::LoadCubemap(std::vector<std::string>& faces) {
 	Texture* texture = new Texture();
 
 	glGenTextures(1, &texture->_id);

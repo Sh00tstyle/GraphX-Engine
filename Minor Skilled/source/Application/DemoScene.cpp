@@ -22,6 +22,7 @@
 
 #include "../Utility/Filepath.h"
 #include "../Utility/LightType.h"
+#include "../Utility/BlendMode.h"
 
 DemoScene::DemoScene():Scene() {
 }
@@ -38,8 +39,8 @@ void DemoScene::_initializeScene() {
 	Node* cyborg = new Node(glm::vec3(0.0f, 0.0f, 0.0f), "cyborg");
 
 	//adjust transforms
-	Transform* cyborgTransform = cyborg->getTransform();
-	cyborgTransform->localTransform = glm::scale(cyborgTransform->localTransform, glm::vec3(0.5f));
+	Transform* transform = cyborg->getTransform();
+	transform->localTransform = glm::scale(transform->localTransform, glm::vec3(0.5f));
 
 	//load models
 	Model* cyborgModel = Model::LoadModel(Filepath::ModelPath + "cyborg/cyborg.obj");
@@ -51,9 +52,22 @@ void DemoScene::_initializeScene() {
 														   Texture::LoadTexture(Filepath::ModelPath + "cyborg/cyborg_emission.png"),
 														   nullptr,
 														   32.0f,
-														   1.0f);
+														   1.0f,
+														   BlendMode::Opaque);
 
-	//create components for each entity and fill with data
+	//load skybox
+	std::vector<std::string> cubemapFaces{
+		"ocean/right.jpg",
+		"ocean/left.jpg",
+		"ocean/top.jpg",
+		"ocean/bottom.jpg",
+		"ocean/front.jpg",
+		"ocean/back.jpg",
+	};
+
+	_skybox = Texture::LoadCubemap(cubemapFaces);
+
+	//create components for each node and fill with data
 	CameraComponent* cameraComponent = new CameraComponent(glm::perspective(glm::radians(45.0f), (float)Window::ScreenWidth / (float)Window::ScreenHeight, 0.1f, 100.0f), 45.0f, 5.0f, 25.0f);
 	LightComponent* spotLightComponent = new LightComponent(LightType::Spot);
 	spotLightComponent->lightAmbient = glm::vec3(0.0f);

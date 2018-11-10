@@ -13,5 +13,9 @@ void Component::setOwner(Node * owner) {
 	_owner = owner;
 }
 
+Node* Component::getOwner() {
+	return _owner;
+}
+
 Component::Component(ComponentType type): _componentType(type) {
 }

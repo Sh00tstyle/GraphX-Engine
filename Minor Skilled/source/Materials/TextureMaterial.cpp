@@ -11,12 +11,12 @@
 
 Shader* TextureMaterial::_shader = nullptr;
 
-TextureMaterial::TextureMaterial(Texture* diffuseMap, float shininess) :Material(), _diffuseMap(diffuseMap), _specularMap(nullptr), 
+TextureMaterial::TextureMaterial(Texture* diffuseMap, float shininess) :Material(BlendMode::Opaque), _diffuseMap(diffuseMap), _specularMap(nullptr),
 _normalMap(nullptr), _emissionMap(nullptr), _heightMap(nullptr), _shininess(shininess), _heightScale(1.0f) {
 	_initShader();
 }
 
-TextureMaterial::TextureMaterial(Texture * diffuseMap, Texture * specularMap, Texture * normalMap, Texture* emissionMap, Texture* heightMap, float shininess, float heightScale) :Material(),
+TextureMaterial::TextureMaterial(Texture * diffuseMap, Texture * specularMap, Texture * normalMap, Texture* emissionMap, Texture* heightMap, float shininess, float heightScale, BlendMode blendMode) :Material(blendMode),
 _diffuseMap(diffuseMap), _specularMap(specularMap), _normalMap(normalMap), _heightMap(heightMap), _emissionMap(emissionMap), _shininess(shininess), _heightScale(heightScale) {
 	_initShader();
 }
@@ -85,7 +85,7 @@ void TextureMaterial::setHeightScale(float heightScale) {
 	_heightScale = heightScale;
 }
 
-void TextureMaterial::draw(glm::mat4& modelMatrix, glm::mat4& viewMatrix, glm::mat4& projectionMatrix, glm::vec3& cameraPos, std::map<LightComponent*, glm::vec3>& lights) {
+void TextureMaterial::draw(glm::mat4& modelMatrix, glm::mat4& viewMatrix, glm::mat4& projectionMatrix, glm::vec3& cameraPos, std::vector<std::pair<LightComponent*, glm::vec3>>& lights) {
 	_shader->use();
 
 	//set mvp matrix
@@ -136,36 +136,35 @@ void TextureMaterial::draw(glm::mat4& modelMatrix, glm::mat4& viewMatrix, glm::m
 	//set material properties
 	_shader->setFloat("material.shininess", _shininess);
 	_shader->setFloat("material.heightScale", _heightScale);
+	_shader->setInt("material.blendMode", _blendMode);
 
 	//set camera pos
 	_shader->setVec3("cameraPos", cameraPos);
 
 	//set lights (should only be done here in forward rendering)
-	unsigned int lightCounter = 0;
 	LightComponent* currentLight;
 
-	for(std::map<LightComponent*, glm::vec3>::iterator it = lights.begin(); it != lights.end(); it++) {
-		currentLight = it->first;
+	for(unsigned int i = 0; i < lights.size(); i++) {
+		currentLight = lights[i].first;
 
-		//set light properties
-		_shader->setInt("lights[" + std::to_string(lightCounter) + "].type", currentLight->lightType);
+		//set light properties (vertex shader)
+		_shader->setVec3("vertLights[" + std::to_string(i) + "].position", lights[i].second);
+		_shader->setVec3("vertLights[" + std::to_string(i) + "].direction", currentLight->lightDirection);
 
-		_shader->setVec3("lights[" + std::to_string(lightCounter) + "].position", it->second);
-		_shader->setVec3("lights[" + std::to_string(lightCounter) + "].direction", currentLight->lightDirection);
+		//set light properties (fragment shader)
+		_shader->setInt("fragLights[" + std::to_string(i) + "].type", currentLight->lightType);
 
-		_shader->setVec3("lights[" + std::to_string(lightCounter) + "].diffuse", currentLight->lightDiffuse);
-		_shader->setVec3("lights[" + std::to_string(lightCounter) + "].ambient", currentLight->lightAmbient);
-		_shader->setVec3("lights[" + std::to_string(lightCounter) + "].specular", currentLight->lightSpecular);
+		_shader->setVec3("fragLights[" + std::to_string(i) + "].diffuse", currentLight->lightDiffuse);
+		_shader->setVec3("fragLights[" + std::to_string(i) + "].ambient", currentLight->lightAmbient);
+		_shader->setVec3("fragLights[" + std::to_string(i) + "].specular", currentLight->lightSpecular);
 
-		_shader->setFloat("lights[" + std::to_string(lightCounter) + "].constant", currentLight->constantAttenuation);
-		_shader->setFloat("lights[" + std::to_string(lightCounter) + "].linear", currentLight->linearAttenuation);
-		_shader->setFloat("lights[" + std::to_string(lightCounter) + "].quadratic", currentLight->quadraticAttenuation);
-		_shader->setFloat("lights[" + std::to_string(lightCounter) + "].innerCutoff", currentLight->innerCutoff);
-		_shader->setFloat("lights[" + std::to_string(lightCounter) + "].outerCutoff", currentLight->outerCutoff);
+		_shader->setFloat("fragLights[" + std::to_string(i) + "].constant", currentLight->constantAttenuation);
+		_shader->setFloat("fragLights[" + std::to_string(i) + "].linear", currentLight->linearAttenuation);
+		_shader->setFloat("fragLights[" + std::to_string(i) + "].quadratic", currentLight->quadraticAttenuation);
+		_shader->setFloat("fragLights[" + std::to_string(i) + "].innerCutoff", currentLight->innerCutoff);
+		_shader->setFloat("fragLights[" + std::to_string(i) + "].outerCutoff", currentLight->outerCutoff);
 
-		lightCounter++;
-
-		if(lightCounter >= 10) break; //right now the light array is capped to a maximum of 10 lights
+		if(i >= LightComponent::LightAmount) break; //right now the light array is capped to a maximum of 20 lights
 	}
 }
 

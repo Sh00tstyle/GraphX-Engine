@@ -1,22 +1,11 @@
 #version 330 core
 
-const int LIGHTAMOUNT = 10;
+const int LIGHTAMOUNT = 10; //TODO: replace with uniform buffer objects
 
-struct Light { //define the struct here as well, as we need access to the position and direction
-    int type;
-
-    vec3 position;
+//define the struct in the vertex shader as well, as we need access to the position and direction
+struct VertLight { 
+    vec3 position; //world space
     vec3 direction;
-
-    vec3 ambient;
-    vec3 diffuse;
-    vec3 specular;
-
-    float constant;
-    float linear;
-    float quadratic;
-    float innerCutoff;
-    float outerCutoff;
 };
 
 layout (location = 0) in vec3 aVertex;
@@ -29,9 +18,8 @@ uniform mat4 modelMatrix;
 uniform mat4 viewMatrix;
 uniform mat4 projectionMatrix;
 
-uniform Light lights[LIGHTAMOUNT];
-
-uniform vec3 cameraPos;
+uniform VertLight vertLights[LIGHTAMOUNT];
+uniform vec3 cameraPos; //world space
 
 out VS_OUT {
     vec2 texCoord;
@@ -48,7 +36,7 @@ void main() {
     vs_out.texCoord = aUV;
 
     //construct TBN matrix
-    mat3 normalMatrix = transpose(inverse(mat3(modelMatrix))); //fix normals non uniform scaling
+    mat3 normalMatrix = transpose(inverse(mat3(modelMatrix))); //fix normals in non uniform scaling
     vec3 T = normalize(normalMatrix * aTangent);
     vec3 N = normalize(normalMatrix * aNormal);
     T = normalize(T - dot(T, N) * N);
@@ -57,8 +45,8 @@ void main() {
 
     //calculate tangent space positions (convert to world space first if needed)
     for(int i = 0; i < LIGHTAMOUNT; i++) {
-        vs_out.tangentLightPos[i] = TBN * lights[i].position;
-        vs_out.tangentLightDir[i] = TBN * lights[i].direction;
+        vs_out.tangentLightPos[i] = TBN * vertLights[i].position;
+        vs_out.tangentLightDir[i] = TBN * vertLights[i].direction;
     }
 
     vs_out.tangentViewPos = TBN * cameraPos;

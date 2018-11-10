@@ -7,6 +7,7 @@
 class Window;
 class World;
 class Node;
+class Texture;
 class Renderer;
 
 class Scene {
@@ -21,6 +22,7 @@ class Scene {
 
 		Window* _window;
 		World* _world;
+		Texture* _skybox;
 		Renderer* _renderer;
 
 		virtual void _update();

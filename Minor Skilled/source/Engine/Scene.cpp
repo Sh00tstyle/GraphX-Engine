@@ -22,6 +22,8 @@ Scene::Scene() {
 Scene::~Scene() {
 	delete _window;
 	delete _world;
+	delete _skybox;
+	delete _renderer;
 }
 
 void Scene::initialize() {
@@ -29,6 +31,7 @@ void Scene::initialize() {
 
 	_window = new Window(1280, 720, "GraphX Engine", 4);
 	_world = new World(); //scene graph
+	_skybox = nullptr;
 	_renderer = new Renderer();
 
 	_initializeScene();
@@ -64,5 +67,5 @@ void Scene::_update() {
 }
 
 void Scene::_render() {
-	_renderer->render(_renderables, _lights, _cameras);
+	_renderer->render(_renderables, _lights, _cameras, _skybox);
 }

@@ -72,11 +72,6 @@ void Window::_initializeGLAD() {
 	} else {
 		std::cout << "Initialized GLAD" << std::endl;
 	}
-
-	glEnable(GL_DEPTH_TEST); //enable the z-buffer
-	glEnable(GL_BLEND); //enable blending
-	glDepthFunc(GL_LEQUAL); //set depth funtion to lass than AND equal for skybox depth trick
-	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS); //enable seamless cubemap sampling for lower mip map levels in the pre filter map
 }
 
 void Window::_framebufferSizeCallback(GLFWwindow* window, int width, int height) {
@@ -84,6 +79,7 @@ void Window::_framebufferSizeCallback(GLFWwindow* window, int width, int height)
 	ScreenHeight = height;
 
 	//TODO: update the projection matrix
+	std::cout << "WARNING: Screen dimensions have changed. Aspect ratio of the camera projection matrix has NOT been updated!" << std::endl;
 
 	glViewport(0, 0, width, height);
 }

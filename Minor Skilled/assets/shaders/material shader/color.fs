@@ -1,6 +1,6 @@
 #version 330 core
 
-const int LIGHTAMOUNT = 10;
+const int LIGHTAMOUNT = 10; //TODO: replace with uniform buffer objects
 
 const int DIRECTIONAL = 0;
 const int POINT = 1;
@@ -53,12 +53,18 @@ void main() {
     vec3 result = vec3(0.0f);
 
     for(int i = 0; i < LIGHTAMOUNT; i++) {
-        if(lights[i].type == DIRECTIONAL) {
-            result += CalculateDirectionalLight(lights[i], normal, viewDirection);
-        } else if(lights[i].type == POINT) {
-            result += CalculatePointLight(lights[i], normal, viewDirection);
-        } else if(lights[i].type == SPOT) {
-            result += CalculateSpotLight(lights[i], normal, viewDirection);
+        switch(lights[i].type) {
+            case DIRECTIONAL:
+                result += CalculateDirectionalLight(lights[i], normal, viewDirection);
+                break;
+
+            case POINT:
+                result += CalculatePointLight(lights[i], normal, viewDirection);
+                break;
+
+            case SPOT:
+                result += CalculateSpotLight(lights[i], normal, viewDirection);
+                break;
         }
     }
 
