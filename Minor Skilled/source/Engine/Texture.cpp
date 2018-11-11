@@ -13,13 +13,18 @@ Texture::Texture() {
 }
 
 Texture::~Texture() {
+	glDeleteTextures(1, &_id);
 }
 
-unsigned int Texture::getID() {
+unsigned int& Texture::getID() {
 	return _id;
 }
 
-Texture * Texture::LoadTexture(std::string path, TextureFilter filter, bool sRGB) {
+Texture * Texture::LoadTexture(std::string path, TextureFilter filter, bool sRGB) { 
+	//sRGB textures are essentially gamma corrected already and usually the colorspace they are created in
+	//when setting the sRGB parameter to true, OpenGL transform the texture from gamma corrected/sRGB color space back to linear color space so that they can/have to be gamma corrected in the shaders
+	//diffuse and color textures are almost always in sRGB space - specular map, normals maps, etc. are almost always in linear space
+
 	//create opengl texture object
 	Texture* texture = new Texture();
 	glGenTextures(1, &texture->_id);

@@ -17,6 +17,7 @@
 #include "../Engine/Model.h"
 #include "../Engine/Texture.h"
 #include "../Engine/Shader.h"
+#include "../Engine/Window.h"
 
 #include "../Components/LightComponent.h"
 #include "../Components/CameraComponent.h"
@@ -25,9 +26,13 @@
 #include "../Utility/Filepath.h"
 #include "../Utility/ComponentType.h"
 
-Shader* Renderer::_skyboxShader = nullptr;
-const float Renderer::_skyboxVertices[] = {
-	//positions          
+std::bitset<8> Renderer::Settings = 0;
+
+const unsigned int Renderer::_ShadowHeight = 1024;
+const unsigned int Renderer::_ShadowWidth = 1024;
+
+const float Renderer::_SkyboxVertices[] = {
+	//vertices          
 	-1.0f,  1.0f, -1.0f,
 	-1.0f, -1.0f, -1.0f,
 	1.0f, -1.0f, -1.0f,
@@ -71,9 +76,17 @@ const float Renderer::_skyboxVertices[] = {
 	1.0f, -1.0f,  1.0f
 };
 
+const float Renderer::_ScreenQuadVertices[] = {
+	//vertices         //uv
+	-1.0f,  1.0f, 0.0f, 0.0f, 1.0f,
+	-1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
+	1.0f,  1.0f, 0.0f, 1.0f, 1.0f,
+	1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
+};
+
 Renderer::Renderer() {
 	glEnable(GL_DEPTH_TEST); //enable the z-buffer
-	glDepthFunc(GL_LEQUAL); //set depth funtion to lass than AND equal for skybox depth trick
+	glDepthFunc(GL_LESS); //set depth funtion to less
 
 	glEnable(GL_BLEND); //enable blending
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); //set blending function
@@ -85,46 +98,49 @@ Renderer::Renderer() {
 
 	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS); //enable seamless cubemap sampling for lower mip map levels in the pre filter map
 
-	//lazy initialize skybox shader
-	if(_skyboxShader == nullptr) {
-		_skyboxShader = new Shader(Filepath::ShaderPath + "skybox/skybox.vs", Filepath::ShaderPath + "skybox/skybox.fs");
+	//shaders
+	_initShaders();
 
-		_skyboxShader->use();
-		_skyboxShader->setInt("skybox", 0);
+	//setup VAOs and VBOs
+	_initSkyboxVAO();
+	_initScreenQuadVAO();
 
-		_initSkyboxVAO();
-	}
+	//setup FBOs
+	_initShadowFBO();
 }
 
 Renderer::~Renderer() {
+	//free resources
+	delete _shadowShader;
 	delete _skyboxShader;
+	delete _screenQuadShader;
+
+	glDeleteVertexArrays(1, &_skyboxVAO);
+	glDeleteBuffers(1, &_skyboxVBO);
+
+	glDeleteVertexArrays(1, &_screenQuadVAO);
+	glDeleteBuffers(1, &_screenQuadVBO);
+
+	glDeleteFramebuffers(1, &_shadowFBO);
+
+	glDeleteTextures(1, &_shadowMap->getID());
 }
 
-void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& lights, std::vector<Node*>& cameras, Texture* skybox) {
-	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& lights, Node* mainCamera, Node* directionalLight, Texture* skybox) {
+	//render from main camera
+	CameraComponent* mainCameraComponent = (CameraComponent*)mainCamera->getComponent(ComponentType::Camera);
+	Transform* mainCameraTransform = mainCamera->getTransform();
 
-	//crete vectors of pairs to match components to their model matrices/positions (allows duplicates, unlike maps)
+	glm::mat4 projectionMatrix = mainCameraComponent->projectionMatrix;
+	glm::mat4 viewMatrix = glm::inverse(mainCameraTransform->worldTransform);
+	glm::vec3 cameraPos = mainCameraTransform->getWorldPosition();
+
+	//create vectors of pairs to match components to their model matrices/positions
 	std::vector<std::pair<RenderComponent*, glm::mat4>> renderComponents;
-	std::vector<std::pair<CameraComponent*, glm::mat4>> cameraComponents;
 	std::vector<std::pair<LightComponent*, glm::vec3>> lightComponents;
 
 	//fill collections with data
-	for(unsigned int i = 0; i < renderables.size(); i++) {
-		std::pair<RenderComponent*, glm::mat4> renderablePair;
-		renderablePair.first = (RenderComponent*)renderables[i]->getComponent(ComponentType::Render);
-		renderablePair.second = renderables[i]->getTransform()->worldTransform;
-
-		renderComponents.push_back(renderablePair);
-	}
-
-	for(unsigned int i = 0; i < cameras.size(); i++) {
-		std::pair<CameraComponent*, glm::mat4> cameraPair;
-		cameraPair.first = (CameraComponent*)cameras[i]->getComponent(ComponentType::Camera);
-		cameraPair.second = cameras[i]->getTransform()->worldTransform;
-
-		cameraComponents.push_back(cameraPair);
-	}
+	renderComponents = _getSortedRenderComponents(renderables, cameraPos); //Possible optimization: only re-sort if the camera moved
 
 	for(unsigned int i = 0; i < lights.size(); i++) {
 		std::pair<LightComponent*, glm::vec3> lightPair;
@@ -134,50 +150,157 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 		lightComponents.push_back(lightPair);
 	}
 
-	//render each camera
-	glm::mat4 projectionMatrix;
-	glm::mat4 viewMatrix;
-	glm::vec3 cameraPos;
+	//setup light space matrix
+	LightComponent* directionalLightComponent = (LightComponent*)directionalLight->getComponent(ComponentType::Light);
+	glm::vec3 directionalLightPos = glm::normalize(directionalLightComponent->lightDirection) * -3.0f; //offset light position 3 units in the opposite direction of the light direction
+
+	glm::mat4 lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 1.0f, 7.5f);
+	glm::mat4 lightView = glm::lookAt(directionalLightPos, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	glm::mat4 lightSpaceMatrix = lightProjection * lightView;
+
+	//clear screen in light grey
+	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+
+	//render shadow map
+	_renderShadowMap(renderComponents, lightSpaceMatrix);
+
+	//render scene
+	_renderScene(viewMatrix, projectionMatrix, lightSpaceMatrix, cameraPos, directionalLightPos, lightComponents, renderComponents);
+
+	//render skybox
+	_renderSkybox(viewMatrix, projectionMatrix, skybox);
+
+	//render screen quad
+	//_renderScreenQuad(_shadowMap);
+}
+
+void Renderer::_initShaders() {
+	//initialize shadow shader
+	_shadowShader = new Shader(Filepath::ShaderPath + "shadow shader/shadow.vs", Filepath::ShaderPath + "shadow shader/shadow.fs");
+
+	//initialize skybox shader
+	_skyboxShader = new Shader(Filepath::ShaderPath + "skybox shader/skybox.vs", Filepath::ShaderPath + "skybox shader/skybox.fs");
+
+	_skyboxShader->use();
+	_skyboxShader->setInt("skybox", 0);
+
+	//lazy screen quad shader
+	_screenQuadShader = new Shader(Filepath::ShaderPath + "post processing shader/screenQuad.vs", Filepath::ShaderPath + "post processing shader/screenQuad.fs");
+
+	_screenQuadShader->use();
+	_screenQuadShader->setInt("screenTexture", 0);
+}
+
+void Renderer::_initSkyboxVAO() {
+	//setup skybox VAO and VBO
+	glGenVertexArrays(1, &_skyboxVAO);
+	glGenBuffers(1, &_skyboxVBO);
+	glBindVertexArray(_skyboxVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, _skyboxVBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(_SkyboxVertices), &_SkyboxVertices, GL_STATIC_DRAW);
+	glEnableVertexAttribArray(0); //vertex
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+}
+
+void Renderer::_initScreenQuadVAO() {
+	//setup screen quad VAO and VBO
+	glGenVertexArrays(1, &_screenQuadVAO);
+	glGenBuffers(1, &_screenQuadVBO);
+	glBindVertexArray(_screenQuadVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, _screenQuadVBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(_ScreenQuadVertices), &_ScreenQuadVertices, GL_STATIC_DRAW);
+	glEnableVertexAttribArray(0); //vertex
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(1); //uv
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+}
+
+void Renderer::_initShadowFBO() {
+	//create shadow texture
+	_shadowMap = new Texture();
+
+	glGenTextures(1, &_shadowMap->getID());
+	glBindTexture(GL_TEXTURE_2D, _shadowMap->getID());
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, _ShadowWidth, _ShadowHeight, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL); //we only need the depth component
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+
+	float borderColor[] = {1.0f, 1.0f, 1.0f, 1.0f};
+	glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor); //results in a shadow value of 0 when outside of the light frustum
+	
+	//create shadow framebuffer and attach the shadow map to it, so the framebuffer can render to it
+	glGenFramebuffers(1, &_shadowFBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, _shadowFBO);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, _shadowMap->getID(), 0);
+	glDrawBuffer(GL_NONE); //explicitly tell OpenGL that we are only using the depth attachments and no color attachments, otherwise the FBO will be incomplete
+	glReadBuffer(GL_NONE);
+
+	//check for completion
+	if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+		std::cout << "ERROR: Shadow map framebuffer is incomplete." << std::endl;
+	}
+
+	//bind back to default framebuffer
+	glBindFramebuffer(GL_FRAMEBUFFER, 0); 
+}
+
+void Renderer::_renderShadowMap(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, glm::mat4& lightSpaceMatrix) {
+	//setup shader uniforms
+	_shadowShader->use();
+	_shadowShader->setMat4("lightSpaceMatrix", lightSpaceMatrix);
+
+	//adjust viewport and bind to shadow framebuffer
+	glViewport(0, 0, _ShadowWidth, _ShadowHeight);
+	glBindFramebuffer(GL_FRAMEBUFFER, _shadowFBO);
+
+	//render scene from the lights perspective
+	glClear(GL_DEPTH_BUFFER_BIT);
+
+	glm::mat4 modelMatrix;
+	Model* model;
+
+	for(unsigned int i = 0; i < renderComponents.size(); i++) {
+		modelMatrix = renderComponents[i].second;
+		model = renderComponents[i].first->model;
+
+		_shadowShader->setMat4("modelMatrix", modelMatrix);
+		model->draw();
+	}
+
+	//reset viewport and bind back to default framebuffer
+	glViewport(0, 0, Window::ScreenWidth, Window::ScreenHeight);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void Renderer::_renderScene(glm::mat4& viewMatrix, glm::mat4& projectionMatrix, glm::mat4& lightSpaceMatrix, glm::vec3& cameraPos, glm::vec3& directionalLightPos, std::vector<std::pair<LightComponent*, glm::vec3>>& lightComponents, std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents) {
+	//render each renderable
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	//bind shadow map
+	glActiveTexture(GL_TEXTURE8);
+	glBindTexture(GL_TEXTURE_2D, _shadowMap->getID());
 
 	glm::mat4 modelMatrix;
 	Material* material;
 	Model* model;
 
-	for(unsigned int i = 0; i < cameraComponents.size(); i++) {
-		//get relevant properties from the camera
-		projectionMatrix = cameraComponents[i].first->projectionMatrix;
-		viewMatrix = glm::inverse(cameraComponents[i].second);
-		cameraPos = cameraComponents[i].second[3];
+	for(unsigned int i = 0; i < renderComponents.size(); i++) {
+		modelMatrix = renderComponents[i].second;
+		material = renderComponents[i].first->material;
+		model = renderComponents[i].first->model;
 
-		renderComponents = _getSortedRenderComponents(renderables, cameraPos); //Possible optimization: only re-sort if the camera moved
-
-		//render each renderable
-		for(unsigned int j = 0; j < renderComponents.size(); j++) {
-			modelMatrix = renderComponents[j].second;
-			material = renderComponents[j].first->material;
-			model = renderComponents[j].first->model;
-
-			material->draw(modelMatrix, viewMatrix, projectionMatrix, cameraPos, lightComponents);
-			model->draw();
-		}
-
-		//render skybox
-		_renderSkybox(viewMatrix, projectionMatrix, skybox);
+		material->draw(modelMatrix, viewMatrix, projectionMatrix, lightSpaceMatrix, cameraPos, directionalLightPos, lightComponents);
+		model->draw();
 	}
 }
 
-void Renderer::_initSkyboxVAO() {
-	glGenVertexArrays(1, &_skyboxVAO);
-	glGenBuffers(1, &_skyboxVBO);
-	glBindVertexArray(_skyboxVAO);
-	glBindBuffer(GL_ARRAY_BUFFER, _skyboxVBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(_skyboxVertices), &_skyboxVertices, GL_STATIC_DRAW);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-}
-
 void Renderer::_renderSkybox(glm::mat4& viewMatrix, glm::mat4& projectionMatrix, Texture* skybox) {
-	if(skybox == nullptr) return;
+	if(skybox == nullptr) {
+		std::cout << "Unable to render skybox, there is no skybox defined." << std::endl;
+		return;
+	}
 
 	glm::mat4 newViewMatrix = glm::mat4(glm::mat3(viewMatrix)); //remove translation from view matrix
 
@@ -187,10 +310,25 @@ void Renderer::_renderSkybox(glm::mat4& viewMatrix, glm::mat4& projectionMatrix,
 	_skyboxShader->setMat4("projectionMatrix", projectionMatrix);
 
 	//render skybox
+	glDepthFunc(GL_LEQUAL); //set depth funtion to less than AND equal for skybox depth trick
 	glBindVertexArray(_skyboxVAO);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, skybox->getID());
 	glDrawArrays(GL_TRIANGLES, 0, 36);
+	glBindVertexArray(0);
+	glDepthFunc(GL_LESS); //depth function set back to default
+}
+
+void Renderer::_renderScreenQuad(Texture* screenTexture) {
+	//render screen quad with passed in texture
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	_screenQuadShader->use();
+	
+	glBindVertexArray(_screenQuadVAO);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, screenTexture->getID()); //render shadow map to screen
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 	glBindVertexArray(0);
 }
 

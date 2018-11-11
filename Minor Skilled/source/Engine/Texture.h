@@ -8,16 +8,15 @@
 
 class Texture {
 public:
+	Texture();
 	~Texture();
 
-	unsigned int getID();
+	unsigned int& getID();
 
 	static Texture* LoadTexture(std::string path, TextureFilter filter = TextureFilter::Repeat, bool sRGB = false);
 	static Texture* LoadCubemap(std::vector<std::string>& faces);
 
 private:
-	Texture();
-
 	unsigned int _id;
 };
 

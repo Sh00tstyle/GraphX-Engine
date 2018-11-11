@@ -17,11 +17,14 @@ layout (location = 4) in vec3 aBitangent;
 uniform mat4 modelMatrix;
 uniform mat4 viewMatrix;
 uniform mat4 projectionMatrix;
+uniform mat4 lightSpaceMatrix;
 
 uniform VertLight vertLights[LIGHTAMOUNT];
 uniform vec3 cameraPos; //world space
 
 out VS_OUT {
+    vec3 fragPos;
+    vec3 fragNormal;
     vec2 texCoord;
     
     vec3 tangentLightPos[LIGHTAMOUNT];
@@ -30,13 +33,18 @@ out VS_OUT {
     vec3 tangentViewPos;
     vec3 tangentFragPos;
     vec3 tangentFragNormal; //needed in case there is no normal map
+
+    vec4 lightSpaceFragPos;
 } vs_out;
 
 void main() {
+    mat3 normalMatrix = transpose(inverse(mat3(modelMatrix))); //fix normals in non uniform scaling
+
+    vs_out.fragPos = vec3(modelMatrix * vec4(aVertex, 1.0f));
+    vs_out.fragNormal = normalMatrix * aNormal;
     vs_out.texCoord = aUV;
 
     //construct TBN matrix
-    mat3 normalMatrix = transpose(inverse(mat3(modelMatrix))); //fix normals in non uniform scaling
     vec3 T = normalize(normalMatrix * aTangent);
     vec3 N = normalize(normalMatrix * aNormal);
     T = normalize(T - dot(T, N) * N);
@@ -50,8 +58,10 @@ void main() {
     }
 
     vs_out.tangentViewPos = TBN * cameraPos;
-    vs_out.tangentFragPos = TBN * vec3(modelMatrix * vec4(aVertex, 1.0f));
+    vs_out.tangentFragPos = TBN * vs_out.fragPos;
     vs_out.tangentFragNormal = TBN * normalMatrix * aNormal;
+
+    vs_out.lightSpaceFragPos =  lightSpaceMatrix * modelMatrix * vec4(aVertex, 1.0f);
 
     gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(aVertex, 1.0f);
 }

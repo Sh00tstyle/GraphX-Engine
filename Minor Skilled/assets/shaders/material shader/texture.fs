@@ -43,6 +43,8 @@ struct Material {
 };
 
 in VS_OUT {
+    vec3 fragPos;
+    vec3 fragNormal;
     vec2 texCoord;
     
     vec3 tangentLightPos[LIGHTAMOUNT];
@@ -51,10 +53,15 @@ in VS_OUT {
     vec3 tangentViewPos;
     vec3 tangentFragPos;
     vec3 tangentFragNormal; //needed in case there is no normal map
+
+    vec4 lightSpaceFragPos;
 } fs_in;
 
 uniform FragLight fragLights[LIGHTAMOUNT];
 uniform Material material;
+
+uniform vec3 directionalLightPos;
+uniform sampler2D shadowMap;
 
 out vec4 fragColor;
 
@@ -65,6 +72,8 @@ vec2 ParallaxMapping(vec3 viewDirection);
 vec3 CalculateDirectionalLight(FragLight light, vec3 lightDir, vec3 normal, vec3 viewDirection, vec2 texCoord);
 vec3 CalculatePointLight(FragLight light, vec3 lightPos, vec3 normal, vec3 viewDirection, vec2 texCoord);
 vec3 CalculateSpotLight(FragLight light, vec3 lightPos, vec3 lightDir, vec3 normal, vec3 viewDirection, vec2 texCoord);
+
+float CalculateShadow();
 
 void main() {
     vec3 normal = GetNormal();
@@ -112,6 +121,11 @@ void main() {
     //emission
     vec3 emission = texture(material.emission, texCoord).rgb; //if there is no emission map, nothing will be added
     result += emission;
+
+    //shadows
+    float shadow = CalculateShadow();
+    shadow = 1.0f - shadow;
+    result *= shadow;
 
     fragColor = vec4(result, alpha);
 }
@@ -192,7 +206,7 @@ vec3 CalculateDirectionalLight(FragLight light, vec3 lightDir, vec3 normal, vec3
     vec3 ambient = light.ambient * texture(material.diffuse, texCoord).rgb;
 
     //diffuse
-    float difference = max(dot(normal, lightDir), 0.0f);
+    float difference = max(dot(normal, -lightDir), 0.0f);
     vec3 diffuse = light.diffuse * difference * texture(material.diffuse, texCoord).rgb;
 
     //specular
@@ -261,4 +275,40 @@ vec3 CalculateSpotLight(FragLight light, vec3 lightPos, vec3 lightDir, vec3 norm
     specular *= attenuation * intensity;
 
     return (ambient + diffuse + specular);
+}
+
+float CalculateShadow() {
+    //perform perspective divide
+    vec3 projectedCoords = fs_in.lightSpaceFragPos.xyz / fs_in.lightSpaceFragPos.w;
+
+    //transform to [0,1] range
+    projectedCoords = projectedCoords * 0.5f + 0.5f;
+
+    //get closest depth value from lights perspective (using [0,1] range lightSpaceFragPos as coords)
+    float closestDepth = texture(shadowMap, projectedCoords.xy).r; 
+
+    //get depth of current fragment from lights perspective
+    float currentDepth = projectedCoords.z;
+
+    //calculate bias based on depth map resolution and slope
+    vec3 normal = normalize(fs_in.fragNormal);
+    vec3 lightDirection = normalize(directionalLightPos - fs_in.fragPos);
+    float bias = max(0.05f * (1.0f - dot(normal, lightDirection)), 0.005f);
+
+    //PCF
+    float shadow = 0.0f;
+    vec2 texelSize = 1.0f / textureSize(shadowMap, 0);
+    for(int x = -1; x <= 1; ++x) {
+        for(int y = -1; y <= 1; ++y) {
+            float pcfDepth = texture(shadowMap, projectedCoords.xy + vec2(x, y) * texelSize).r; 
+            shadow += currentDepth - bias > pcfDepth ? 1.0f : 0.0f;        
+        }    
+    }
+
+    shadow /= 9.0f;
+    
+    //keep the shadow at 0.0f when outside the far plane region of the lights frustum.
+    if(projectedCoords.z > 1.0f) shadow = 0.0f;
+
+    return shadow;
 }

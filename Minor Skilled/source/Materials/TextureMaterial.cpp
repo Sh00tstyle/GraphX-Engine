@@ -9,7 +9,7 @@
 
 #include "../Utility/Filepath.h"
 
-Shader* TextureMaterial::_shader = nullptr;
+Shader* TextureMaterial::_Shader = nullptr;
 
 TextureMaterial::TextureMaterial(Texture* diffuseMap, float shininess) :Material(BlendMode::Opaque), _diffuseMap(diffuseMap), _specularMap(nullptr),
 _normalMap(nullptr), _emissionMap(nullptr), _heightMap(nullptr), _shininess(shininess), _heightScale(1.0f) {
@@ -85,13 +85,14 @@ void TextureMaterial::setHeightScale(float heightScale) {
 	_heightScale = heightScale;
 }
 
-void TextureMaterial::draw(glm::mat4& modelMatrix, glm::mat4& viewMatrix, glm::mat4& projectionMatrix, glm::vec3& cameraPos, std::vector<std::pair<LightComponent*, glm::vec3>>& lights) {
-	_shader->use();
+void TextureMaterial::draw(glm::mat4& modelMatrix, glm::mat4& viewMatrix, glm::mat4& projectionMatrix, glm::mat4& lightSpaceMatrix, glm::vec3& cameraPos, glm::vec3& directionalLightPos, std::vector<std::pair<LightComponent*, glm::vec3>>& lights) {
+	_Shader->use();
 
 	//set mvp matrix
-	_shader->setMat4("modelMatrix", modelMatrix);
-	_shader->setMat4("viewMatrix", viewMatrix);
-	_shader->setMat4("projectionMatrix", projectionMatrix);
+	_Shader->setMat4("modelMatrix", modelMatrix);
+	_Shader->setMat4("viewMatrix", viewMatrix);
+	_Shader->setMat4("projectionMatrix", projectionMatrix);
+	_Shader->setMat4("lightSpaceMatrix", lightSpaceMatrix);
 
 	//set material textures and bools
 	if(_diffuseMap != nullptr) {
@@ -105,18 +106,18 @@ void TextureMaterial::draw(glm::mat4& modelMatrix, glm::mat4& viewMatrix, glm::m
 		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, _specularMap->getID());
 
-		_shader->setBool("material.hasSpecular", true);
+		_Shader->setBool("material.hasSpecular", true);
 	} else {
-		_shader->setBool("material.hasSpecular", false);
+		_Shader->setBool("material.hasSpecular", false);
 	}
 
 	if(_normalMap != nullptr) {
 		glActiveTexture(GL_TEXTURE2);
 		glBindTexture(GL_TEXTURE_2D, _normalMap->getID());
 
-		_shader->setBool("material.hasNormal", true);
+		_Shader->setBool("material.hasNormal", true);
 	} else {
-		_shader->setBool("material.hasNormal", false);
+		_Shader->setBool("material.hasNormal", false);
 	}
 
 	if(_emissionMap != nullptr) {
@@ -128,18 +129,19 @@ void TextureMaterial::draw(glm::mat4& modelMatrix, glm::mat4& viewMatrix, glm::m
 		glActiveTexture(GL_TEXTURE4);
 		glBindTexture(GL_TEXTURE_2D, _heightMap->getID());
 
-		_shader->setBool("material.hasHeight", true);
+		_Shader->setBool("material.hasHeight", true);
 	} else {
-		_shader->setBool("material.hasHeight", false);
+		_Shader->setBool("material.hasHeight", false);
 	}
 
 	//set material properties
-	_shader->setFloat("material.shininess", _shininess);
-	_shader->setFloat("material.heightScale", _heightScale);
-	_shader->setInt("material.blendMode", _blendMode);
+	_Shader->setFloat("material.shininess", _shininess);
+	_Shader->setFloat("material.heightScale", _heightScale);
+	_Shader->setInt("material.blendMode", _blendMode);
 
-	//set camera pos
-	_shader->setVec3("cameraPos", cameraPos);
+	//set camera pos and directional light pos
+	_Shader->setVec3("cameraPos", cameraPos);
+	_Shader->setVec3("directionalLightPos", directionalLightPos);
 
 	//set lights (should only be done here in forward rendering)
 	LightComponent* currentLight;
@@ -148,21 +150,21 @@ void TextureMaterial::draw(glm::mat4& modelMatrix, glm::mat4& viewMatrix, glm::m
 		currentLight = lights[i].first;
 
 		//set light properties (vertex shader)
-		_shader->setVec3("vertLights[" + std::to_string(i) + "].position", lights[i].second);
-		_shader->setVec3("vertLights[" + std::to_string(i) + "].direction", currentLight->lightDirection);
+		_Shader->setVec3("vertLights[" + std::to_string(i) + "].position", lights[i].second);
+		_Shader->setVec3("vertLights[" + std::to_string(i) + "].direction", currentLight->lightDirection);
 
 		//set light properties (fragment shader)
-		_shader->setInt("fragLights[" + std::to_string(i) + "].type", currentLight->lightType);
+		_Shader->setInt("fragLights[" + std::to_string(i) + "].type", currentLight->lightType);
 
-		_shader->setVec3("fragLights[" + std::to_string(i) + "].diffuse", currentLight->lightDiffuse);
-		_shader->setVec3("fragLights[" + std::to_string(i) + "].ambient", currentLight->lightAmbient);
-		_shader->setVec3("fragLights[" + std::to_string(i) + "].specular", currentLight->lightSpecular);
+		_Shader->setVec3("fragLights[" + std::to_string(i) + "].diffuse", currentLight->lightDiffuse);
+		_Shader->setVec3("fragLights[" + std::to_string(i) + "].ambient", currentLight->lightAmbient);
+		_Shader->setVec3("fragLights[" + std::to_string(i) + "].specular", currentLight->lightSpecular);
 
-		_shader->setFloat("fragLights[" + std::to_string(i) + "].constant", currentLight->constantAttenuation);
-		_shader->setFloat("fragLights[" + std::to_string(i) + "].linear", currentLight->linearAttenuation);
-		_shader->setFloat("fragLights[" + std::to_string(i) + "].quadratic", currentLight->quadraticAttenuation);
-		_shader->setFloat("fragLights[" + std::to_string(i) + "].innerCutoff", currentLight->innerCutoff);
-		_shader->setFloat("fragLights[" + std::to_string(i) + "].outerCutoff", currentLight->outerCutoff);
+		_Shader->setFloat("fragLights[" + std::to_string(i) + "].constant", currentLight->constantAttenuation);
+		_Shader->setFloat("fragLights[" + std::to_string(i) + "].linear", currentLight->linearAttenuation);
+		_Shader->setFloat("fragLights[" + std::to_string(i) + "].quadratic", currentLight->quadraticAttenuation);
+		_Shader->setFloat("fragLights[" + std::to_string(i) + "].innerCutoff", currentLight->innerCutoff);
+		_Shader->setFloat("fragLights[" + std::to_string(i) + "].outerCutoff", currentLight->outerCutoff);
 
 		if(i >= LightComponent::LightAmount) break; //right now the light array is capped to a maximum of 20 lights
 	}
@@ -170,14 +172,16 @@ void TextureMaterial::draw(glm::mat4& modelMatrix, glm::mat4& viewMatrix, glm::m
 
 void TextureMaterial::_initShader() {
 	//lazy initialize the shader for all texture materials (there is no need to create one for each material, since they are all the same)
-	if(_shader == nullptr) {
-		_shader = new Shader(Filepath::ShaderPath + "material shader/texture.vs", Filepath::ShaderPath + "material shader/texture.fs");
+	if(_Shader == nullptr) {
+		_Shader = new Shader(Filepath::ShaderPath + "material shader/texture.vs", Filepath::ShaderPath + "material shader/texture.fs");
 
-		_shader->use();
-		_shader->setInt("material.diffuse", 0);
-		_shader->setInt("material.specular", 1);
-		_shader->setInt("material.normal", 2);
-		_shader->setInt("material.emission", 3);
-		_shader->setInt("material.height", 4);
+		_Shader->use();
+		_Shader->setInt("material.diffuse", 0);
+		_Shader->setInt("material.specular", 1);
+		_Shader->setInt("material.normal", 2);
+		_Shader->setInt("material.emission", 3);
+		_Shader->setInt("material.height", 4);
+
+		_Shader->setInt("shadowMap", 8); //assign to slot 8, so that it shares it with the other materials which have more textures
 	}
 }

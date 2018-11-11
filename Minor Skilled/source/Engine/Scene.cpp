@@ -12,9 +12,12 @@
 #include "../Engine/World.h"
 #include "../Engine/Renderer.h"
 
+#include "../Components/LightComponent.h"
+
 #include "../Utility/Time.h"
 #include "../Utility/Input.h"
 #include "../Utility/ComponentType.h"
+#include "../Utility/LightType.h"
 
 Scene::Scene() {
 }
@@ -31,8 +34,11 @@ void Scene::initialize() {
 
 	_window = new Window(1280, 720, "GraphX Engine", 4);
 	_world = new World(); //scene graph
-	_skybox = nullptr;
 	_renderer = new Renderer();
+
+	_skybox = nullptr;
+	_mainCamera = nullptr;
+	_directionalLight = nullptr;
 
 	_initializeScene();
 	
@@ -53,6 +59,36 @@ void Scene::run() {
 	}
 }
 
+void Scene::_setSkybox(Texture* skybox) {
+	if(skybox == nullptr) {
+		std::cout << "ERROR: Unable to assign skybox. It was null." << std::endl;
+		return;
+	}
+
+	_skybox = skybox;
+}
+
+void Scene::_setMainCamera(Node* mainCamera) {
+	if(!mainCamera->hasComponent(ComponentType::Camera)) {
+		std::cout << "ERROR: Unable to assign main camera. It has no camera component." << std::endl;
+		return;
+	}
+
+	_mainCamera = mainCamera;
+}
+
+void Scene::_setDirectionalLight(Node * directionalLight) {
+	if(!directionalLight->hasComponent(ComponentType::Light)) {
+		std::cout << "ERROR: Unable to assign directional light. It has no light component." << std::endl;
+		return;
+	} else if(((LightComponent*)directionalLight->getComponent(ComponentType::Light))->lightType != LightType::Directional) {
+		std::cout << "ERROR: Unable to assign directional light. Its light type is not DIRECTIONAL." << std::endl;
+		return;
+	}
+
+	_directionalLight = directionalLight;
+}
+
 void Scene::_update() {
 	//clear vectors
 	_renderables.clear();
@@ -67,5 +103,5 @@ void Scene::_update() {
 }
 
 void Scene::_render() {
-	_renderer->render(_renderables, _lights, _cameras, _skybox);
+	_renderer->render(_renderables, _lights, _mainCamera, _directionalLight, _skybox);
 }
