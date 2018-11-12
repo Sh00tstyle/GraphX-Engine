@@ -1,6 +1,6 @@
 #version 330 core
 
-const int LIGHTAMOUNT = 10; //TODO: replace with uniform buffer objects
+const int LIGHTAMOUNT = 10;
 
 //light types
 const int DIRECTIONAL = 0;
@@ -12,18 +12,23 @@ const int OPAQUE = 0;
 const int CUTOUT = 1;
 const int TRANSPARENT = 2;
 
-struct FragLight {
-    int type;
+struct Light {
+    vec4 position;
+    vec4 direction;
 
-    vec3 ambient;
-    vec3 diffuse;
-    vec3 specular;
+    vec4 ambient;
+    vec4 diffuse;
+    vec4 specular;
+
+    int type;
 
     float constant;
     float linear;
     float quadratic;
     float innerCutoff;
     float outerCutoff;
+
+    vec2 padding;
 };
 
 struct Material {
@@ -32,6 +37,7 @@ struct Material {
     sampler2D normal;
     sampler2D emission;
     sampler2D height;
+
     float shininess;
     float heightScale;
 
@@ -57,10 +63,16 @@ in VS_OUT {
     vec4 lightSpaceFragPos;
 } fs_in;
 
-uniform FragLight fragLights[LIGHTAMOUNT];
-uniform Material material;
+layout (std140) uniform positionsBlock {
+    vec3 cameraPos;
+    vec3 directionalLightPos;
+};
 
-uniform vec3 directionalLightPos;
+layout(std140) uniform lightsBlock {
+    Light lights[LIGHTAMOUNT];
+};
+
+uniform Material material;
 uniform sampler2D shadowMap;
 
 out vec4 fragColor;
@@ -69,9 +81,9 @@ vec3 GetSpecular();
 vec3 GetNormal();
 vec2 ParallaxMapping(vec3 viewDirection);
 
-vec3 CalculateDirectionalLight(FragLight light, vec3 lightDir, vec3 normal, vec3 viewDirection, vec2 texCoord);
-vec3 CalculatePointLight(FragLight light, vec3 lightPos, vec3 normal, vec3 viewDirection, vec2 texCoord);
-vec3 CalculateSpotLight(FragLight light, vec3 lightPos, vec3 lightDir, vec3 normal, vec3 viewDirection, vec2 texCoord);
+vec3 CalculateDirectionalLight(Light light, vec3 lightDir, vec3 normal, vec3 viewDirection, vec2 texCoord);
+vec3 CalculatePointLight(Light light, vec3 lightPos, vec3 normal, vec3 viewDirection, vec2 texCoord);
+vec3 CalculateSpotLight(Light light, vec3 lightPos, vec3 lightDir, vec3 normal, vec3 viewDirection, vec2 texCoord);
 
 float CalculateShadow();
 
@@ -103,17 +115,17 @@ void main() {
     vec3 result = vec3(0.0f);
 
     for(int i = 0; i < LIGHTAMOUNT; i++) {
-        switch(fragLights[i].type) {
+        switch(lights[i].type) {
             case DIRECTIONAL:
-                result += CalculateDirectionalLight(fragLights[i], fs_in.tangentLightDir[i], normal, viewDirection, texCoord);
+                result += CalculateDirectionalLight(lights[i], fs_in.tangentLightDir[i], normal, viewDirection, texCoord);
                 break;
 
             case POINT:
-                result += CalculatePointLight(fragLights[i], fs_in.tangentLightPos[i], normal, viewDirection, texCoord);
+                result += CalculatePointLight(lights[i], fs_in.tangentLightPos[i], normal, viewDirection, texCoord);
                 break;
 
             case SPOT:
-                result += CalculateSpotLight(fragLights[i], fs_in.tangentLightPos[i], fs_in.tangentLightDir[i], normal, viewDirection, texCoord);
+                result += CalculateSpotLight(lights[i], fs_in.tangentLightPos[i], fs_in.tangentLightDir[i], normal, viewDirection, texCoord);
                 break;
         }
     }
@@ -125,7 +137,7 @@ void main() {
     //shadows
     float shadow = CalculateShadow();
     shadow = 1.0f - shadow;
-    result *= shadow;
+    result *= shadow * 0.5f;
 
     fragColor = vec4(result, alpha);
 }
@@ -201,37 +213,37 @@ vec2 ParallaxMapping(vec3 viewDirection) {
     return finalTexCoords;
 }
 
-vec3 CalculateDirectionalLight(FragLight light, vec3 lightDir, vec3 normal, vec3 viewDirection, vec2 texCoord) {
+vec3 CalculateDirectionalLight(Light light, vec3 lightDir, vec3 normal, vec3 viewDirection, vec2 texCoord) {
     //ambient
-    vec3 ambient = light.ambient * texture(material.diffuse, texCoord).rgb;
+    vec3 ambient = light.ambient.rgb * texture(material.diffuse, texCoord).rgb;
 
     //diffuse
     float difference = max(dot(normal, -lightDir), 0.0f);
-    vec3 diffuse = light.diffuse * difference * texture(material.diffuse, texCoord).rgb;
+    vec3 diffuse = light.diffuse.rgb * difference * texture(material.diffuse, texCoord).rgb;
 
     //specular
     vec3 halfwayDireciton = normalize(lightDir + viewDirection); //blinn-phong
     float specularity = pow(max(dot(normal, halfwayDireciton), 0.0f), material.shininess);
-    vec3 specular = light.specular * specularity * GetSpecular();
+    vec3 specular = light.specular.rgb * specularity * GetSpecular();
 
     //combine results
     return (ambient + diffuse + specular);
 }
 
-vec3 CalculatePointLight(FragLight light, vec3 lightPos, vec3 normal, vec3 viewDirection, vec2 texCoord) {
+vec3 CalculatePointLight(Light light, vec3 lightPos, vec3 normal, vec3 viewDirection, vec2 texCoord) {
     vec3 lightDirection = normalize(lightPos - fs_in.tangentFragPos);
 
     //ambient
-    vec3 ambient = light.ambient * texture(material.diffuse, texCoord).rgb;
+    vec3 ambient = light.ambient.rgb * texture(material.diffuse, texCoord).rgb;
 
     //diffuse
     float difference = max(dot(normal, lightDirection), 0.0f);
-    vec3 diffuse = light.diffuse * difference * texture(material.diffuse, texCoord).rgb;
+    vec3 diffuse = light.diffuse.rgb * difference * texture(material.diffuse, texCoord).rgb;
 
     //specular
     vec3 halfwayDireciton = normalize(lightDirection + viewDirection); //blinn-phong
     float specularity = pow(max(dot(normal, halfwayDireciton), 0.0f), material.shininess);
-    vec3 specular = light.specular * specularity * GetSpecular();
+    vec3 specular = light.specular.rgb * specularity * GetSpecular();
 
     //attenuation
     float distance = length(lightPos - fs_in.tangentFragPos);
@@ -245,20 +257,20 @@ vec3 CalculatePointLight(FragLight light, vec3 lightPos, vec3 normal, vec3 viewD
     return (ambient + diffuse + specular);
 }
 
-vec3 CalculateSpotLight(FragLight light, vec3 lightPos, vec3 lightDir, vec3 normal, vec3 viewDirection, vec2 texCoord) {
+vec3 CalculateSpotLight(Light light, vec3 lightPos, vec3 lightDir, vec3 normal, vec3 viewDirection, vec2 texCoord) {
     vec3 lightDirection = normalize(lightPos - fs_in.tangentFragPos);
 
     //ambient
-    vec3 ambient = light.ambient * texture(material.diffuse, texCoord).rgb;
+    vec3 ambient = light.ambient.rgb * texture(material.diffuse, texCoord).rgb;
 
     //diffuse
     float difference = max(dot(normal, lightDirection), 0.0f);
-    vec3 diffuse = light.diffuse * difference * texture(material.diffuse, texCoord).rgb;
+    vec3 diffuse = light.diffuse.rgb * difference * texture(material.diffuse, texCoord).rgb;
 
     //specular
     vec3 halfwayDireciton = normalize(lightDirection + viewDirection); //blinn-phong
     float specularity = pow(max(dot(normal, halfwayDireciton), 0.0f), material.shininess);
-    vec3 specular = light.specular * specularity * GetSpecular();
+    vec3 specular = light.specular.rgb * specularity * GetSpecular();
 
     //attenuation
     float distance = length(lightPos - fs_in.tangentFragPos);

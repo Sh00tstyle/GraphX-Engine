@@ -49,6 +49,7 @@
     <ClInclude Include="source\Components\LightComponent.h" />
     <ClInclude Include="source\Components\RenderComponent.h" />
     <ClInclude Include="source\Engine\Component.h" />
+    <ClInclude Include="source\Engine\GLLight.h" />
     <ClInclude Include="source\Engine\Material.h" />
     <ClInclude Include="source\Engine\Mesh.h" />
     <ClInclude Include="source\Engine\Model.h" />

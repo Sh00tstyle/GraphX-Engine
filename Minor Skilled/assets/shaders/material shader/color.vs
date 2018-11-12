@@ -4,10 +4,13 @@ layout (location = 0) in vec3 aVertex;
 layout (location = 1) in vec3 aNormal;
 layout (location = 2) in vec2 aUV;
 
+layout (std140) uniform matricesBlock {
+    mat4 viewMatrix;
+    mat4 projectionMatrix;
+    mat4 lightSpaceMatrix;
+};
+
 uniform mat4 modelMatrix;
-uniform mat4 viewMatrix;
-uniform mat4 projectionMatrix;
-uniform mat4 lightSpaceMatrix;
 
 out VS_OUT {
     vec3 fragPos;

@@ -4,6 +4,8 @@
 #include <glm/glm.hpp>
 
 #include "../Engine/Component.h"
+#include "../Engine/GLLight.h"
+
 #include "../Utility/LightType.h"
 
 class Node;
@@ -30,6 +32,8 @@ class LightComponent : public Component {
 		float outerCutoff;
 
 		virtual void update();
+
+		GLLight toGLLight(glm::vec3& position);
 };
 
 #endif

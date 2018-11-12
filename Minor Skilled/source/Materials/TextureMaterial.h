@@ -37,7 +37,7 @@ class TextureMaterial : public Material {
 		void setShininess(float shininess);
 		void setHeightScale(float heightScale);
 
-		virtual void draw(glm::mat4& modelMatrix, glm::mat4& viewMatrix, glm::mat4& projectionMatrix, glm::mat4& lightSpaceMatrix, glm::vec3& cameraPos, glm::vec3& directionalLightPos, std::vector<std::pair<LightComponent*, glm::vec3>>& lights);
+		virtual void draw(glm::mat4& modelMatrix);
 
 	private:
 		static Shader* _Shader;
@@ -50,7 +50,7 @@ class TextureMaterial : public Material {
 		float _shininess;
 		float _heightScale;
 
-		void _initShader();
+		virtual void _initShader();
 
 };
 

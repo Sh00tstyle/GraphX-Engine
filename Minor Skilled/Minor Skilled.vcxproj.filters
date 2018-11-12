@@ -194,6 +194,9 @@
     <ClInclude Include="source\Utility\BlendMode.h">
       <Filter>source\Utility</Filter>
     </ClInclude>
+    <ClInclude Include="source\Engine\GLLight.h">
+      <Filter>source\Engine</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="assets\shaders\material shader\color.fs">

@@ -18,6 +18,7 @@
 #include "../Engine/Texture.h"
 #include "../Engine/Shader.h"
 #include "../Engine/Window.h"
+#include "../Engine/GLLight.h"
 
 #include "../Components/LightComponent.h"
 #include "../Components/CameraComponent.h"
@@ -105,6 +106,9 @@ Renderer::Renderer() {
 	_initSkyboxVAO();
 	_initScreenQuadVAO();
 
+	//setup uniform buffers
+	_initUniformBuffers();
+
 	//setup FBOs
 	_initShadowFBO();
 }
@@ -115,15 +119,19 @@ Renderer::~Renderer() {
 	delete _skyboxShader;
 	delete _screenQuadShader;
 
+	delete _shadowMap;
+
 	glDeleteVertexArrays(1, &_skyboxVAO);
 	glDeleteBuffers(1, &_skyboxVBO);
 
 	glDeleteVertexArrays(1, &_screenQuadVAO);
 	glDeleteBuffers(1, &_screenQuadVBO);
 
-	glDeleteFramebuffers(1, &_shadowFBO);
+	glDeleteBuffers(1, &_matricesUBO);
+	glDeleteBuffers(1, &_positionsUBO);
+	glDeleteBuffers(1, &_lightsUBO);
 
-	glDeleteTextures(1, &_shadowMap->getID());
+	glDeleteFramebuffers(1, &_shadowFBO);
 }
 
 void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& lights, Node* mainCamera, Node* directionalLight, Texture* skybox) {
@@ -158,6 +166,9 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 	glm::mat4 lightView = glm::lookAt(directionalLightPos, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 	glm::mat4 lightSpaceMatrix = lightProjection * lightView;
 
+	//store the matrices and the vectors in the uniform buffer
+	_fillUniformBuffers(viewMatrix, projectionMatrix, lightSpaceMatrix, cameraPos, directionalLightPos, lightComponents);
+
 	//clear screen in light grey
 	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 
@@ -165,7 +176,7 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 	_renderShadowMap(renderComponents, lightSpaceMatrix);
 
 	//render scene
-	_renderScene(viewMatrix, projectionMatrix, lightSpaceMatrix, cameraPos, directionalLightPos, lightComponents, renderComponents);
+	_renderScene(renderComponents);
 
 	//render skybox
 	_renderSkybox(viewMatrix, projectionMatrix, skybox);
@@ -213,6 +224,41 @@ void Renderer::_initScreenQuadVAO() {
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(1); //uv
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+}
+
+void Renderer::_initUniformBuffers() {
+	//calculate needed memory in bytes
+	unsigned int neededMemory = sizeof(glm::mat4) * 3; //3x mat4
+
+	//create matrices uniform buffer
+	glGenBuffers(1, &_matricesUBO);
+	glBindBuffer(GL_UNIFORM_BUFFER, _matricesUBO);
+	glBufferData(GL_UNIFORM_BUFFER, neededMemory, NULL, GL_STATIC_DRAW); //allocate the memory, but don't fill it with data yet
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+	//define the range of the buffer that links to a uniform binding point (binding point = 0)
+	glBindBufferRange(GL_UNIFORM_BUFFER, 0, _matricesUBO, 0, neededMemory);
+
+	//create positions uniform buffer
+	neededMemory = sizeof(glm::vec4) * 2; //2x vec3, but needs the memory layout of a vec4
+
+	glGenBuffers(1, &_positionsUBO);
+	glBindBuffer(GL_UNIFORM_BUFFER, _positionsUBO);
+	glBufferData(GL_UNIFORM_BUFFER, neededMemory, NULL, GL_STATIC_DRAW);
+
+	glBindBufferRange(GL_UNIFORM_BUFFER, 1, _positionsUBO, 0, neededMemory); //bind to binding point 1
+
+	//create lights uniform buffer
+	neededMemory = sizeof(GLLight) * LightComponent::LightAmount; //calculated 104 bytes per light struct + 8 bytes for padding (112 in total)
+
+	glGenBuffers(1, &_lightsUBO);
+	glBindBuffer(GL_UNIFORM_BUFFER, _lightsUBO);
+	glBufferData(GL_UNIFORM_BUFFER, neededMemory, NULL, GL_STATIC_DRAW);
+
+	glBindBufferRange(GL_UNIFORM_BUFFER, 2, _lightsUBO, 0, neededMemory); //bind to binding point 2
+
+	//unbind
+	glBindBuffer(GL_UNIFORM_BUFFER, 0); 
 }
 
 void Renderer::_initShadowFBO() {
@@ -274,7 +320,7 @@ void Renderer::_renderShadowMap(std::vector<std::pair<RenderComponent*, glm::mat
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void Renderer::_renderScene(glm::mat4& viewMatrix, glm::mat4& projectionMatrix, glm::mat4& lightSpaceMatrix, glm::vec3& cameraPos, glm::vec3& directionalLightPos, std::vector<std::pair<LightComponent*, glm::vec3>>& lightComponents, std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents) {
+void Renderer::_renderScene(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents) {
 	//render each renderable
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -291,7 +337,7 @@ void Renderer::_renderScene(glm::mat4& viewMatrix, glm::mat4& projectionMatrix, 
 		material = renderComponents[i].first->material;
 		model = renderComponents[i].first->model;
 
-		material->draw(modelMatrix, viewMatrix, projectionMatrix, lightSpaceMatrix, cameraPos, directionalLightPos, lightComponents);
+		material->draw(modelMatrix);
 		model->draw();
 	}
 }
@@ -330,6 +376,40 @@ void Renderer::_renderScreenQuad(Texture* screenTexture) {
 	glBindTexture(GL_TEXTURE_2D, screenTexture->getID()); //render shadow map to screen
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 	glBindVertexArray(0);
+}
+
+void Renderer::_fillUniformBuffers(glm::mat4& viewMatrix, glm::mat4& projectionMatrix, glm::mat4& lightSpaceMatrix, glm::vec3& cameraPos, glm::vec3& directionalLightPos, std::vector<std::pair<LightComponent*, glm::vec3>>& lightComponents) {
+	//store the matrices in the matrices uniform buffer
+	glBindBuffer(GL_UNIFORM_BUFFER, _matricesUBO);
+	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(viewMatrix)); //buffer view matrix
+	glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(projectionMatrix)); //buffer projection matrix
+	glBufferSubData(GL_UNIFORM_BUFFER, 2 * sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(lightSpaceMatrix)); //buffer light space matrix
+
+	//store the positions in the positions uniform buffer
+	glBindBuffer(GL_UNIFORM_BUFFER, _positionsUBO);
+	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::vec4), glm::value_ptr(cameraPos)); //buffer cameraPos
+	glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::vec4), sizeof(glm::vec4), glm::value_ptr(directionalLightPos)); //buffer directional light pos
+
+	//store the lights in the lights uniform buffer
+	std::pair<LightComponent*, glm::vec3> currentLightPair;
+	LightComponent* currentLight;
+	glm::vec3 currentLightPos;
+
+	GLint usedLights = lightComponents.size();
+	if(usedLights > LightComponent::LightAmount) usedLights = LightComponent::LightAmount; //limit the amount of possible lights
+
+	glBindBuffer(GL_UNIFORM_BUFFER, _lightsUBO);
+
+	for(unsigned int i = 0; i < usedLights; i++) {
+		currentLight = lightComponents[i].first;
+		currentLightPos = lightComponents[i].second;
+
+		GLLight light = currentLight->toGLLight(currentLightPos); //convert current light component to a light struct GLSL can understand
+
+		glBufferSubData(GL_UNIFORM_BUFFER, sizeof(GLLight) * i, sizeof(GLLight), &light); //buffer light struct
+	}
+
+	glBindBuffer(GL_UNIFORM_BUFFER, 0); //unbind
 }
 
 std::vector<std::pair<RenderComponent*, glm::mat4>> Renderer::_getSortedRenderComponents(std::vector<Node*>& renderables, glm::vec3& cameraPos) {

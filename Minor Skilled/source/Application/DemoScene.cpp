@@ -101,7 +101,7 @@ void DemoScene::_initializeScene() {
 
 	//add components to their respective nodes
 	mainCamera->addComponent(cameraComponent);
-	//mainCamera->addComponent(spotLightComponent);
+	mainCamera->addComponent(spotLightComponent);
 	directionalLight->addComponent(directionalLightComponent);
 	cyborg->addComponent(cyborgRenderComponent);
 	plane->addComponent(planeRenderComponent);

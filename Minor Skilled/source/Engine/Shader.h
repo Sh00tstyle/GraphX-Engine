@@ -26,6 +26,8 @@ class Shader {
 		void setVec3(std::string name, glm::vec3 value);
 		void setMat4(std::string name, glm::mat4 value);
 
+		void setUniformBlockBinding(std::string name, unsigned int index);
+
 	private:
 		unsigned int _id;
 

@@ -1,7 +1,5 @@
 #include "Window.h"
 
-
-
 #include <iostream>
 
 #include "../Utility/Input.h"

@@ -179,6 +179,11 @@ void Shader::setMat4(std::string name, glm::mat4 value) {
 	glUniformMatrix4fv(glGetUniformLocation(_id, name.c_str()), 1, GL_FALSE, glm::value_ptr(value));
 }
 
+void Shader::setUniformBlockBinding(std::string name, unsigned int index) {
+	unsigned int uniformBlockIndex = glGetUniformBlockIndex(_id, name.c_str());
+	glUniformBlockBinding(_id, uniformBlockIndex, index);
+}
+
 void Shader::_checkCompileErrors(unsigned int shader, std::string type) {
 	int success;
 	char infoLog[1024];
