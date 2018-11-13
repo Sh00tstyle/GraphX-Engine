@@ -11,13 +11,13 @@
 
 Shader* TextureMaterial::_Shader = nullptr;
 
-TextureMaterial::TextureMaterial(Texture* diffuseMap, float shininess) :Material(BlendMode::Opaque), _diffuseMap(diffuseMap), _specularMap(nullptr),
+TextureMaterial::TextureMaterial(Texture* diffuseMap, float shininess) :Material(BlendMode::Opaque, true), _diffuseMap(diffuseMap), _specularMap(nullptr),
 _normalMap(nullptr), _emissionMap(nullptr), _heightMap(nullptr), _shininess(shininess), _heightScale(1.0f) {
 	_initShader();
 }
 
-TextureMaterial::TextureMaterial(Texture * diffuseMap, Texture * specularMap, Texture * normalMap, Texture* emissionMap, Texture* heightMap, float shininess, float heightScale, BlendMode blendMode) :Material(blendMode),
-_diffuseMap(diffuseMap), _specularMap(specularMap), _normalMap(normalMap), _heightMap(heightMap), _emissionMap(emissionMap), _shininess(shininess), _heightScale(heightScale) {
+TextureMaterial::TextureMaterial(Texture * diffuseMap, Texture * specularMap, Texture * normalMap, Texture* emissionMap, Texture* heightMap, float shininess, float heightScale, BlendMode blendMode, bool castsShadows) :
+	Material(blendMode, castsShadows),_diffuseMap(diffuseMap), _specularMap(specularMap), _normalMap(normalMap), _heightMap(heightMap), _emissionMap(emissionMap), _shininess(shininess), _heightScale(heightScale) {
 	_initShader();
 }
 
@@ -152,7 +152,7 @@ void TextureMaterial::_initShader() {
 		_Shader->setInt("shadowMap", 8); //assign to slot 8, so that it shares it with the other materials which have more textures
 
 		_Shader->setUniformBlockBinding("matricesBlock", 0); //set uniform block "matrices" to binding point 0
-		_Shader->setUniformBlockBinding("positionsBlock", 1); //set uniform block "positions" to binding point 1
+		_Shader->setUniformBlockBinding("dataBlock", 1); //set uniform block "data" to binding point 1
 		_Shader->setUniformBlockBinding("lightsBlock", 2); //set uniform block "lights" to binding point 2
 	}
 }

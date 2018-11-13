@@ -17,12 +17,16 @@ class Material {
 		BlendMode getBlendMode();
 		void setBlendMode(BlendMode blendMode);
 
+		void setCastsShadows(bool value);
+		bool getCastsShadows();
+
 		virtual void draw(glm::mat4& modelMatrix) = 0;
 
 	protected:
-		Material(BlendMode blendMode);
+		Material(BlendMode blendMode, bool castsShadows);
 
 		BlendMode _blendMode;
+		bool _castsShadows;
 
 		virtual void _initShader() = 0;
 

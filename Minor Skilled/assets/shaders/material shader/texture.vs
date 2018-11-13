@@ -34,12 +34,15 @@ layout (std140) uniform matricesBlock {
     mat4 lightSpaceMatrix;
 };
 
-layout (std140) uniform positionsBlock {
+layout (std140) uniform dataBlock {
+    bool useShadows;
+
     vec3 cameraPos;
     vec3 directionalLightPos;
 };
 
 layout(std140) uniform lightsBlock {
+    int usedLights;
     Light lights[LIGHTAMOUNT];
 };
 
@@ -75,7 +78,7 @@ void main() {
     mat3 TBN = transpose(mat3(T, B, N));
 
     //calculate tangent space positions (convert to world space first if needed)
-    for(int i = 0; i < LIGHTAMOUNT; i++) {
+    for(int i = 0; i < usedLights; i++) {
         vs_out.tangentLightPos[i] = TBN * lights[i].position.xyz;
         vs_out.tangentLightDir[i] = TBN * lights[i].direction.xyz;
     }

@@ -38,12 +38,12 @@ void CameraComponent::update() {
 	glm::mat4 yRotation = rotY;
 	glm::mat4 xRotation = rotX;
 
-	if(std::abs(mouseOffset.x) >= 1.0f) {
+	if(std::abs(mouseOffset.x) >= 0.01f) {
 		yRotation = glm::rotate(yRotation, glm::radians(mouseOffset.x * rotationSpeed * Time::DeltaTime), glm::vec3(0.0f, 1.0f, 0.0f));
 		rotY = yRotation;
 	}
 
-	if(std::abs(mouseOffset.y) >= 1.0f) {
+	if(std::abs(mouseOffset.y) >= 0.01f) {
 		xRotation = glm::rotate(xRotation, glm::radians(mouseOffset.y * rotationSpeed * Time::DeltaTime), glm::vec3(1.0f, 0.0f, 0.0f));
 		rotX = xRotation;
 	}
@@ -55,7 +55,7 @@ void CameraComponent::update() {
 	glm::mat4 newTransform = glm::mat4(1.0f);
 
 	newTransform = glm::translate(newTransform, localPos);
-	newTransform = newTransform * yRotation * xRotation;
+	newTransform = newTransform * yRotation * xRotation; //first rotate over the x axis and the over the y axis
 	newTransform = glm::translate(newTransform, translation);
 
 	transform->localTransform = newTransform;
@@ -65,7 +65,7 @@ void CameraComponent::update() {
 		LightComponent* lightComponent = (LightComponent*)_owner->getComponent(ComponentType::Light);
 		if(lightComponent->lightType != LightType::Spot) return; //no need to update the light component when the attached light is no spotlight
 
-		glm::vec3 cameraForward = newTransform[2]; //second row represent the (local) forward vector
+		glm::vec3 cameraForward = newTransform[2]; //second row represents the (local) forward vector
 		lightComponent->lightDirection = cameraForward;
 	}
 }

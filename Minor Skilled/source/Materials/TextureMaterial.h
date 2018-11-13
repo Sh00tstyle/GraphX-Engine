@@ -18,7 +18,7 @@ class TextureMaterial : public Material {
 	public:
 		TextureMaterial(Texture* diffuseMap, float shininess = 32.0f);
 		TextureMaterial(Texture* diffuseMap, Texture* specularMap = nullptr, Texture* normalMap = nullptr, Texture* heightMap = nullptr, Texture* emissionMap = nullptr, 
-						float shininess = 32.0f, float heightScale = 1.0f, BlendMode blendMode = BlendMode::Opaque);
+						float shininess = 32.0f, float heightScale = 1.0f, BlendMode blendMode = BlendMode::Opaque, bool castsShadows = true);
 		~TextureMaterial();
 
 		Texture* getDiffuseMap();

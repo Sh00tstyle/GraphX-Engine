@@ -11,7 +11,7 @@ class LightComponent;
 class ColorMaterial : public Material {
 	public:
 		ColorMaterial();
-		ColorMaterial(glm::vec3 ambientColor, glm::vec3 diffuseColor, glm::vec3 specularColor, float shininess);
+		ColorMaterial(glm::vec3 ambientColor, glm::vec3 diffuseColor, glm::vec3 specularColor, float shininess = 32.0f, bool castsShadows = true);
 		~ColorMaterial();
 
 		glm::vec3 getAmbientColor();

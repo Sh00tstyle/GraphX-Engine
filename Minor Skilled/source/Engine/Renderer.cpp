@@ -78,14 +78,14 @@ const float Renderer::_SkyboxVertices[] = {
 };
 
 const float Renderer::_ScreenQuadVertices[] = {
-	//vertices         //uv
+	//vertices          //uv
 	-1.0f,  1.0f, 0.0f, 0.0f, 1.0f,
 	-1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
 	1.0f,  1.0f, 0.0f, 1.0f, 1.0f,
 	1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
 };
 
-Renderer::Renderer() {
+Renderer::Renderer(unsigned int msaaSamples): _msaaSamples(msaaSamples) {
 	glEnable(GL_DEPTH_TEST); //enable the z-buffer
 	glDepthFunc(GL_LESS); //set depth funtion to less
 
@@ -96,6 +96,8 @@ Renderer::Renderer() {
 
 	//glEnable(GL_CULL_FACE); //enable face culling
 	//glCullFace(GL_BACK); //cull backfaces
+
+	glEnable(GL_MULTISAMPLE); //enable MSAA (only works in forward rendering and on the default framebuffer)
 
 	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS); //enable seamless cubemap sampling for lower mip map levels in the pre filter map
 
@@ -111,15 +113,26 @@ Renderer::Renderer() {
 
 	//setup FBOs
 	_initShadowFBO();
+	_initMultisampledHdrFBO();
+	_initBloomFBO();
+	_initBlurFBOs();
 }
 
 Renderer::~Renderer() {
 	//free resources
 	delete _shadowShader;
 	delete _skyboxShader;
-	delete _screenQuadShader;
+	delete _blurShader;
+	delete _postProcessingShader;
 
 	delete _shadowMap;
+	delete _multiSampledColorBuffer;
+	delete _multiSampledBrightColorBuffer;
+	delete _bloomBrightColorBuffer;
+
+	for(unsigned int i = 0; i < 2; i++) {
+		delete _blurColorbuffers[i];
+	}
 
 	glDeleteVertexArrays(1, &_skyboxVAO);
 	glDeleteBuffers(1, &_skyboxVBO);
@@ -128,14 +141,24 @@ Renderer::~Renderer() {
 	glDeleteBuffers(1, &_screenQuadVBO);
 
 	glDeleteBuffers(1, &_matricesUBO);
-	glDeleteBuffers(1, &_positionsUBO);
+	glDeleteBuffers(1, &_dataUBO);
 	glDeleteBuffers(1, &_lightsUBO);
 
 	glDeleteFramebuffers(1, &_shadowFBO);
+	glDeleteFramebuffers(1, &_multisampledHdrFBO);
+	glDeleteFramebuffers(1, &_bloomFBO);
+	glDeleteFramebuffers(2, _blurFBOs);
+
+	glDeleteRenderbuffers(1, &_depthRBO);
 }
 
 void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& lights, Node* mainCamera, Node* directionalLight, Texture* skybox) {
 	//render from main camera
+	if(mainCamera == nullptr) {
+		std::cout << "ERROR: There is no main camera assigned. Unable to render scene." << std::endl;
+		return;
+	}
+
 	CameraComponent* mainCameraComponent = (CameraComponent*)mainCamera->getComponent(ComponentType::Camera);
 	Transform* mainCameraTransform = mainCamera->getTransform();
 
@@ -159,15 +182,29 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 	}
 
 	//setup light space matrix
-	LightComponent* directionalLightComponent = (LightComponent*)directionalLight->getComponent(ComponentType::Light);
-	glm::vec3 directionalLightPos = glm::normalize(directionalLightComponent->lightDirection) * -3.0f; //offset light position 3 units in the opposite direction of the light direction
+	glm::vec3 directionalLightPos = glm::vec3(0.0f);
 
-	glm::mat4 lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 1.0f, 7.5f);
-	glm::mat4 lightView = glm::lookAt(directionalLightPos, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-	glm::mat4 lightSpaceMatrix = lightProjection * lightView;
+	glm::mat4 lightProjection = glm::mat4(1.0f);
+	glm::mat4 lightView = glm::mat4(1.0f);
+	glm::mat4 lightSpaceMatrix = glm::mat4(1.0f);
+
+	bool useShadows = true;
+
+	if(directionalLight != nullptr) {
+		LightComponent* directionalLightComponent = (LightComponent*)directionalLight->getComponent(ComponentType::Light);
+		directionalLightPos = glm::normalize(directionalLightComponent->lightDirection) * -3.0f; //offset light position 3 units in the opposite direction of the light direction
+
+		lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 1.0f, 7.5f);
+		lightView = glm::lookAt(directionalLightPos, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		lightSpaceMatrix = lightProjection * lightView;
+	} else {
+		useShadows = false;
+
+		std::cout << "WARNING: No directional light assigned. Unable to render shadowmap." << std::endl;
+	}
 
 	//store the matrices and the vectors in the uniform buffer
-	_fillUniformBuffers(viewMatrix, projectionMatrix, lightSpaceMatrix, cameraPos, directionalLightPos, lightComponents);
+	_fillUniformBuffers(viewMatrix, projectionMatrix, lightSpaceMatrix, cameraPos, directionalLightPos, useShadows, lightComponents);
 
 	//clear screen in light grey
 	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
@@ -181,8 +218,11 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 	//render skybox
 	_renderSkybox(viewMatrix, projectionMatrix, skybox);
 
+	//blit multisampled bright color texture into the bloom fbo to get a non-multisampled bright color texture
+	_blitHDRtoBloomFBO();
+
 	//render screen quad
-	//_renderScreenQuad(_shadowMap);
+	_renderPostProcessingQuad(2.2f, 1.0f);
 }
 
 void Renderer::_initShaders() {
@@ -195,11 +235,18 @@ void Renderer::_initShaders() {
 	_skyboxShader->use();
 	_skyboxShader->setInt("skybox", 0);
 
-	//lazy screen quad shader
-	_screenQuadShader = new Shader(Filepath::ShaderPath + "post processing shader/screenQuad.vs", Filepath::ShaderPath + "post processing shader/screenQuad.fs");
+	//initialize blur shader
+	_blurShader = new Shader(Filepath::ShaderPath + "post processing shader/blur.vs", Filepath::ShaderPath + "post processing shader/blur.fs");
 
-	_screenQuadShader->use();
-	_screenQuadShader->setInt("screenTexture", 0);
+	_blurShader->use();
+	_blurShader->setInt("image", 0);
+
+	//initialize post processing shader
+	_postProcessingShader = new Shader(Filepath::ShaderPath + "post processing shader/postProcessing.vs", Filepath::ShaderPath + "post processing shader/postProcessing.fs");
+
+	_postProcessingShader->use();
+	_postProcessingShader->setInt("multiSampledScreenTexture", 0);
+	_postProcessingShader->setInt("bloomBlur", 1);
 }
 
 void Renderer::_initSkyboxVAO() {
@@ -239,17 +286,17 @@ void Renderer::_initUniformBuffers() {
 	//define the range of the buffer that links to a uniform binding point (binding point = 0)
 	glBindBufferRange(GL_UNIFORM_BUFFER, 0, _matricesUBO, 0, neededMemory);
 
-	//create positions uniform buffer
-	neededMemory = sizeof(glm::vec4) * 2; //2x vec3, but needs the memory layout of a vec4
+	//create data uniform buffer
+	neededMemory = sizeof(glm::vec4) * 3; //2x vec3 and a bool, but needs the memory layout of a three vec4 because of padding
 
-	glGenBuffers(1, &_positionsUBO);
-	glBindBuffer(GL_UNIFORM_BUFFER, _positionsUBO);
+	glGenBuffers(1, &_dataUBO);
+	glBindBuffer(GL_UNIFORM_BUFFER, _dataUBO);
 	glBufferData(GL_UNIFORM_BUFFER, neededMemory, NULL, GL_STATIC_DRAW);
 
-	glBindBufferRange(GL_UNIFORM_BUFFER, 1, _positionsUBO, 0, neededMemory); //bind to binding point 1
+	glBindBufferRange(GL_UNIFORM_BUFFER, 1, _dataUBO, 0, neededMemory); //bind to binding point 1
 
 	//create lights uniform buffer
-	neededMemory = sizeof(GLLight) * LightComponent::LightAmount; //calculated 104 bytes per light struct + 8 bytes for padding (112 in total)
+	neededMemory = sizeof(glm::vec4) + sizeof(GLLight) * LightComponent::LightAmount; //112 bytes per light struct + 16 for an additional int
 
 	glGenBuffers(1, &_lightsUBO);
 	glBindBuffer(GL_UNIFORM_BUFFER, _lightsUBO);
@@ -292,6 +339,109 @@ void Renderer::_initShadowFBO() {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0); 
 }
 
+void Renderer::_initMultisampledHdrFBO() {
+	//create multisampled floating point color buffer
+	_multiSampledColorBuffer = new Texture();
+
+	glGenTextures(1, &_multiSampledColorBuffer->getID());
+	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, _multiSampledColorBuffer->getID()); //multi sampled texture
+	glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, _msaaSamples, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_TRUE); 
+
+	//create floating point bright color buffer
+	_multiSampledBrightColorBuffer = new Texture();
+
+	glGenTextures(1, &_multiSampledBrightColorBuffer->getID());
+	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, _multiSampledBrightColorBuffer->getID()); //multi sampled texture
+	glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, _msaaSamples, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_TRUE);
+	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
+
+	//create depth renderbuffer
+	glGenRenderbuffers(1, &_depthRBO);
+	glBindRenderbuffer(GL_RENDERBUFFER, _depthRBO);
+	glRenderbufferStorageMultisample(GL_RENDERBUFFER, _msaaSamples, GL_DEPTH_COMPONENT,Window::ScreenWidth, Window::ScreenHeight);
+	glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+	//create floating point framebuffer, attach color buffers and render buffer
+	glGenFramebuffers(1, &_multisampledHdrFBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, _multisampledHdrFBO);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, _multiSampledColorBuffer->getID(), 0); //attach color buffer
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D_MULTISAMPLE, _multiSampledBrightColorBuffer->getID(), 0); //attach bright color buffer
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, _depthRBO); //attach depth renderbuffer
+
+	//tell OpenGL which color attachments this framebuffer will use for rendering
+	unsigned int attachments[2] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
+	glDrawBuffers(2, attachments);
+
+	//check for completion
+	if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+		std::cout << "ERROR: HDR framebuffer is incomplete." << std::endl;
+	}
+
+	//bind back to default framebuffer
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void Renderer::_initBloomFBO() {
+	//create bloom bright color buffer (not multisampled)
+	_bloomBrightColorBuffer = new Texture();
+
+	glGenTextures(1, &_bloomBrightColorBuffer->getID());
+	glBindTexture(GL_TEXTURE_2D, _bloomBrightColorBuffer->getID()); //multi sampled texture
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, 0, GL_RGB, GL_FLOAT, NULL);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);  //clamp to the edge as the blur filter would otherwise sample repeated texture values
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+	//create framebuffer
+	glGenFramebuffers(1, &_bloomFBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, _bloomFBO);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _bloomBrightColorBuffer->getID(), 0); //attach the colo buffer to attachment 1, since the bright color in the other FBO is stored there
+
+	//check for completion (no depth buffer needed)
+	if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+		std::cout << "ERROR: Bloom frmabeuffer is incomplete" << std::endl;
+	}
+
+	//bind back to default framebuffer
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void Renderer::_initBlurFBOs() {
+	//create blur framebuffers
+	glGenFramebuffers(2, _blurFBOs);
+
+	//create floating point blur colorbuffers
+	for(unsigned int i = 0; i < 2; i++) {
+		//bind framebuffer
+		glBindFramebuffer(GL_FRAMEBUFFER, _blurFBOs[i]);
+
+		//create texture buffers
+		Texture* blurColorbuffer = new Texture();
+		_blurColorbuffers[i] = blurColorbuffer; //store texture in the array
+
+		glGenTextures(1, &blurColorbuffer->getID());
+		glBindTexture(GL_TEXTURE_2D, blurColorbuffer->getID());
+
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, 0, GL_RGB, GL_FLOAT, NULL);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); //clamp to the edge as the blur filter would otherwise sample repeated texture values
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, blurColorbuffer->getID(), 0); //attach blur colorbuffer to the blur framebuffer
+
+		//check for framebuffer completion (no need for depth buffer)
+		if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+			std::cout << "ERROR: Blur framebuffer " + std::to_string(i) + " is incomplete." << std::endl;
+		}
+
+		//bind back to default framebuffer
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	}
+}
+
 void Renderer::_renderShadowMap(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, glm::mat4& lightSpaceMatrix) {
 	//setup shader uniforms
 	_shadowShader->use();
@@ -305,23 +455,27 @@ void Renderer::_renderShadowMap(std::vector<std::pair<RenderComponent*, glm::mat
 	glClear(GL_DEPTH_BUFFER_BIT);
 
 	glm::mat4 modelMatrix;
+	Material* material;
 	Model* model;
 
 	for(unsigned int i = 0; i < renderComponents.size(); i++) {
 		modelMatrix = renderComponents[i].second;
+		material = renderComponents[i].first->material;
 		model = renderComponents[i].first->model;
+
+		if(!material->getCastsShadows()) continue; //skip this model, if it should not cast shadows (e.g. like glass)
 
 		_shadowShader->setMat4("modelMatrix", modelMatrix);
 		model->draw();
 	}
 
-	//reset viewport and bind back to default framebuffer
+	//reset viewport
 	glViewport(0, 0, Window::ScreenWidth, Window::ScreenHeight);
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 void Renderer::_renderScene(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents) {
-	//render each renderable
+	//bind to hdr framebuffer and render each renderable
+	glBindFramebuffer(GL_FRAMEBUFFER, _multisampledHdrFBO);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	//bind shadow map
@@ -344,18 +498,19 @@ void Renderer::_renderScene(std::vector<std::pair<RenderComponent*, glm::mat4>>&
 
 void Renderer::_renderSkybox(glm::mat4& viewMatrix, glm::mat4& projectionMatrix, Texture* skybox) {
 	if(skybox == nullptr) {
-		std::cout << "Unable to render skybox, there is no skybox defined." << std::endl;
+		std::cout << "WARNING: Unable to render skybox, there is no skybox assigned." << std::endl;
 		return;
 	}
 
-	glm::mat4 newViewMatrix = glm::mat4(glm::mat3(viewMatrix)); //remove translation from view matrix
+	//remove translation from view matrix
+	glm::mat4 newViewMatrix = glm::mat4(glm::mat3(viewMatrix)); 
 
 	//set shader uniforms
 	_skyboxShader->use();
 	_skyboxShader->setMat4("viewMatrix", newViewMatrix);
 	_skyboxShader->setMat4("projectionMatrix", projectionMatrix);
 
-	//render skybox
+	//render skybox (done in the same framebuffer as the one used in _renderScene)
 	glDepthFunc(GL_LEQUAL); //set depth funtion to less than AND equal for skybox depth trick
 	glBindVertexArray(_skyboxVAO);
 	glActiveTexture(GL_TEXTURE0);
@@ -365,40 +520,83 @@ void Renderer::_renderSkybox(glm::mat4& viewMatrix, glm::mat4& projectionMatrix,
 	glDepthFunc(GL_LESS); //depth function set back to default
 }
 
-void Renderer::_renderScreenQuad(Texture* screenTexture) {
-	//render screen quad with passed in texture
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+void Renderer::_renderPostProcessingQuad(float gamma, float exposure) {
+	//blur bright fragments with two-pass Gaussian Blur 
+	bool horizontal = true;
+	bool firstIteration = true;
+	unsigned int amount = 10;
 
-	_screenQuadShader->use();
-	
+	_blurShader->use();
+
+	//we will just use the quad and the first active texture, so we can just bind both once
 	glBindVertexArray(_screenQuadVAO);
 	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, screenTexture->getID()); //render shadow map to screen
+
+	for(unsigned int i = 0; i < amount; i++) {
+		glBindFramebuffer(GL_FRAMEBUFFER, _blurFBOs[horizontal]);
+
+		_blurShader->setInt("horizontal", horizontal);
+		glBindTexture(GL_TEXTURE_2D, firstIteration ? _bloomBrightColorBuffer->getID() : _blurColorbuffers[!horizontal]->getID());  //bind texture of other framebuffer (or scene if first iteration)
+
+		//render quad
+		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+		horizontal = !horizontal;
+
+		if(firstIteration) firstIteration = false;
+	}
+
+	//bind back to default framebuffer and render screen quad with the post processing effects
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	//set uniforms for gamma correction and tone mapping
+	_postProcessingShader->use();
+	_postProcessingShader->setFloat("gamma", gamma);
+	_postProcessingShader->setFloat("exposure", exposure);
+
+	//set uniform for MSAA
+	_postProcessingShader->setInt("msaaSamples", _msaaSamples);
+	_postProcessingShader->setInt("screenWidth", Window::ScreenWidth);
+	_postProcessingShader->setInt("screenHeight", Window::ScreenHeight);
+	
+	//bind texture
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, _multiSampledColorBuffer->getID()); //bind multisampled texture
+
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, _blurColorbuffers[!horizontal]->getID()); //bind blurred bloom texture
+
+	//render texture to the screen and tone map and gamma correct
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 	glBindVertexArray(0);
 }
 
-void Renderer::_fillUniformBuffers(glm::mat4& viewMatrix, glm::mat4& projectionMatrix, glm::mat4& lightSpaceMatrix, glm::vec3& cameraPos, glm::vec3& directionalLightPos, std::vector<std::pair<LightComponent*, glm::vec3>>& lightComponents) {
+void Renderer::_fillUniformBuffers(glm::mat4& viewMatrix, glm::mat4& projectionMatrix, glm::mat4& lightSpaceMatrix, glm::vec3& cameraPos, glm::vec3& directionalLightPos, bool& useShadows, std::vector<std::pair<LightComponent*, glm::vec3>>& lightComponents) {
 	//store the matrices in the matrices uniform buffer
 	glBindBuffer(GL_UNIFORM_BUFFER, _matricesUBO);
 	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(viewMatrix)); //buffer view matrix
 	glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(projectionMatrix)); //buffer projection matrix
 	glBufferSubData(GL_UNIFORM_BUFFER, 2 * sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(lightSpaceMatrix)); //buffer light space matrix
 
-	//store the positions in the positions uniform buffer
-	glBindBuffer(GL_UNIFORM_BUFFER, _positionsUBO);
-	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::vec4), glm::value_ptr(cameraPos)); //buffer cameraPos
-	glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::vec4), sizeof(glm::vec4), glm::value_ptr(directionalLightPos)); //buffer directional light pos
+	//store the data in the data uniform buffer
+	glBindBuffer(GL_UNIFORM_BUFFER, _dataUBO);
+	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(GLboolean), &useShadows); //buffer use shadows bool
+	glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::vec4), sizeof(glm::vec4), glm::value_ptr(cameraPos)); //buffer cameraPos
+	glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::vec4) * 2, sizeof(glm::vec4), glm::value_ptr(directionalLightPos)); //buffer directional light pos
 
 	//store the lights in the lights uniform buffer
 	std::pair<LightComponent*, glm::vec3> currentLightPair;
 	LightComponent* currentLight;
 	glm::vec3 currentLightPos;
 
-	GLint usedLights = lightComponents.size();
+	unsigned int usedLights = lightComponents.size();
 	if(usedLights > LightComponent::LightAmount) usedLights = LightComponent::LightAmount; //limit the amount of possible lights
 
 	glBindBuffer(GL_UNIFORM_BUFFER, _lightsUBO);
+
+	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(GLint), &usedLights); //buffer used light amount
 
 	for(unsigned int i = 0; i < usedLights; i++) {
 		currentLight = lightComponents[i].first;
@@ -406,7 +604,7 @@ void Renderer::_fillUniformBuffers(glm::mat4& viewMatrix, glm::mat4& projectionM
 
 		GLLight light = currentLight->toGLLight(currentLightPos); //convert current light component to a light struct GLSL can understand
 
-		glBufferSubData(GL_UNIFORM_BUFFER, sizeof(GLLight) * i, sizeof(GLLight), &light); //buffer light struct
+		glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::vec4) + sizeof(GLLight) * i, sizeof(GLLight), &light); //buffer light struct (padded to the size of a vec4)
 	}
 
 	glBindBuffer(GL_UNIFORM_BUFFER, 0); //unbind
@@ -470,4 +668,15 @@ std::vector<std::pair<RenderComponent*, glm::mat4>> Renderer::_getSortedRenderCo
 	}
 
 	return sortedRenderComponents; //return the sorted lists
+}
+
+void Renderer::_blitHDRtoBloomFBO() {
+	//blit from the multisampled framebuffer we rendered to into the non-multisampled framebuffer, so that we don't have to render the entire scene again
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, _multisampledHdrFBO);
+	glReadBuffer(GL_COLOR_ATTACHMENT1); //read from color attachment 1 (the bright color multisample texture)
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _bloomFBO);
+	glDrawBuffer(GL_COLOR_ATTACHMENT0); //draw to color attachment 0
+
+	//the resulting texture is stored in _bloomBrightColorBuffer
+	glBlitFramebuffer(0, 0, Window::ScreenWidth, Window::ScreenHeight, 0, 0, Window::ScreenWidth, Window::ScreenHeight, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 }

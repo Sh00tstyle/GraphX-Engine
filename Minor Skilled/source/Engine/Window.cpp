@@ -7,7 +7,7 @@
 unsigned int Window::ScreenWidth = 1280;
 unsigned int Window::ScreenHeight = 720;
 
-Window::Window(unsigned int width, unsigned int height, std::string name, unsigned int msaa) {
+Window::Window(unsigned int width, unsigned int height, std::string name, int msaa) {
 	ScreenWidth = width;
 	ScreenHeight = height;
 
@@ -38,11 +38,11 @@ void Window::pollEvents() {
 	glfwPollEvents();
 }
 
-void Window::_initializeGLFW(unsigned int msaa) {
+void Window::_initializeGLFW(int msaa) {
 	int success = glfwInit();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-	glfwWindowHint(GLFW_SAMPLES, msaa); //enable MSAA based on parameter (default is 4)
+	glfwWindowHint(GLFW_SAMPLES, msaa); //set amount of multisamples (if MSAA is enabled)
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 	std::cout << "GLFW Initialization Status: " + std::to_string(success) << std::endl;

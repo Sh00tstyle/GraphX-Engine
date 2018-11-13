@@ -11,6 +11,7 @@
 #include "../Engine/Window.h"
 #include "../Engine/World.h"
 #include "../Engine/Renderer.h"
+#include "../Engine/Texture.h"
 
 #include "../Components/LightComponent.h"
 
@@ -32,9 +33,11 @@ Scene::~Scene() {
 void Scene::initialize() {
 	std::cout << "---Initializing Engine---" << std::endl;
 
-	_window = new Window(1280, 720, "GraphX Engine", 4);
+	unsigned int msaaSamples = 4; //move to rendering settings
+
+	_window = new Window(1280, 720, "GraphX Engine", msaaSamples);
 	_world = new World(); //scene graph
-	_renderer = new Renderer();
+	_renderer = new Renderer(msaaSamples);
 
 	_skybox = nullptr;
 	_mainCamera = nullptr;

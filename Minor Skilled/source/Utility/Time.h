@@ -8,6 +8,7 @@ public:
 	static float LastTime;
 
 	static void UpdateTime();
+	static float GetFPS();
 
 };
 

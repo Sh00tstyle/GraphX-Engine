@@ -12,3 +12,7 @@ void Time::UpdateTime() {
 	DeltaTime = CurrentTime - LastTime;
 	LastTime = CurrentTime;
 }
+
+float Time::GetFPS() {
+	return 1.0f / DeltaTime;
+}

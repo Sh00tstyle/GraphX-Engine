@@ -39,25 +39,31 @@ in VS_OUT {
     vec4 lightSpaceFragPos;
 } fs_in;
 
-layout (std140) uniform positionsBlock {
+layout (std140) uniform dataBlock {
+    bool useShadows;
+
     vec3 cameraPos;
     vec3 directionalLightPos;
 };
 
 layout(std140) uniform lightsBlock {
+    int usedLights;
     Light lights[LIGHTAMOUNT];
 };
 
 uniform Material material;
 uniform sampler2D shadowMap;
 
-out vec4 fragColor;
+layout (location = 0) out vec4 fragColor;
+layout (location = 1) out vec4 brightColor;
 
 vec3 CalculateDirectionalLight(Light light, vec3 normal, vec3 viewDirection);
 vec3 CalculatePointLight(Light light, vec3 normal, vec3 viewDirection);
 vec3 CalculateSpotLight(Light light, vec3 normal, vec3 viewDirection);
 
 float CalculateShadow(vec3 normal);
+
+vec4 CalculateBrightColor(vec3 color);
 
 void main() {
     vec3 normal = normalize(fs_in.fragNormal);
@@ -66,7 +72,7 @@ void main() {
     //lighting
     vec3 result = vec3(0.0f);
 
-    for(int i = 0; i < LIGHTAMOUNT; i++) {
+    for(int i = 0; i < usedLights; i++) {
         switch(lights[i].type) {
             case DIRECTIONAL:
                 result += CalculateDirectionalLight(lights[i], normal, viewDirection);
@@ -84,10 +90,11 @@ void main() {
 
     //shadows
     float shadow = CalculateShadow(normal);
-    shadow = 1.0f - shadow;
-    result *= shadow * 0.5f;
+    shadow = 1.0f - shadow * 0.5f;
+    result *= shadow;
 
     fragColor = vec4(result, 1.0f);
+    brightColor = CalculateBrightColor(result);
 }
 
 vec3 CalculateDirectionalLight(Light light, vec3 normal, vec3 viewDirection) {
@@ -166,6 +173,8 @@ vec3 CalculateSpotLight(Light light, vec3 normal, vec3 viewDirection) {
 }
 
 float CalculateShadow(vec3 normal) {
+    if(!useShadows) return 0.0f; //no shadows
+
     //perform perspective divide
     vec3 projectedCoords = fs_in.lightSpaceFragPos.xyz / fs_in.lightSpaceFragPos.w;
 
@@ -198,4 +207,14 @@ float CalculateShadow(vec3 normal) {
     if(projectedCoords.z > 1.0f) shadow = 0.0f;
 
     return shadow;
+}
+
+vec4 CalculateBrightColor(vec3 color) {
+    const vec3 threshold = vec3(0.2126f, 0.7152f, 0.0722f);
+
+    float brightness = dot(color, threshold);
+
+    //return the color if it was bright enough, otherwise return black
+    if(brightness > 1.0f) return vec4(color, 1.0f);
+    else return vec4(vec3(0.0f), 1.0f);
 }

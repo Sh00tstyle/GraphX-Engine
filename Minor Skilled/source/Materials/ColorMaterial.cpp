@@ -10,11 +10,11 @@
 
 Shader* ColorMaterial::_Shader = nullptr;
 
-ColorMaterial::ColorMaterial():Material(BlendMode::Opaque), _ambientColor(glm::vec3(0.0f)), _diffuseColor(glm::vec3(0.0f)), _specularColor(glm::vec3(0.0f)), _shininess(32.0f) {
+ColorMaterial::ColorMaterial():Material(BlendMode::Opaque, true), _ambientColor(glm::vec3(0.0f)), _diffuseColor(glm::vec3(0.0f)), _specularColor(glm::vec3(0.0f)), _shininess(32.0f) {
 	_initShader();
 }
 
-ColorMaterial::ColorMaterial(glm::vec3 ambientColor, glm::vec3 diffuseColor, glm::vec3 specularColor, float shininess):Material(BlendMode::Opaque),
+ColorMaterial::ColorMaterial(glm::vec3 ambientColor, glm::vec3 diffuseColor, glm::vec3 specularColor, float shininess, bool castsShadows):Material(BlendMode::Opaque, castsShadows),
 _ambientColor(ambientColor), _diffuseColor(diffuseColor), _specularColor(specularColor), _shininess(shininess) {
 	_initShader();
 }
@@ -75,7 +75,7 @@ void ColorMaterial::_initShader() {
 		_Shader->setInt("shadowMap", 8); //assign to slot 8, so that it shares it with the other materials which have more textures
 
 		_Shader->setUniformBlockBinding("matricesBlock", 0); //set uniform block "matrices" to binding point 0
-		_Shader->setUniformBlockBinding("positionsBlock", 1); //set uniform block "positions" to binding point 1
+		_Shader->setUniformBlockBinding("dataBlock", 1); //set uniform block "data" to binding point 1
 		_Shader->setUniformBlockBinding("lightsBlock", 2); //set uniform block "lights" to binding point 2
 	}
 }
