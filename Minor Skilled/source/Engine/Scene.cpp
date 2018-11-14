@@ -49,7 +49,7 @@ void Scene::initialize() {
 }
 
 void Scene::run() {
-	while(_window->isOpen()) {
+	while(_window->isOpen()) { //render loop
 		Time::UpdateTime();
 
 		Input::ProcessInput();

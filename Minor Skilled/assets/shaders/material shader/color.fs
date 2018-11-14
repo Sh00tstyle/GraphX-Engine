@@ -1,6 +1,6 @@
-#version 330 core
+#version 460 core
 
-const int LIGHTAMOUNT = 10; //TODO: replace with uniform buffer objects
+const int LIGHTAMOUNT = 10;
 
 const int DIRECTIONAL = 0;
 const int POINT = 1;
@@ -88,6 +88,10 @@ void main() {
         }
     }
 
+    if(usedLights == 0) { //in case we have no light, take a basic color
+        result = material.diffuse;
+    }
+
     //shadows
     float shadow = CalculateShadow(normal);
     shadow = 1.0f - shadow * 0.5f;
@@ -102,7 +106,7 @@ vec3 CalculateDirectionalLight(Light light, vec3 normal, vec3 viewDirection) {
     vec3 ambient = light.ambient.rgb * material.ambient;
 
     //diffuse
-    float difference = max(dot(normal, light.direction.xyz), 0.0f);
+    float difference = max(dot(normal, -light.direction.xyz), 0.0f);
     vec3 diffuse = light.diffuse.rgb * difference * material.diffuse;
 
     //specular

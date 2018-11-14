@@ -1,4 +1,4 @@
-#version 330 core
+#version 460 core
 
 const int LIGHTAMOUNT = 10;
 
@@ -134,6 +134,10 @@ void main() {
                 result += CalculateSpotLight(lights[i], fs_in.tangentLightPos[i], fs_in.tangentLightDir[i], normal, viewDirection, texCoord);
                 break;
         }
+    }
+
+    if(usedLights == 0) { //in case we have no light, simply sample from the diffuse map
+        result = texture(material.diffuse, fs_in.texCoord).rgb;
     }
 
     //emission

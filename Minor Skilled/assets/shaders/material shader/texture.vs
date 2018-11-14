@@ -1,4 +1,4 @@
-#version 330 core
+#version 460 core
 
 const int LIGHTAMOUNT = 10;
 

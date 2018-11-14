@@ -40,8 +40,11 @@ void Window::pollEvents() {
 
 void Window::_initializeGLFW(int msaa) {
 	int success = glfwInit();
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+
+	//OpenGL version 4.6.0
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+
 	glfwWindowHint(GLFW_SAMPLES, msaa); //set amount of multisamples (if MSAA is enabled)
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
@@ -70,6 +73,8 @@ void Window::_initializeGLAD() {
 	} else {
 		std::cout << "Initialized GLAD" << std::endl;
 	}
+
+	std::cout << glGetString(GL_VERSION) << std::endl; //print version info
 }
 
 void Window::_framebufferSizeCallback(GLFWwindow* window, int width, int height) {
