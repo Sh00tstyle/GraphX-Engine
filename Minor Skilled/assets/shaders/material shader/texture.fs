@@ -52,7 +52,7 @@ in VS_OUT {
     vec3 fragPos;
     vec3 fragNormal;
     vec2 texCoord;
-    
+
     vec3 tangentLightPos[LIGHTAMOUNT];
     vec3 tangentLightDir[LIGHTAMOUNT];
 
@@ -70,9 +70,17 @@ layout (std140) uniform dataBlock {
     vec3 directionalLightPos;
 };
 
-layout(std140) uniform lightsBlock {
+layout(std430) buffer lightsBlock {
     int usedLights;
-    Light lights[LIGHTAMOUNT];
+    Light lights[];
+};
+
+layout (std430) buffer tangentLightPosBlock {
+    vec4 tangentLightPos[];
+};
+
+layout (std430) buffer tangentLightDirBlock {
+    vec4 tangentLightDir[];
 };
 
 uniform Material material;
@@ -120,6 +128,7 @@ void main() {
     //lighting (calculated in tangent space)
     vec3 result = vec3(0.0f);
 
+    /**/
     for(int i = 0; i < usedLights; i++) {
         switch(lights[i].type) {
             case DIRECTIONAL:
@@ -135,6 +144,23 @@ void main() {
                 break;
         }
     }
+    /**
+    for(int i = 0; i < usedLights; i++) {
+        switch(lights[i].type) {
+            case DIRECTIONAL:
+                result += CalculateDirectionalLight(lights[i], tangentLightDir[i].xyz, normal, viewDirection, texCoord);
+                break;
+
+            case POINT:
+                result += CalculatePointLight(lights[i], tangentLightPos[i].xyz, normal, viewDirection, texCoord);
+                break;
+
+            case SPOT:
+                result += CalculateSpotLight(lights[i], tangentLightPos[i].xyz, tangentLightDir[i].xyz, normal, viewDirection, texCoord);
+                break;
+        }
+    }
+    /**/
 
     if(usedLights == 0) { //in case we have no light, simply sample from the diffuse map
         result = texture(material.diffuse, fs_in.texCoord).rgb;

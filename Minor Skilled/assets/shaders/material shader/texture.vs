@@ -41,9 +41,17 @@ layout (std140) uniform dataBlock {
     vec3 directionalLightPos;
 };
 
-layout(std140) uniform lightsBlock {
+layout(std430) buffer lightsBlock {
     int usedLights;
-    Light lights[LIGHTAMOUNT];
+    Light lights[];
+};
+
+layout (std430) buffer tangentLightPosBlock {
+    vec4 tangentLightPos[];
+};
+
+layout (std430) buffer tangentLightDirBlock {
+    vec4 tangentLightDir[];
 };
 
 uniform mat4 modelMatrix;
@@ -52,7 +60,7 @@ out VS_OUT {
     vec3 fragPos;
     vec3 fragNormal;
     vec2 texCoord;
-    
+
     vec3 tangentLightPos[LIGHTAMOUNT];
     vec3 tangentLightDir[LIGHTAMOUNT];
 
@@ -79,8 +87,13 @@ void main() {
 
     //calculate tangent space positions (convert to world space first if needed)
     for(int i = 0; i < usedLights; i++) {
+        /**/
         vs_out.tangentLightPos[i] = TBN * lights[i].position.xyz;
         vs_out.tangentLightDir[i] = TBN * lights[i].direction.xyz;
+        /**
+        tangentLightPos[i].xyz = TBN * lights[i].position.xyz;
+        tangentLightDir[i].xyz = TBN * lights[i].direction.xyz;
+        /**/
     }
 
     vs_out.tangentViewPos = TBN * cameraPos;

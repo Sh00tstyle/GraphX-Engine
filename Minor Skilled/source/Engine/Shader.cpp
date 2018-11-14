@@ -184,6 +184,11 @@ void Shader::setUniformBlockBinding(std::string name, unsigned int index) {
 	glUniformBlockBinding(_id, uniformBlockIndex, index);
 }
 
+void Shader::setShaderStorageBlockBinding(std::string name, unsigned int index) {
+	unsigned int shaderStorageBlockIndex = glGetProgramResourceIndex(_id, GL_SHADER_STORAGE_BLOCK, name.c_str());
+	glShaderStorageBlockBinding(_id, shaderStorageBlockIndex, index);
+}
+
 void Shader::_checkCompileErrors(unsigned int shader, std::string type) {
 	int success;
 	char infoLog[1024];

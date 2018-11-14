@@ -54,10 +54,13 @@ class Renderer {
 		unsigned int _screenQuadVAO;
 		unsigned int _screenQuadVBO;
 
-		//UBOs
+		//UBOs, SSBOs
 		unsigned int _matricesUBO;
 		unsigned int _dataUBO;
-		unsigned int _lightsUBO;
+
+		unsigned int _lightsSSBO;
+		unsigned int _tangentLightPosSSBO;
+		unsigned int _tangentLightDirSSBO;
 
 		//FBOs, RBOs
 		unsigned int _shadowFBO;
@@ -74,6 +77,7 @@ class Renderer {
 		void _initScreenQuadVAO();
 
 		void _initUniformBuffers();
+		void _initShaderStorageBuffers();
 
 		void _initShadowFBO();
 		void _initMultisampledHdrFBO();
@@ -87,8 +91,10 @@ class Renderer {
 		void _renderPostProcessingQuad(float gamma = 2.2f, float exposure = 1.0f);
 
 		//helper functions
-		void _fillUniformBuffers(glm::mat4& viewMatrix, glm::mat4& projectionMatrix, glm::mat4& lightSpaceMatrix, glm::vec3& cameraPos, glm::vec3& directionalLightPos, bool& useShadows, std::vector<std::pair<LightComponent*, glm::vec3>>& lightComponents);
 		std::vector<std::pair<RenderComponent*, glm::mat4>> _getSortedRenderComponents(std::vector<Node*>& renderables, glm::vec3& cameraPos);
+
+		void _fillUniformBuffers(glm::mat4& viewMatrix, glm::mat4& projectionMatrix, glm::mat4& lightSpaceMatrix, glm::vec3& cameraPos, glm::vec3& directionalLightPos, bool& useShadows);
+		void _fillShaderStorageBuffers(std::vector<std::pair<LightComponent*, glm::vec3>>& lightComponents);
 
 		void _blitHDRtoBloomFBO();
 

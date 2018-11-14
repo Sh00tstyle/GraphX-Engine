@@ -1,7 +1,5 @@
 #version 460 core
 
-const int LIGHTAMOUNT = 10;
-
 const int DIRECTIONAL = 0;
 const int POINT = 1;
 const int SPOT = 2;
@@ -46,9 +44,9 @@ layout (std140) uniform dataBlock {
     vec3 directionalLightPos;
 };
 
-layout(std140) uniform lightsBlock {
+layout(std430) buffer lightsBlock {
     int usedLights;
-    Light lights[LIGHTAMOUNT];
+    Light lights[];
 };
 
 uniform Material material;

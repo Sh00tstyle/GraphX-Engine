@@ -108,8 +108,9 @@ Renderer::Renderer(unsigned int msaaSamples): _msaaSamples(msaaSamples) {
 	_initSkyboxVAO();
 	_initScreenQuadVAO();
 
-	//setup uniform buffers
+	//setup UBOs and SSBOs
 	_initUniformBuffers();
+	_initShaderStorageBuffers();
 
 	//setup FBOs
 	_initShadowFBO();
@@ -142,7 +143,10 @@ Renderer::~Renderer() {
 
 	glDeleteBuffers(1, &_matricesUBO);
 	glDeleteBuffers(1, &_dataUBO);
-	glDeleteBuffers(1, &_lightsUBO);
+
+	glDeleteBuffers(1, &_lightsSSBO);
+	glDeleteBuffers(1, &_tangentLightDirSSBO);
+	glDeleteBuffers(1, &_tangentLightPosSSBO);
 
 	glDeleteFramebuffers(1, &_shadowFBO);
 	glDeleteFramebuffers(1, &_multisampledHdrFBO);
@@ -204,7 +208,8 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 	}
 
 	//store the matrices and the vectors in the uniform buffer
-	_fillUniformBuffers(viewMatrix, projectionMatrix, lightSpaceMatrix, cameraPos, directionalLightPos, useShadows, lightComponents);
+	_fillUniformBuffers(viewMatrix, projectionMatrix, lightSpaceMatrix, cameraPos, directionalLightPos, useShadows);
+	_fillShaderStorageBuffers(lightComponents);
 
 	//clear screen in light grey
 	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
@@ -280,7 +285,7 @@ void Renderer::_initUniformBuffers() {
 	//create matrices uniform buffer
 	glGenBuffers(1, &_matricesUBO);
 	glBindBuffer(GL_UNIFORM_BUFFER, _matricesUBO);
-	glBufferData(GL_UNIFORM_BUFFER, neededMemory, NULL, GL_STATIC_DRAW); //allocate the memory, but don't fill it with data yet
+	glBufferData(GL_UNIFORM_BUFFER, neededMemory, NULL, GL_STREAM_DRAW); //allocate the memory, but don't fill it with data yet
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
 	//define the range of the buffer that links to a uniform binding point (binding point = 0)
@@ -291,21 +296,47 @@ void Renderer::_initUniformBuffers() {
 
 	glGenBuffers(1, &_dataUBO);
 	glBindBuffer(GL_UNIFORM_BUFFER, _dataUBO);
-	glBufferData(GL_UNIFORM_BUFFER, neededMemory, NULL, GL_STATIC_DRAW);
+	glBufferData(GL_UNIFORM_BUFFER, neededMemory, NULL, GL_STREAM_DRAW);
 
 	glBindBufferRange(GL_UNIFORM_BUFFER, 1, _dataUBO, 0, neededMemory); //bind to binding point 1
 
-	//create lights uniform buffer
-	neededMemory = sizeof(glm::vec4) + sizeof(GLLight) * LightComponent::LightAmount; //112 bytes per light struct + 16 for an additional int
-
-	glGenBuffers(1, &_lightsUBO);
-	glBindBuffer(GL_UNIFORM_BUFFER, _lightsUBO);
-	glBufferData(GL_UNIFORM_BUFFER, neededMemory, NULL, GL_STATIC_DRAW);
-
-	glBindBufferRange(GL_UNIFORM_BUFFER, 2, _lightsUBO, 0, neededMemory); //bind to binding point 2
-
 	//unbind
 	glBindBuffer(GL_UNIFORM_BUFFER, 0); 
+}
+
+void Renderer::_initShaderStorageBuffers() {
+	//create lights shader storage buffer (enables use of dynamic arrays within shaders)
+	unsigned int neededMemory = sizeof(glm::vec4) + sizeof(GLLight) * LightComponent::LightAmount; //112 bytes per light struct + 16 for an additional int
+
+	glGenBuffers(1, &_lightsSSBO);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, _lightsSSBO);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, neededMemory, NULL, GL_STATIC_DRAW); //tell OpenGL that we will change the data every time we use it by specifying GL_STREAM_DRAW
+
+	glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 2, _lightsSSBO, 0, neededMemory); //bind to binding point 2
+
+	//create tangent light pos storage buffer
+	neededMemory = sizeof(glm::vec4) * LightComponent::LightAmount;
+
+	glGenBuffers(1, &_tangentLightPosSSBO);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, _tangentLightPosSSBO);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, neededMemory, NULL, GL_STATIC_DRAW);
+
+	//explicitly tell OpenGL to keep ordering in the shaders by using glBufferStorage() instead of glBufferData()
+	//by specifying the GL_MAP_COHERENT_BIT flag we ensure that the fragment shader will always have the data the vertex shader wrote
+	//glBufferStorage(GL_SHADER_STORAGE_BUFFER, neededMemory, NULL, GL_MAP_COHERENT_BIT); 
+
+	glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 3, _tangentLightPosSSBO, 0, neededMemory); //bind to binding point 3
+
+	//create tangent light dir storage buffer
+	glGenBuffers(1, &_tangentLightDirSSBO);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, _tangentLightDirSSBO);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, neededMemory, NULL, GL_STATIC_DRAW);
+	//glBufferStorage(GL_SHADER_STORAGE_BUFFER, neededMemory, NULL, GL_MAP_COHERENT_BIT);
+
+	glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 4, _tangentLightDirSSBO, 0, neededMemory); //bind to binding point 4
+
+	//unbind
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 }
 
 void Renderer::_initShadowFBO() {
@@ -573,43 +604,6 @@ void Renderer::_renderPostProcessingQuad(float gamma, float exposure) {
 	glBindVertexArray(0);
 }
 
-void Renderer::_fillUniformBuffers(glm::mat4& viewMatrix, glm::mat4& projectionMatrix, glm::mat4& lightSpaceMatrix, glm::vec3& cameraPos, glm::vec3& directionalLightPos, bool& useShadows, std::vector<std::pair<LightComponent*, glm::vec3>>& lightComponents) {
-	//store the matrices in the matrices uniform buffer
-	glBindBuffer(GL_UNIFORM_BUFFER, _matricesUBO);
-	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(viewMatrix)); //buffer view matrix
-	glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(projectionMatrix)); //buffer projection matrix
-	glBufferSubData(GL_UNIFORM_BUFFER, 2 * sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(lightSpaceMatrix)); //buffer light space matrix
-
-	//store the data in the data uniform buffer
-	glBindBuffer(GL_UNIFORM_BUFFER, _dataUBO);
-	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(GLboolean), &useShadows); //buffer use shadows bool
-	glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::vec4), sizeof(glm::vec4), glm::value_ptr(cameraPos)); //buffer cameraPos
-	glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::vec4) * 2, sizeof(glm::vec4), glm::value_ptr(directionalLightPos)); //buffer directional light pos
-
-	//store the lights in the lights uniform buffer
-	std::pair<LightComponent*, glm::vec3> currentLightPair;
-	LightComponent* currentLight;
-	glm::vec3 currentLightPos;
-
-	unsigned int usedLights = lightComponents.size();
-	if(usedLights > LightComponent::LightAmount) usedLights = LightComponent::LightAmount; //limit the amount of possible lights
-
-	glBindBuffer(GL_UNIFORM_BUFFER, _lightsUBO);
-
-	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(GLint), &usedLights); //buffer used light amount
-
-	for(unsigned int i = 0; i < usedLights; i++) {
-		currentLight = lightComponents[i].first;
-		currentLightPos = lightComponents[i].second;
-
-		GLLight light = currentLight->toGLLight(currentLightPos); //convert current light component to a light struct GLSL can understand
-
-		glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::vec4) + sizeof(GLLight) * i, sizeof(GLLight), &light); //buffer light struct (padded to the size of a vec4)
-	}
-
-	glBindBuffer(GL_UNIFORM_BUFFER, 0); //unbind
-}
-
 std::vector<std::pair<RenderComponent*, glm::mat4>> Renderer::_getSortedRenderComponents(std::vector<Node*>& renderables, glm::vec3& cameraPos) {
 	//returns a vector of pairs  of render components and their respective model matrix (sorted by Opaque -> distance to camera)
 
@@ -668,6 +662,49 @@ std::vector<std::pair<RenderComponent*, glm::mat4>> Renderer::_getSortedRenderCo
 	}
 
 	return sortedRenderComponents; //return the sorted lists
+}
+
+void Renderer::_fillUniformBuffers(glm::mat4& viewMatrix, glm::mat4& projectionMatrix, glm::mat4& lightSpaceMatrix, glm::vec3& cameraPos, glm::vec3& directionalLightPos, bool& useShadows) {
+	//store the matrices in the matrices uniform buffer
+	glBindBuffer(GL_UNIFORM_BUFFER, _matricesUBO);
+	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(viewMatrix)); //buffer view matrix
+	glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(projectionMatrix)); //buffer projection matrix
+	glBufferSubData(GL_UNIFORM_BUFFER, 2 * sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(lightSpaceMatrix)); //buffer light space matrix
+
+	//store the data in the data uniform buffer
+	glBindBuffer(GL_UNIFORM_BUFFER, _dataUBO);
+	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(GLboolean), &useShadows); //buffer use shadows bool
+	glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::vec4), sizeof(glm::vec4), glm::value_ptr(cameraPos)); //buffer cameraPos
+	glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::vec4) * 2, sizeof(glm::vec4), glm::value_ptr(directionalLightPos)); //buffer directional light pos
+
+	glBindBuffer(GL_UNIFORM_BUFFER, 0); //unbind
+}
+
+void Renderer::_fillShaderStorageBuffers(std::vector<std::pair<LightComponent*, glm::vec3>>& lightComponents) {
+	//store the lights in the lights shader storage buffer
+	std::pair<LightComponent*, glm::vec3> currentLightPair;
+	LightComponent* currentLight;
+	glm::vec3 currentLightPos;
+
+	unsigned int usedLights = lightComponents.size();
+	if(usedLights > LightComponent::LightAmount) usedLights = LightComponent::LightAmount; //limit the amount of possible lights
+
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, _lightsSSBO);
+
+	glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(GLint), &usedLights); //buffer used light amount
+
+	for(unsigned int i = 0; i < usedLights; i++) {
+		currentLight = lightComponents[i].first;
+		currentLightPos = lightComponents[i].second;
+
+		GLLight light = currentLight->toGLLight(currentLightPos); //convert current light component to a light struct GLSL can understand
+
+		glBufferSubData(GL_SHADER_STORAGE_BUFFER, sizeof(glm::vec4) + sizeof(GLLight) * i, sizeof(GLLight), &light); //buffer light struct (padded to the size of a vec4)
+	}
+
+	//no need to fill the tangent buffers, since they just serve as output/input variables with flexible size in the shaders
+
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0); //unbind
 }
 
 void Renderer::_blitHDRtoBloomFBO() {

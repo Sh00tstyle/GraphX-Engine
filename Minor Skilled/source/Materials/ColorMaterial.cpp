@@ -76,6 +76,7 @@ void ColorMaterial::_initShader() {
 
 		_Shader->setUniformBlockBinding("matricesBlock", 0); //set uniform block "matrices" to binding point 0
 		_Shader->setUniformBlockBinding("dataBlock", 1); //set uniform block "data" to binding point 1
-		_Shader->setUniformBlockBinding("lightsBlock", 2); //set uniform block "lights" to binding point 2
+
+		_Shader->setShaderStorageBlockBinding("lightsBlock", 2); //set shader storage block "lights" to binding point 2
 	}
 }

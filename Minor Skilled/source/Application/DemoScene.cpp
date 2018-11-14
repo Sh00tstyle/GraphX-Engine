@@ -83,8 +83,8 @@ void DemoScene::_initializeScene() {
 	CameraComponent* cameraComponent = new CameraComponent(glm::perspective(glm::radians(45.0f), (float)Window::ScreenWidth / (float)Window::ScreenHeight, 0.1f, 100.0f), 45.0f, 5.0f, 25.0f);
 	LightComponent* spotLightComponent = new LightComponent(LightType::Spot);
 	spotLightComponent->lightAmbient = glm::vec3(0.0f);
-	spotLightComponent->lightDiffuse = glm::vec3(1.0f);
-	spotLightComponent->lightSpecular = glm::vec3(1.0f);
+	spotLightComponent->lightDiffuse = glm::vec3(0.5f);
+	spotLightComponent->lightSpecular = glm::vec3(0.8f);
 	spotLightComponent->constantAttenuation = 1.0f;
 	spotLightComponent->linearAttenuation = 0.09f;
 	spotLightComponent->quadraticAttenuation = 0.032f;
@@ -100,9 +100,9 @@ void DemoScene::_initializeScene() {
 	pointLightComponent->quadraticAttenuation = 0.032f;
 
 	LightComponent* directionalLightComponent = new LightComponent(LightType::Directional);
-	directionalLightComponent->lightAmbient = glm::vec3(0.2f);
+	directionalLightComponent->lightAmbient = glm::vec3(0.5f);
 	directionalLightComponent->lightDiffuse = glm::vec3(0.5f);
-	directionalLightComponent->lightSpecular = glm::vec3(1.0f);
+	directionalLightComponent->lightSpecular = glm::vec3(0.1f);
 	directionalLightComponent->lightDirection = glm::vec3(1.0f, -2.0f, -0.5f);
 
 	RenderComponent* cyborgRenderComponent = new RenderComponent(cyborgModel, textureMaterial);
@@ -111,12 +111,12 @@ void DemoScene::_initializeScene() {
 
 	//add components to their respective nodes
 	mainCamera->addComponent(cameraComponent);
-	mainCamera->addComponent(spotLightComponent);
+	//mainCamera->addComponent(spotLightComponent);
 	directionalLight->addComponent(directionalLightComponent);
 	cyborg->addComponent(cyborgRenderComponent);
 	plane->addComponent(planeRenderComponent);
 	sphere->addComponent(sphereRenderComponent);
-	sphere->addComponent(pointLightComponent);
+	//sphere->addComponent(pointLightComponent);
 
 	//add nodes to the world
 	_world->addChild(mainCamera);
