@@ -145,8 +145,6 @@ Renderer::~Renderer() {
 	glDeleteBuffers(1, &_dataUBO);
 
 	glDeleteBuffers(1, &_lightsSSBO);
-	glDeleteBuffers(1, &_tangentLightDirSSBO);
-	glDeleteBuffers(1, &_tangentLightPosSSBO);
 
 	glDeleteFramebuffers(1, &_shadowFBO);
 	glDeleteFramebuffers(1, &_multisampledHdrFBO);
@@ -313,27 +311,6 @@ void Renderer::_initShaderStorageBuffers() {
 	glBufferData(GL_SHADER_STORAGE_BUFFER, neededMemory, NULL, GL_STATIC_DRAW); //tell OpenGL that we will change the data every time we use it by specifying GL_STREAM_DRAW
 
 	glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 2, _lightsSSBO, 0, neededMemory); //bind to binding point 2
-
-	//create tangent light pos storage buffer
-	neededMemory = sizeof(glm::vec4) * LightComponent::LightAmount;
-
-	glGenBuffers(1, &_tangentLightPosSSBO);
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, _tangentLightPosSSBO);
-	glBufferData(GL_SHADER_STORAGE_BUFFER, neededMemory, NULL, GL_STATIC_DRAW);
-
-	//explicitly tell OpenGL to keep ordering in the shaders by using glBufferStorage() instead of glBufferData()
-	//by specifying the GL_MAP_COHERENT_BIT flag we ensure that the fragment shader will always have the data the vertex shader wrote
-	//glBufferStorage(GL_SHADER_STORAGE_BUFFER, neededMemory, NULL, GL_MAP_COHERENT_BIT); 
-
-	glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 3, _tangentLightPosSSBO, 0, neededMemory); //bind to binding point 3
-
-	//create tangent light dir storage buffer
-	glGenBuffers(1, &_tangentLightDirSSBO);
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, _tangentLightDirSSBO);
-	glBufferData(GL_SHADER_STORAGE_BUFFER, neededMemory, NULL, GL_STATIC_DRAW);
-	//glBufferStorage(GL_SHADER_STORAGE_BUFFER, neededMemory, NULL, GL_MAP_COHERENT_BIT);
-
-	glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 4, _tangentLightDirSSBO, 0, neededMemory); //bind to binding point 4
 
 	//unbind
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
@@ -701,8 +678,6 @@ void Renderer::_fillShaderStorageBuffers(std::vector<std::pair<LightComponent*, 
 
 		glBufferSubData(GL_SHADER_STORAGE_BUFFER, sizeof(glm::vec4) + sizeof(GLLight) * i, sizeof(GLLight), &light); //buffer light struct (padded to the size of a vec4)
 	}
-
-	//no need to fill the tangent buffers, since they just serve as output/input variables with flexible size in the shaders
 
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0); //unbind
 }

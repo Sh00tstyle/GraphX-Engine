@@ -59,8 +59,6 @@ class Renderer {
 		unsigned int _dataUBO;
 
 		unsigned int _lightsSSBO;
-		unsigned int _tangentLightPosSSBO;
-		unsigned int _tangentLightDirSSBO;
 
 		//FBOs, RBOs
 		unsigned int _shadowFBO;

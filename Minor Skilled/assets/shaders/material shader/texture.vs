@@ -1,7 +1,5 @@
 #version 460 core
 
-const int LIGHTAMOUNT = 10;
-
 //define the struct in the vertex shader as well, as we need access to the position and direction
 struct Light {
     vec4 position;
@@ -26,7 +24,6 @@ layout (location = 0) in vec3 aVertex;
 layout (location = 1) in vec3 aNormal;
 layout (location = 2) in vec2 aUV;
 layout (location = 3) in vec3 aTangent;
-layout (location = 4) in vec3 aBitangent;
 
 layout (std140) uniform matricesBlock {
     mat4 viewMatrix;
@@ -46,14 +43,6 @@ layout(std430) buffer lightsBlock {
     Light lights[];
 };
 
-layout (std430) buffer tangentLightPosBlock {
-    vec4 tangentLightPos[];
-};
-
-layout (std430) buffer tangentLightDirBlock {
-    vec4 tangentLightDir[];
-};
-
 uniform mat4 modelMatrix;
 
 out VS_OUT {
@@ -61,12 +50,7 @@ out VS_OUT {
     vec3 fragNormal;
     vec2 texCoord;
 
-    vec3 tangentLightPos[LIGHTAMOUNT];
-    vec3 tangentLightDir[LIGHTAMOUNT];
-
-    vec3 tangentViewPos;
-    vec3 tangentFragPos;
-    vec3 tangentFragNormal; //needed in case there is no normal map
+    mat3 TBN;
 
     vec4 lightSpaceFragPos;
 } vs_out;
@@ -81,24 +65,9 @@ void main() {
     //construct TBN matrix
     vec3 T = normalize(normalMatrix * aTangent);
     vec3 N = normalize(normalMatrix * aNormal);
-    T = normalize(T - dot(T, N) * N);
-    vec3 B = cross(N, T); //re-orthogonalize with gram-schmidt process
-    mat3 TBN = transpose(mat3(T, B, N));
-
-    //calculate tangent space positions (convert to world space first if needed)
-    for(int i = 0; i < usedLights; i++) {
-        /**/
-        vs_out.tangentLightPos[i] = TBN * lights[i].position.xyz;
-        vs_out.tangentLightDir[i] = TBN * lights[i].direction.xyz;
-        /**
-        tangentLightPos[i].xyz = TBN * lights[i].position.xyz;
-        tangentLightDir[i].xyz = TBN * lights[i].direction.xyz;
-        /**/
-    }
-
-    vs_out.tangentViewPos = TBN * cameraPos;
-    vs_out.tangentFragPos = TBN * vs_out.fragPos;
-    vs_out.tangentFragNormal = TBN * normalMatrix * aNormal;
+    T = normalize(T - dot(T, N) * N); //re-orthogonalize with gram-schmidt process
+    vec3 B = cross(N, T); 
+    vs_out.TBN = mat3(T, B, N);
 
     vs_out.lightSpaceFragPos =  lightSpaceMatrix * modelMatrix * vec4(aVertex, 1.0f);
 
