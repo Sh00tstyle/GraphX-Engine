@@ -133,14 +133,14 @@ void main() {
         result = texture(material.diffuse, fs_in.texCoord).rgb;
     }
 
-    //emission
-    vec3 emission = texture(material.emission, texCoord).rgb; //if there is no emission map, nothing will be added
-    result += emission;
-
     //shadows
     float shadow = CalculateShadow(normal);
     shadow = 1.0f - shadow * 0.5f;
     result *= shadow;
+
+    //emission
+    vec3 emission = texture(material.emission, texCoord).rgb; //if there is no emission map, nothing will be added
+    result += emission;
 
     fragColor = vec4(result, alpha);
     brightColor = CalculateBrightColor(result);

@@ -37,10 +37,12 @@ class TextureMaterial : public Material {
 		void setShininess(float shininess);
 		void setHeightScale(float heightScale);
 
-		virtual void draw(glm::mat4& modelMatrix);
+		virtual void drawForward(glm::mat4& modelMatrix);
+		virtual void drawDeferred(glm::mat4& modelMatrix);
 
 	private:
-		static Shader* _Shader;
+		static Shader* _ForwardShader;
+		static Shader* _DeferredShader;
 
 		Texture* _diffuseMap;
 		Texture* _specularMap;

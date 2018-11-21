@@ -26,8 +26,6 @@ void main() {
     color = GammaCorrect(color);
 
     fragColor = vec4(color, 1.0f);
-
-    //fragColor = vec4(texture(multiSampledScreenTexture, texCoord).rgb, 1.0f);
 }
 
 vec3 MSAA() {

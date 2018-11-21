@@ -20,7 +20,8 @@ class Material {
 		void setCastsShadows(bool value);
 		bool getCastsShadows();
 
-		virtual void draw(glm::mat4& modelMatrix) = 0;
+		virtual void drawForward(glm::mat4& modelMatrix) = 0;
+		virtual void drawDeferred(glm::mat4& modelMatrix) = 0;
 
 	protected:
 		Material(BlendMode blendMode, bool castsShadows);

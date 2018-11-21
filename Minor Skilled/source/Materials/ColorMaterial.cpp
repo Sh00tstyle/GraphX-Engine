@@ -8,7 +8,8 @@
 
 #include "../Utility/Filepath.h"
 
-Shader* ColorMaterial::_Shader = nullptr;
+Shader* ColorMaterial::_ForwardShader = nullptr;
+Shader* ColorMaterial::_DeferredShader = nullptr;
 
 ColorMaterial::ColorMaterial():Material(BlendMode::Opaque, true), _ambientColor(glm::vec3(0.0f)), _diffuseColor(glm::vec3(0.0f)), _specularColor(glm::vec3(0.0f)), _shininess(32.0f) {
 	_initShader();
@@ -54,29 +55,51 @@ void ColorMaterial::setShininess(float shininess) {
 	_shininess = shininess;
 }
 
-void ColorMaterial::draw(glm::mat4& modelMatrix) {
-	_Shader->use();
+void ColorMaterial::drawForward(glm::mat4& modelMatrix) {
+	_ForwardShader->use();
 
 	//set model matrix
-	_Shader->setMat4("modelMatrix", modelMatrix);
+	_ForwardShader->setMat4("modelMatrix", modelMatrix);
 
 	//set material properties
-	_Shader->setVec3("material.diffuse", _diffuseColor);
-	_Shader->setVec3("material.ambient", _ambientColor);
-	_Shader->setVec3("material.specular", _specularColor);
-	_Shader->setFloat("material.shininess", _shininess);
+	_ForwardShader->setVec3("material.diffuse", _diffuseColor);
+	_ForwardShader->setVec3("material.ambient", _ambientColor);
+	_ForwardShader->setVec3("material.specular", _specularColor);
+	_ForwardShader->setFloat("material.shininess", _shininess);
+}
+
+void ColorMaterial::drawDeferred(glm::mat4 & modelMatrix) {
+	_DeferredShader->use();
+
+	//set model matrix
+	_DeferredShader->setMat4("modelMatrix", modelMatrix);
+
+	//set material properties
+	_DeferredShader->setVec3("material.diffuse", _diffuseColor);
+	_DeferredShader->setVec3("material.ambient", _ambientColor);
+	_DeferredShader->setVec3("material.specular", _specularColor);
+	_DeferredShader->setFloat("material.shininess", _shininess);
 }
 
 void ColorMaterial::_initShader() {
-	if(_Shader == nullptr) {
-		_Shader = new Shader(Filepath::ShaderPath + "material shader/color.vs", Filepath::ShaderPath + "material shader/color.fs");
+	if(_ForwardShader == nullptr) {
+		_ForwardShader = new Shader(Filepath::ShaderPath + "material shader/forward/color.vs", Filepath::ShaderPath + "material shader/forward/color.fs");
 
-		_Shader->use();
-		_Shader->setInt("shadowMap", 8); //assign to slot 8, so that it shares it with the other materials which have more textures
+		_ForwardShader->use();
+		_ForwardShader->setInt("shadowMap", 8); //assign to slot 8, so that it shares it with the other materials which have more textures
 
-		_Shader->setUniformBlockBinding("matricesBlock", 0); //set uniform block "matrices" to binding point 0
-		_Shader->setUniformBlockBinding("dataBlock", 1); //set uniform block "data" to binding point 1
+		_ForwardShader->setUniformBlockBinding("matricesBlock", 0); //set uniform block "matrices" to binding point 0
+		_ForwardShader->setUniformBlockBinding("dataBlock", 1); //set uniform block "data" to binding point 1
 
-		_Shader->setShaderStorageBlockBinding("lightsBlock", 2); //set shader storage block "lights" to binding point 2
+		_ForwardShader->setShaderStorageBlockBinding("lightsBlock", 2); //set shader storage block "lights" to binding point 2
+	}
+
+	if(_DeferredShader == nullptr) {
+		_DeferredShader = new Shader(Filepath::ShaderPath + "material shader/deferred/color.vs", Filepath::ShaderPath + "material shader/deferred/color.fs");
+
+		_DeferredShader->use();
+
+		_DeferredShader->setUniformBlockBinding("matricesBlock", 0); //set uniform block "matrices" to binding point 0
+		_DeferredShader->setUniformBlockBinding("dataBlock", 1); //set uniform block "data" to binding point 1
 	}
 }

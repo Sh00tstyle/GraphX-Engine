@@ -89,7 +89,7 @@ Renderer::Renderer(unsigned int msaaSamples): _msaaSamples(msaaSamples) {
 	glEnable(GL_DEPTH_TEST); //enable the z-buffer
 	glDepthFunc(GL_LESS); //set depth funtion to less
 
-	glEnable(GL_BLEND); //enable blending
+	//glEnable(GL_BLEND); //enable blending
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); //set blending function
 
     //glEnable(GL_STENCIL_TEST); //enable the stencil buffer
@@ -113,6 +113,8 @@ Renderer::Renderer(unsigned int msaaSamples): _msaaSamples(msaaSamples) {
 	_initShaderStorageBuffers();
 
 	//setup FBOs
+	_initGBuffer();
+
 	_initShadowFBO();
 	_initMultisampledHdrFBO();
 	_initBloomFBO();
@@ -121,10 +123,16 @@ Renderer::Renderer(unsigned int msaaSamples): _msaaSamples(msaaSamples) {
 
 Renderer::~Renderer() {
 	//free resources
+	delete _lightingShader;
 	delete _shadowShader;
 	delete _skyboxShader;
 	delete _blurShader;
 	delete _postProcessingShader;
+
+	delete _gPosition;
+	delete _gNormal;
+	delete _gAlbedoSpec;
+	delete _gEmissionShiny;
 
 	delete _shadowMap;
 	delete _multiSampledColorBuffer;
@@ -146,12 +154,14 @@ Renderer::~Renderer() {
 
 	glDeleteBuffers(1, &_lightsSSBO);
 
+	glDeleteFramebuffers(1, &_gBuffer);
 	glDeleteFramebuffers(1, &_shadowFBO);
 	glDeleteFramebuffers(1, &_multisampledHdrFBO);
 	glDeleteFramebuffers(1, &_bloomFBO);
 	glDeleteFramebuffers(2, _blurFBOs);
 
-	glDeleteRenderbuffers(1, &_depthRBO);
+	glDeleteRenderbuffers(1, &_gRBO);
+	glDeleteRenderbuffers(1, &_multisampledHdrRBO);
 }
 
 void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& lights, Node* mainCamera, Node* directionalLight, Texture* skybox) {
@@ -169,11 +179,16 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 	glm::vec3 cameraPos = mainCameraTransform->getWorldPosition();
 
 	//create vectors of pairs to match components to their model matrices/positions
+	std::vector<std::pair<RenderComponent*, glm::mat4>> solidRenderComponents;
+	std::vector<std::pair<RenderComponent*, glm::mat4>> blendRenderComponents;
+
 	std::vector<std::pair<RenderComponent*, glm::mat4>> renderComponents;
 	std::vector<std::pair<LightComponent*, glm::vec3>> lightComponents;
 
 	//fill collections with data
-	renderComponents = _getSortedRenderComponents(renderables, cameraPos); //Possible optimization: only re-sort if the camera moved
+	_getSortedRenderComponents(renderables, cameraPos, solidRenderComponents, blendRenderComponents); //Possible optimization: only re-sort if the camera moved
+	renderComponents.insert(renderComponents.end(), solidRenderComponents.begin(), solidRenderComponents.end()); //add solid objects to the total render component list
+	renderComponents.insert(renderComponents.end(), blendRenderComponents.begin(), blendRenderComponents.end()); //add blend objects too
 
 	for(unsigned int i = 0; i < lights.size(); i++) {
 		std::pair<LightComponent*, glm::vec3> lightPair;
@@ -184,11 +199,11 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 	}
 
 	//setup light space matrix
-	glm::vec3 directionalLightPos = glm::vec3(0.0f);
+	glm::vec3 directionalLightPos;
 
-	glm::mat4 lightProjection = glm::mat4(1.0f);
-	glm::mat4 lightView = glm::mat4(1.0f);
-	glm::mat4 lightSpaceMatrix = glm::mat4(1.0f);
+	glm::mat4 lightProjection;
+	glm::mat4 lightView;
+	glm::mat4 lightSpaceMatrix;
 
 	bool useShadows = true;
 
@@ -216,8 +231,27 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 	_renderShadowMap(renderComponents, lightSpaceMatrix);
 
 	//render scene
-	_renderScene(renderComponents);
+	bool deferred = false;
 
+	if(deferred) {
+		//render the geometry of the scene (deferred shading)
+		_renderSceneGeometry(solidRenderComponents);
+
+		//render lighting of the scene (deferred shading)
+		_renderSceneLighting();
+
+		//blit gBuffer depth buffer into the hdr framebuffer depth buffer to enable forward rendering into the deferred scene
+		_blitGDepthToHDR();
+	} else {
+		//render and light the scene (forward shading)
+		_renderScene(solidRenderComponents, true); //bind the hdr here and clear buffer bits
+	}
+
+	//render blend objects (forward shading)
+	glEnable(GL_BLEND);
+	_renderScene(blendRenderComponents, false); //do not bind the hbr here and clear buffer bits since the solid objects are needed in the fbo
+	glDisable(GL_BLEND);
+	
 	//render skybox
 	_renderSkybox(viewMatrix, projectionMatrix, skybox);
 
@@ -229,6 +263,21 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 }
 
 void Renderer::_initShaders() {
+	//initialize lighting pass shader
+	_lightingShader = new Shader(Filepath::ShaderPath + "post processing shader/lightingPass.vs", Filepath::ShaderPath + "post processing shader/lightingPass.fs");
+
+	_lightingShader->use();
+	_lightingShader->setInt("gPosition", 0);
+	_lightingShader->setInt("gNormal", 1);
+	_lightingShader->setInt("gAlbedoSpec", 2);
+	_lightingShader->setInt("gEmissionShiny", 3);
+	_lightingShader->setInt("shadowMap", 8);
+
+	_lightingShader->setUniformBlockBinding("matricesBlock", 0); //set uniform block "matrices" to binding point 0
+	_lightingShader->setUniformBlockBinding("dataBlock", 1); //set uniform block "data" to binding point 1
+
+	_lightingShader->setShaderStorageBlockBinding("lightsBlock", 2); //set shader storage block "lights" to binding point 2
+
 	//initialize shadow shader
 	_shadowShader = new Shader(Filepath::ShaderPath + "shadow shader/shadow.vs", Filepath::ShaderPath + "shadow shader/shadow.fs");
 
@@ -316,6 +365,67 @@ void Renderer::_initShaderStorageBuffers() {
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 }
 
+void Renderer::_initGBuffer() {
+	//create the position color buffer
+	_gPosition = new Texture();
+	glGenTextures(1, &_gPosition->getID());
+	glBindTexture(GL_TEXTURE_2D, _gPosition->getID());
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, 0, GL_RGB, GL_FLOAT, NULL); //16-bit precision RGB texture
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+	//create the normal color buffer
+	_gNormal = new Texture();
+	glGenTextures(1, &_gNormal->getID());
+	glBindTexture(GL_TEXTURE_2D, _gNormal->getID());
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, 0, GL_RGB, GL_FLOAT, NULL); //16-bit precision RGB texture
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+	//create the color + specular color buffer
+	_gAlbedoSpec = new Texture();
+	glGenTextures(1, &_gAlbedoSpec->getID());
+	glBindTexture(GL_TEXTURE_2D, _gAlbedoSpec->getID());
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, Window::ScreenWidth, Window::ScreenHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL); //8-bit precision RGBA texture
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+	//create the emission color buffer
+	_gEmissionShiny = new Texture();
+	glGenTextures(1, &_gEmissionShiny->getID());
+	glBindTexture(GL_TEXTURE_2D, _gEmissionShiny->getID());
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, Window::ScreenWidth, Window::ScreenHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL); //8-bit precision RGBA texture
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+	//create depth renderbuffer
+	glGenRenderbuffers(1, &_gRBO);
+	glBindRenderbuffer(GL_RENDERBUFFER, _gRBO);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, Window::ScreenWidth, Window::ScreenHeight);
+	glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+	//create the gBuffer framebuffer and attach its color buffers for the deferred shading geometry pass
+	glGenFramebuffers(1, &_gBuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, _gBuffer);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _gPosition->getID(), 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, _gNormal->getID(), 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, _gAlbedoSpec->getID(), 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D, _gEmissionShiny->getID(), 0);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, _gRBO);
+
+	//tell OpenGL which attachments the gBuffer will use for rendering
+	unsigned int attachments[4] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3};
+	glDrawBuffers(4, attachments);
+
+	//check for completion
+	if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+		std::cout << "ERROR: gBuffer framebuffer is incomplete." << std::endl;
+	}
+
+	//unbind
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
 void Renderer::_initShadowFBO() {
 	//create shadow texture
 	_shadowMap = new Texture();
@@ -364,9 +474,9 @@ void Renderer::_initMultisampledHdrFBO() {
 	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
 
 	//create depth renderbuffer
-	glGenRenderbuffers(1, &_depthRBO);
-	glBindRenderbuffer(GL_RENDERBUFFER, _depthRBO);
-	glRenderbufferStorageMultisample(GL_RENDERBUFFER, _msaaSamples, GL_DEPTH_COMPONENT,Window::ScreenWidth, Window::ScreenHeight);
+	glGenRenderbuffers(1, &_multisampledHdrRBO);
+	glBindRenderbuffer(GL_RENDERBUFFER, _multisampledHdrRBO);
+	glRenderbufferStorageMultisample(GL_RENDERBUFFER, _msaaSamples, GL_DEPTH_COMPONENT, Window::ScreenWidth, Window::ScreenHeight);
 	glBindRenderbuffer(GL_RENDERBUFFER, 0);
 
 	//create floating point framebuffer, attach color buffers and render buffer
@@ -374,7 +484,7 @@ void Renderer::_initMultisampledHdrFBO() {
 	glBindFramebuffer(GL_FRAMEBUFFER, _multisampledHdrFBO);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, _multiSampledColorBuffer->getID(), 0); //attach color buffer
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D_MULTISAMPLE, _multiSampledBrightColorBuffer->getID(), 0); //attach bright color buffer
-	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, _depthRBO); //attach depth renderbuffer
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, _multisampledHdrRBO); //attach depth renderbuffer
 
 	//tell OpenGL which color attachments this framebuffer will use for rendering
 	unsigned int attachments[2] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
@@ -481,10 +591,65 @@ void Renderer::_renderShadowMap(std::vector<std::pair<RenderComponent*, glm::mat
 	glViewport(0, 0, Window::ScreenWidth, Window::ScreenHeight);
 }
 
-void Renderer::_renderScene(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents) {
-	//bind to hdr framebuffer and render each renderable
+void Renderer::_renderSceneGeometry(std::vector<std::pair<RenderComponent*, glm::mat4>>& solidRenderComponents) {
+	//bind to gBuffer framebuffer and render to buffer textures
+	glBindFramebuffer(GL_FRAMEBUFFER, _gBuffer);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	glm::mat4 modelMatrix;
+	Material* material;
+	Model* model;
+
+	for(unsigned int i = 0; i < solidRenderComponents.size(); i++) {
+		modelMatrix = solidRenderComponents[i].second;
+		material = solidRenderComponents[i].first->material;
+		model = solidRenderComponents[i].first->model;
+
+		material->drawDeferred(modelMatrix); //deferred
+		model->draw();
+	}
+}
+
+void Renderer::_renderSceneLighting() {
+	//bind to multisampled hdr framebuffer
 	glBindFramebuffer(GL_FRAMEBUFFER, _multisampledHdrFBO);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	//use lighting shader and bind textures
+	_lightingShader->use();
+
+	//bind position color buffer
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, _gPosition->getID());
+
+	//bind normal color buffer
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, _gNormal->getID());
+
+	//bind albedo and specular color buffer
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, _gAlbedoSpec->getID());
+
+	//bind emission and shininess color buffer
+	glActiveTexture(GL_TEXTURE3);
+	glBindTexture(GL_TEXTURE_2D, _gEmissionShiny->getID());
+
+	//bind shadow map
+	glActiveTexture(GL_TEXTURE8);
+	glBindTexture(GL_TEXTURE_2D, _shadowMap->getID());
+
+	//render quad
+	glBindVertexArray(_screenQuadVAO);
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	glBindVertexArray(0);
+}
+
+void Renderer::_renderScene(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, bool bindFBO) {
+	//bind to hdr framebuffer if needed and render each renderable 
+	if(bindFBO) {
+		glBindFramebuffer(GL_FRAMEBUFFER, _multisampledHdrFBO);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	}
 
 	//bind shadow map
 	glActiveTexture(GL_TEXTURE8);
@@ -499,7 +664,7 @@ void Renderer::_renderScene(std::vector<std::pair<RenderComponent*, glm::mat4>>&
 		material = renderComponents[i].first->material;
 		model = renderComponents[i].first->model;
 
-		material->draw(modelMatrix);
+		material->drawForward(modelMatrix); //forward
 		model->draw();
 	}
 }
@@ -581,12 +746,10 @@ void Renderer::_renderPostProcessingQuad(float gamma, float exposure) {
 	glBindVertexArray(0);
 }
 
-std::vector<std::pair<RenderComponent*, glm::mat4>> Renderer::_getSortedRenderComponents(std::vector<Node*>& renderables, glm::vec3& cameraPos) {
+void Renderer::_getSortedRenderComponents(std::vector<Node*>& renderables, glm::vec3& cameraPos, std::vector<std::pair<RenderComponent*, glm::mat4>>& solidRenderables, std::vector<std::pair<RenderComponent*, glm::mat4>>& blendRenderables) {
 	//returns a vector of pairs  of render components and their respective model matrix (sorted by Opaque -> distance to camera)
 
 	//fill both vectors with the objects
-	std::vector<RenderComponent*> solidObjects;
-	std::vector<RenderComponent*> blendObjects;
 	RenderComponent* renderComponent;
 	Material* material;
 
@@ -594,51 +757,32 @@ std::vector<std::pair<RenderComponent*, glm::mat4>> Renderer::_getSortedRenderCo
 		renderComponent = (RenderComponent*)renderables[i]->getComponent(ComponentType::Render);
 		material = renderComponent->material;
 
+		std::pair<RenderComponent*, glm::mat4> renderPair;
+		renderPair.first = renderComponent;
+		renderPair.second = renderComponent->getOwner()->getTransform()->worldTransform;
+
 		if(material->getBlendMode() == BlendMode::Opaque) {
-			solidObjects.push_back(renderComponent);
+			solidRenderables.push_back(renderPair);
 		} else {
-			blendObjects.push_back(renderComponent);
+			blendRenderables.push_back(renderPair);
 		}
 	}
 
 	//sort the blend objects based on the camera position
-	std::map<float, RenderComponent*> sortedBlendObjects; //using a map, since it automatically sorts its entires by key
+	std::map<float, std::pair<RenderComponent*, glm::mat4>> sortedBlendObjects; //using a map, since it automatically sorts its entires by key
 	glm::vec3 objectPos;
 
-	for(unsigned int i = 0; i < blendObjects.size(); i++) {
-		objectPos = blendObjects[i]->getOwner()->getTransform()->getWorldPosition();
+	for(unsigned int i = 0; i < blendRenderables.size(); i++) {
+		objectPos = blendRenderables[i].first->getOwner()->getTransform()->getWorldPosition();
 
 		float distance = glm::distance2(cameraPos, objectPos); //squared distance, since we are only comparing distances against each other
 
-		while(sortedBlendObjects[distance] != nullptr) { //offset the distance slightly if there is an objects with the exact same distance already to allow having both in the map
+		while(sortedBlendObjects[distance].first != nullptr) { //offset the distance slightly if there is an objects with the exact same distance already to allow having both in the map
 			distance += 0.0001f;
 		}
 
-		sortedBlendObjects[distance] = blendObjects[i]; //add entry
+		sortedBlendObjects[distance] = blendRenderables[i]; //add entry
 	}
-
-	//finally fill the vector of sorted solid and blend objects
-	std::vector<std::pair<RenderComponent*, glm::mat4>> sortedRenderComponents;
-
-	for(unsigned int i = 0; i < solidObjects.size(); i++) {
-		//fill solid objects in first, since they need to  be rendered first
-		std::pair<RenderComponent*, glm::mat4> renderPair;
-		renderPair.first = solidObjects[i];
-		renderPair.second = solidObjects[i]->getOwner()->getTransform()->worldTransform;
-
-		sortedRenderComponents.push_back(renderPair);
-	}
-
-	for(std::map<float, RenderComponent*>::iterator it = sortedBlendObjects.begin(); it != sortedBlendObjects.end(); it++) {
-		//fill cutout and transparent objects sorted by the distance to the camera last
-		std::pair<RenderComponent*, glm::mat4> renderPair;
-		renderPair.first = it->second;
-		renderPair.second = it->second->getOwner()->getTransform()->worldTransform;
-
-		sortedRenderComponents.push_back(renderPair);
-	}
-
-	return sortedRenderComponents; //return the sorted lists
 }
 
 void Renderer::_fillUniformBuffers(glm::mat4& viewMatrix, glm::mat4& projectionMatrix, glm::mat4& lightSpaceMatrix, glm::vec3& cameraPos, glm::vec3& directionalLightPos, bool& useShadows) {
@@ -680,6 +824,13 @@ void Renderer::_fillShaderStorageBuffers(std::vector<std::pair<LightComponent*, 
 	}
 
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0); //unbind
+}
+
+void Renderer::_blitGDepthToHDR() {
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, _gBuffer);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _multisampledHdrFBO);
+
+	glBlitFramebuffer(0, 0, Window::ScreenWidth, Window::ScreenHeight, 0, 0, Window::ScreenWidth, Window::ScreenHeight, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 }
 
 void Renderer::_blitHDRtoBloomFBO() {

@@ -35,12 +35,18 @@ class Renderer {
 		static const float _ScreenQuadVertices[];
 
 		//shaders
+		Shader* _lightingShader;
 		Shader* _shadowShader;
 		Shader* _skyboxShader;
 		Shader* _blurShader;
 		Shader* _postProcessingShader;
 
 		//texture buffers
+		Texture* _gPosition;
+		Texture* _gNormal;
+		Texture* _gAlbedoSpec;
+		Texture* _gEmissionShiny;
+
 		Texture* _shadowMap;
 		Texture* _multiSampledColorBuffer;
 		Texture* _multiSampledBrightColorBuffer;
@@ -61,12 +67,16 @@ class Renderer {
 		unsigned int _lightsSSBO;
 
 		//FBOs, RBOs
+		unsigned int _gBuffer;
+
 		unsigned int _shadowFBO;
 		unsigned int _multisampledHdrFBO;
 		unsigned int _bloomFBO;
 		unsigned int _blurFBOs[2];
 
-		unsigned int _depthRBO;
+		unsigned int _gRBO;
+
+		unsigned int _multisampledHdrRBO;
 
 		//init functions
 		void _initShaders();
@@ -77,6 +87,7 @@ class Renderer {
 		void _initUniformBuffers();
 		void _initShaderStorageBuffers();
 
+		void _initGBuffer();
 		void _initShadowFBO();
 		void _initMultisampledHdrFBO();
 		void _initBloomFBO();
@@ -84,16 +95,19 @@ class Renderer {
 		
 		//render functions
 		void _renderShadowMap(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, glm::mat4& lightSpaceMatrix);
-		void _renderScene(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents);
+		void _renderSceneGeometry(std::vector<std::pair<RenderComponent*, glm::mat4>>& solidRenderComponents);
+		void _renderSceneLighting();
+		void _renderScene(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, bool bindFBO);
 		void _renderSkybox(glm::mat4& viewMatrix, glm::mat4& projectionMatrix, Texture* skybox);
 		void _renderPostProcessingQuad(float gamma = 2.2f, float exposure = 1.0f);
 
 		//helper functions
-		std::vector<std::pair<RenderComponent*, glm::mat4>> _getSortedRenderComponents(std::vector<Node*>& renderables, glm::vec3& cameraPos);
+		void _getSortedRenderComponents(std::vector<Node*>& renderables, glm::vec3& cameraPos, std::vector<std::pair<RenderComponent*, glm::mat4>>& solidRenderables, std::vector<std::pair<RenderComponent*, glm::mat4>>& blendRenderables);
 
 		void _fillUniformBuffers(glm::mat4& viewMatrix, glm::mat4& projectionMatrix, glm::mat4& lightSpaceMatrix, glm::vec3& cameraPos, glm::vec3& directionalLightPos, bool& useShadows);
 		void _fillShaderStorageBuffers(std::vector<std::pair<LightComponent*, glm::vec3>>& lightComponents);
 
+		void _blitGDepthToHDR();
 		void _blitHDRtoBloomFBO();
 
 };

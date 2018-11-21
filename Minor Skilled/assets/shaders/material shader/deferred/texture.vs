@@ -1,25 +1,5 @@
 #version 460 core
 
-//define the struct in the vertex shader as well, as we need access to the position and direction
-struct Light {
-    vec4 position;
-    vec4 direction;
-
-    vec4 ambient;
-    vec4 diffuse;
-    vec4 specular;
-
-    int type;
-
-    float constant;
-    float linear;
-    float quadratic;
-    float innerCutoff;
-    float outerCutoff;
-    
-    vec2 padding;
-};
-
 layout (location = 0) in vec3 aVertex;
 layout (location = 1) in vec3 aNormal;
 layout (location = 2) in vec2 aUV;
@@ -31,18 +11,6 @@ layout (std140) uniform matricesBlock {
     mat4 lightSpaceMatrix;
 };
 
-layout (std140) uniform dataBlock {
-    bool useShadows;
-
-    vec3 cameraPos;
-    vec3 directionalLightPos;
-};
-
-layout(std430) buffer lightsBlock {
-    int usedLights;
-    Light lights[];
-};
-
 uniform mat4 modelMatrix;
 
 out VS_OUT {
@@ -51,8 +19,6 @@ out VS_OUT {
     vec2 texCoord;
 
     mat3 TBN;
-
-    vec4 lightSpaceFragPos;
 } vs_out;
 
 void main() {
@@ -68,8 +34,6 @@ void main() {
     T = normalize(T - dot(T, N) * N); //re-orthogonalize with gram-schmidt process
     vec3 B = cross(N, T); 
     vs_out.TBN = mat3(T, B, N);
-
-    vs_out.lightSpaceFragPos =  lightSpaceMatrix * modelMatrix * vec4(aVertex, 1.0f);
 
     gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(aVertex, 1.0f);
 }
