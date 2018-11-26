@@ -39,6 +39,7 @@ void DemoScene::_initializeScene() {
 	Node* cyborg = new Node(glm::vec3(0.0f, 0.0f, 0.0f), "cyborg");
 	Node* plane = new Node(glm::vec3(0.0f, -0.01f, 0.0f), "plane");
 	Node* sphere = new Node(glm::vec3(2.0f, 1.0f, 0.0f), "sphere");
+	Node* cube = new Node(glm::vec3(-2.0f, 0.3f, 0.0f), "cube");
 
 	//adjust transforms
 	Transform* transform = cyborg->getTransform();
@@ -50,10 +51,14 @@ void DemoScene::_initializeScene() {
 	transform = sphere->getTransform();
 	transform->scale(glm::vec3(0.2f));
 
+	transform = cube->getTransform();
+	transform->scale(glm::vec3(0.3f));
+
 	//load models
 	Model* cyborgModel = Model::LoadModel(Filepath::ModelPath + "cyborg/cyborg.obj");
 	Model* planeModel = Model::LoadModel(Filepath::ModelPath + "plane.obj");
 	Model* sphereModel = Model::LoadModel(Filepath::ModelPath + "sphere_smooth.obj");
+	Model* cubeModel = Model::LoadModel(Filepath::ModelPath + "cube_smooth.obj");
 
 	//load textures
 	Texture* cyborgDiffuse = Texture::LoadTexture(Filepath::ModelPath + "cyborg/cyborg_diffuse.png", TextureFilter::Repeat, true); //load diffuse textures in linear space
@@ -108,15 +113,17 @@ void DemoScene::_initializeScene() {
 	RenderComponent* cyborgRenderComponent = new RenderComponent(cyborgModel, textureMaterial);
 	RenderComponent* planeRenderComponent = new RenderComponent(planeModel, colorMaterial);
 	RenderComponent* sphereRenderComponent = new RenderComponent(sphereModel, sphereMaterial);
+	RenderComponent* cubeRenderComponent = new RenderComponent(cubeModel, colorMaterial);
 
 	//add components to their respective nodes
 	mainCamera->addComponent(cameraComponent);
-	mainCamera->addComponent(spotLightComponent);
+	//mainCamera->addComponent(spotLightComponent);
 	directionalLight->addComponent(directionalLightComponent);
 	cyborg->addComponent(cyborgRenderComponent);
 	plane->addComponent(planeRenderComponent);
 	sphere->addComponent(sphereRenderComponent);
-	sphere->addComponent(pointLightComponent);
+	//sphere->addComponent(pointLightComponent);
+	cube->addComponent(cubeRenderComponent);
 
 	//add nodes to the world
 	_world->addChild(mainCamera);
@@ -124,6 +131,7 @@ void DemoScene::_initializeScene() {
 	_world->addChild(cyborg);
 	_world->addChild(plane);
 	_world->addChild(sphere);
+	_world->addChild(cube);
 
 	//set main camera, (main) directional light and skybox
 	_setMainCamera(mainCamera);

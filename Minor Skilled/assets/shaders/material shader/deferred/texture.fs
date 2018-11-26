@@ -16,12 +16,19 @@ struct Material {
 };
 
 in VS_OUT {
-    vec3 fragPos;
+    vec3 fragPosWorld;
+    vec3 fragPosView;
     vec3 fragNormal;
     vec2 texCoord;
 
     mat3 TBN;
 } fs_in;
+
+layout (std140) uniform matricesBlock {
+    mat4 viewMatrix;
+    mat4 projectionMatrix;
+    mat4 lightSpaceMatrix;
+};
 
 layout(std140) uniform dataBlock {
     bool useShadows;
@@ -43,14 +50,14 @@ vec2 ParallaxMapping(vec3 viewDirection);
 
 void main() {
     vec3 normal = GetNormal();
-    vec3 viewDirection = normalize(cameraPos - fs_in.fragPos);
+    vec3 viewDirection = normalize(cameraPos - fs_in.fragPosWorld);
 
     //parallax mapping
     vec2 texCoord = ParallaxMapping(viewDirection);
     if(material.hasHeight && (texCoord.x > 1.0f || texCoord.y > 1.0f || texCoord.x < 0.0f || texCoord.y < 0.0f)) discard; //cutoff edges to avoid artifacts when using parallax mapping
 
     //store the data in the gBuffer
-    gPosition = fs_in.fragPos;
+    gPosition = fs_in.fragPosView;
 
     gNormal = normal;
 
@@ -81,9 +88,9 @@ vec3 GetNormal() {
     if(material.hasNormal) {
         normal = texture(material.normal, fs_in.texCoord).rgb; //range [0, 1]
         normal = normalize(normal * 2.0f - 1.0f); //bring to range [-1, 1]
-        normal = normalize(fs_in.TBN * normal); //transform normal from tangent to world space
+        normal = normalize(fs_in.TBN * normal); //transform normal from tangent to view space 
     } else {
-        normal = normalize(fs_in.fragNormal);
+        normal = normalize(fs_in.fragNormal); //view space
     }
 
     return normal;

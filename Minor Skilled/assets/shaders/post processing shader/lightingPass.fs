@@ -49,6 +49,7 @@ uniform sampler2D gNormal;
 uniform sampler2D gAlbedoSpec;
 uniform sampler2D gEmissionShiny;
 
+uniform sampler2D ssao;
 uniform sampler2D shadowMap;
 
 layout (location = 0) out vec4 fragColor;
@@ -67,22 +68,26 @@ void main() {
     vec3 fragPos = texture(gPosition, texCoord).rgb;
     vec3 normal = texture(gNormal, texCoord).rgb;
 
+    //transform to world pos
+    vec3 worldFragPos = vec3(inverse(viewMatrix) * vec4(fragPos, 1.0f));
+    vec3 worldNormal = vec3(inverse(viewMatrix) * vec4(normal, 0.0f));
+
     //lighting
-    vec3 viewDirection = normalize(cameraPos - fragPos);
+    vec3 viewDirection = normalize(cameraPos - worldFragPos);
     vec3 result = vec3(0.0f);
 
     for(int i = 0; i < usedLights; i++) {
         switch(lights[i].type) {
             case DIRECTIONAL:
-                result += CalculateDirectionalLight(lights[i], normal, viewDirection, texCoord);
+                result += CalculateDirectionalLight(lights[i], worldNormal, viewDirection, texCoord);
                 break;
 
             case POINT:
-                result += CalculatePointLight(lights[i], normal, fragPos, viewDirection, texCoord);
+                result += CalculatePointLight(lights[i], worldNormal, worldFragPos, viewDirection, texCoord);
                 break;
 
             case SPOT:
-                result += CalculateSpotLight(lights[i], normal, fragPos, viewDirection, texCoord);
+                result += CalculateSpotLight(lights[i], worldNormal, worldFragPos, viewDirection, texCoord);
                 break;
         }
     }
@@ -92,11 +97,15 @@ void main() {
     }
 
     //shadows
-    vec4 lightSpaceFragPos = lightSpaceMatrix * vec4(fragPos, 1.0f);
+    vec4 lightSpaceFragPos = lightSpaceMatrix * vec4(worldFragPos, 1.0f);
 
-    float shadow = CalculateShadow(normal, fragPos, lightSpaceFragPos);
+    float shadow = CalculateShadow(worldNormal, worldFragPos, lightSpaceFragPos);
     shadow = 1.0f - shadow * 0.5f;
     result *= shadow;
+
+    //ambient occlusion
+    float ao = texture(ssao, texCoord).r;
+    result *= ao;
 
     //emission
     vec3 emission = texture(gEmissionShiny, texCoord).rgb;

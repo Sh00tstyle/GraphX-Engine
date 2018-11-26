@@ -3,6 +3,7 @@
 #include <iostream>
 #include <algorithm>
 #include <map>
+#include <random>
 
 #include <glad/glad.h> //NOTE: glad needs to the be included BEFORE glfw, throws errors otherwise
 #include <GLFW/glfw3.h>
@@ -117,8 +118,13 @@ Renderer::Renderer(unsigned int msaaSamples): _msaaSamples(msaaSamples) {
 
 	_initShadowFBO();
 	_initMultisampledHdrFBO();
-	_initBloomFBO();
-	_initBlurFBOs();
+
+	//setup post processing
+	_initBloomFBOs();
+	_initSSAOFBOs();
+
+	_generateSSAOKernel();
+	_generateNoiseTexture();
 }
 
 Renderer::~Renderer() {
@@ -126,7 +132,9 @@ Renderer::~Renderer() {
 	delete _lightingShader;
 	delete _shadowShader;
 	delete _skyboxShader;
-	delete _blurShader;
+	delete _ssaoShader;
+	delete _ssaoBlurShader;
+	delete _bloomBlurShader;
 	delete _postProcessingShader;
 
 	delete _gPosition;
@@ -140,8 +148,12 @@ Renderer::~Renderer() {
 	delete _bloomBrightColorBuffer;
 
 	for(unsigned int i = 0; i < 2; i++) {
-		delete _blurColorbuffers[i];
+		delete _blurColorBuffers[i];
 	}
+
+	delete _ssaoNoiseTexture;
+	delete _ssaoColorBuffer;
+	delete _ssaoBlurColorBuffer;
 
 	glDeleteVertexArrays(1, &_skyboxVAO);
 	glDeleteBuffers(1, &_skyboxVBO);
@@ -158,7 +170,9 @@ Renderer::~Renderer() {
 	glDeleteFramebuffers(1, &_shadowFBO);
 	glDeleteFramebuffers(1, &_multisampledHdrFBO);
 	glDeleteFramebuffers(1, &_bloomFBO);
-	glDeleteFramebuffers(2, _blurFBOs);
+	glDeleteFramebuffers(2, _bloomBlurFBOs);
+	glDeleteFramebuffers(1, &_ssaoFBO);
+	glDeleteFramebuffers(1, &_ssaoBlurFBO);
 
 	glDeleteRenderbuffers(1, &_gRBO);
 	glDeleteRenderbuffers(1, &_multisampledHdrRBO);
@@ -205,7 +219,7 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 	glm::mat4 lightView;
 	glm::mat4 lightSpaceMatrix;
 
-	bool useShadows = true;
+	bool useShadows = false;
 
 	if(directionalLight != nullptr) {
 		LightComponent* directionalLightComponent = (LightComponent*)directionalLight->getComponent(ComponentType::Light);
@@ -231,11 +245,17 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 	_renderShadowMap(renderComponents, lightSpaceMatrix);
 
 	//render scene
-	bool deferred = false;
+	bool deferred = true;
 
 	if(deferred) {
 		//render the geometry of the scene (deferred shading)
 		_renderSceneGeometry(solidRenderComponents);
+
+		//render ssao texture
+		_renderSSAO();
+
+		//blur ssao texture
+		_renderSSAOBlur();
 
 		//render lighting of the scene (deferred shading)
 		_renderSceneLighting();
@@ -264,13 +284,14 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 
 void Renderer::_initShaders() {
 	//initialize lighting pass shader
-	_lightingShader = new Shader(Filepath::ShaderPath + "post processing shader/lightingPass.vs", Filepath::ShaderPath + "post processing shader/lightingPass.fs");
+	_lightingShader = new Shader(Filepath::ShaderPath + "post processing shader/screenQuad.vs", Filepath::ShaderPath + "post processing shader/lightingPass.fs");
 
 	_lightingShader->use();
 	_lightingShader->setInt("gPosition", 0);
 	_lightingShader->setInt("gNormal", 1);
 	_lightingShader->setInt("gAlbedoSpec", 2);
 	_lightingShader->setInt("gEmissionShiny", 3);
+	_lightingShader->setInt("ssao", 4);
 	_lightingShader->setInt("shadowMap", 8);
 
 	_lightingShader->setUniformBlockBinding("matricesBlock", 0); //set uniform block "matrices" to binding point 0
@@ -287,14 +308,30 @@ void Renderer::_initShaders() {
 	_skyboxShader->use();
 	_skyboxShader->setInt("skybox", 0);
 
-	//initialize blur shader
-	_blurShader = new Shader(Filepath::ShaderPath + "post processing shader/blur.vs", Filepath::ShaderPath + "post processing shader/blur.fs");
+	//initialize ssao shader
+	_ssaoShader = new Shader(Filepath::ShaderPath + "post processing shader/screenQuad.vs", Filepath::ShaderPath + "post processing shader/ssao.fs");
 
-	_blurShader->use();
-	_blurShader->setInt("image", 0);
+	_ssaoShader->use();
+	_ssaoShader->setInt("gPosition", 0);
+	_ssaoShader->setInt("gNormal", 1);
+	_ssaoShader->setInt("noiseTexture", 2);
+
+	_ssaoShader->setUniformBlockBinding("matricesBlock", 0); //set uniform block "matrices" to binding point 0
+
+	//initialize ssao blur shader
+	_ssaoBlurShader = new Shader(Filepath::ShaderPath + "post processing shader/screenQuad.vs", Filepath::ShaderPath + "post processing shader/ssaoBlur.fs");
+
+	_ssaoBlurShader->use();
+	_ssaoBlurShader->setInt("ssaoInput", 0);
+
+	//initialize bloom blur shader
+	_bloomBlurShader = new Shader(Filepath::ShaderPath + "post processing shader/screenQuad.vs", Filepath::ShaderPath + "post processing shader/bloomBlur.fs");
+
+	_bloomBlurShader->use();
+	_bloomBlurShader->setInt("image", 0);
 
 	//initialize post processing shader
-	_postProcessingShader = new Shader(Filepath::ShaderPath + "post processing shader/postProcessing.vs", Filepath::ShaderPath + "post processing shader/postProcessing.fs");
+	_postProcessingShader = new Shader(Filepath::ShaderPath + "post processing shader/screenQuad.vs", Filepath::ShaderPath + "post processing shader/postProcessing.fs");
 
 	_postProcessingShader->use();
 	_postProcessingShader->setInt("multiSampledScreenTexture", 0);
@@ -370,15 +407,17 @@ void Renderer::_initGBuffer() {
 	_gPosition = new Texture();
 	glGenTextures(1, &_gPosition->getID());
 	glBindTexture(GL_TEXTURE_2D, _gPosition->getID());
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, 0, GL_RGB, GL_FLOAT, NULL); //16-bit precision RGB texture
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, Window::ScreenWidth, Window::ScreenHeight, 0, GL_RGB, GL_FLOAT, NULL); //32-bit precision RGB texture
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); //ensure we don't accidentally oversample
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
 	//create the normal color buffer
 	_gNormal = new Texture();
 	glGenTextures(1, &_gNormal->getID());
 	glBindTexture(GL_TEXTURE_2D, _gNormal->getID());
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, 0, GL_RGB, GL_FLOAT, NULL); //16-bit precision RGB texture
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, Window::ScreenWidth, Window::ScreenHeight, 0, GL_RGB, GL_FLOAT, NULL); //32-bit precision RGB texture
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
@@ -394,7 +433,7 @@ void Renderer::_initGBuffer() {
 	_gEmissionShiny = new Texture();
 	glGenTextures(1, &_gEmissionShiny->getID());
 	glBindTexture(GL_TEXTURE_2D, _gEmissionShiny->getID());
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, Window::ScreenWidth, Window::ScreenHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL); //8-bit precision RGBA texture
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, Window::ScreenWidth, Window::ScreenHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL); //8-bit precision RGBA texture
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
@@ -499,7 +538,7 @@ void Renderer::_initMultisampledHdrFBO() {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void Renderer::_initBloomFBO() {
+void Renderer::_initBloomFBOs() {
 	//create bloom bright color buffer (not multisampled)
 	_bloomBrightColorBuffer = new Texture();
 
@@ -515,29 +554,24 @@ void Renderer::_initBloomFBO() {
 	//create framebuffer
 	glGenFramebuffers(1, &_bloomFBO);
 	glBindFramebuffer(GL_FRAMEBUFFER, _bloomFBO);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _bloomBrightColorBuffer->getID(), 0); //attach the colo buffer to attachment 1, since the bright color in the other FBO is stored there
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _bloomBrightColorBuffer->getID(), 0); //attach the color buffer to attachment 1, since the bright color in the other FBO is stored there
 
 	//check for completion (no depth buffer needed)
 	if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-		std::cout << "ERROR: Bloom frmabeuffer is incomplete" << std::endl;
+		std::cout << "ERROR: Bloom framebuffer is incomplete" << std::endl;
 	}
 
-	//bind back to default framebuffer
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-}
-
-void Renderer::_initBlurFBOs() {
 	//create blur framebuffers
-	glGenFramebuffers(2, _blurFBOs);
+	glGenFramebuffers(2, _bloomBlurFBOs);
 
 	//create floating point blur colorbuffers
 	for(unsigned int i = 0; i < 2; i++) {
 		//bind framebuffer
-		glBindFramebuffer(GL_FRAMEBUFFER, _blurFBOs[i]);
+		glBindFramebuffer(GL_FRAMEBUFFER, _bloomBlurFBOs[i]);
 
 		//create texture buffers
 		Texture* blurColorbuffer = new Texture();
-		_blurColorbuffers[i] = blurColorbuffer; //store texture in the array
+		_blurColorBuffers[i] = blurColorbuffer; //store texture in the array
 
 		glGenTextures(1, &blurColorbuffer->getID());
 		glBindTexture(GL_TEXTURE_2D, blurColorbuffer->getID());
@@ -552,12 +586,55 @@ void Renderer::_initBlurFBOs() {
 
 		//check for framebuffer completion (no need for depth buffer)
 		if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-			std::cout << "ERROR: Blur framebuffer " + std::to_string(i) + " is incomplete." << std::endl;
+			std::cout << "ERROR: Bloom blur framebuffer " + std::to_string(i) + " is incomplete." << std::endl;
 		}
 
 		//bind back to default framebuffer
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	}
+}
+
+void Renderer::_initSSAOFBOs() {
+	//create ssao framebuffer
+	glGenFramebuffers(1, &_ssaoFBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, _ssaoFBO);
+
+	//create ssao color buffer
+	_ssaoColorBuffer = new Texture();
+	glGenTextures(1, &_ssaoColorBuffer->getID());
+	glBindTexture(GL_TEXTURE_2D, _ssaoColorBuffer->getID());
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, Window::ScreenWidth, Window::ScreenHeight, 0, GL_RGB, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _ssaoColorBuffer->getID(), 0); //attach buffer to fbo
+
+	//check for completion
+	if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+		std::cout << "ERROR: SSAO framebuffer is incomplete." << std::endl;
+	}
+
+	//create ssao blur framebuffer
+	glGenFramebuffers(1, &_ssaoBlurFBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, _ssaoBlurFBO);
+
+	//create ssao blur color buffer
+	_ssaoBlurColorBuffer = new Texture();
+	glGenTextures(1, &_ssaoBlurColorBuffer->getID());
+	glBindTexture(GL_TEXTURE_2D, _ssaoBlurColorBuffer->getID());
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, Window::ScreenWidth, Window::ScreenHeight, 0, GL_RGB, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _ssaoBlurColorBuffer->getID(), 0); //attach buffer to fbo
+
+	//check for completion
+	if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+		std::cout << "ERROR: SSAO blur framebuffer is incomplete." << std::endl;
+	}
+
+	//bind back to default framebuffer
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 void Renderer::_renderShadowMap(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, glm::mat4& lightSpaceMatrix) {
@@ -610,6 +687,61 @@ void Renderer::_renderSceneGeometry(std::vector<std::pair<RenderComponent*, glm:
 	}
 }
 
+void Renderer::_renderSSAO() {
+	//bind to ssao framebuffer
+	glBindFramebuffer(GL_FRAMEBUFFER, _ssaoFBO);
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	//set ssao properties
+	_ssaoShader->use();
+
+	for(int i = 0; i < 64; i++) {
+		_ssaoShader->setVec3("samples[" + std::to_string(i) + "]", _ssaoKernel[i]);
+	}
+
+	_ssaoShader->setFloat("screenWidth", Window::ScreenWidth);
+	_ssaoShader->setFloat("screenHeight", Window::ScreenHeight);
+
+	_ssaoShader->setInt("kernelSize", 64);
+	_ssaoShader->setFloat("radius", 0.5f);
+	_ssaoShader->setFloat("bias", 0.025f);
+	_ssaoShader->setFloat("power", 5.0f);
+
+	//bind position color buffer
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, _gPosition->getID());
+
+	//bind normal color buffer
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, _gNormal->getID());
+
+	//bind noise texture
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, _ssaoNoiseTexture->getID());
+
+	//render quad
+	glBindVertexArray(_screenQuadVAO);
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	glBindVertexArray(0);
+}
+
+void Renderer::_renderSSAOBlur() {
+	//bind to ssao blur framebuffer
+	glBindFramebuffer(GL_FRAMEBUFFER, _ssaoBlurFBO);
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	//bind ssao input texture
+	_ssaoBlurShader->use();
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, _ssaoColorBuffer->getID());
+
+	//render quad
+	glBindVertexArray(_screenQuadVAO);
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	glBindVertexArray(0);
+}
+
 void Renderer::_renderSceneLighting() {
 	//bind to multisampled hdr framebuffer
 	glBindFramebuffer(GL_FRAMEBUFFER, _multisampledHdrFBO);
@@ -633,6 +765,10 @@ void Renderer::_renderSceneLighting() {
 	//bind emission and shininess color buffer
 	glActiveTexture(GL_TEXTURE3);
 	glBindTexture(GL_TEXTURE_2D, _gEmissionShiny->getID());
+
+	//bind ssao texture
+	glActiveTexture(GL_TEXTURE4);
+	glBindTexture(GL_TEXTURE_2D, _ssaoBlurColorBuffer->getID());
 
 	//bind shadow map
 	glActiveTexture(GL_TEXTURE8);
@@ -699,17 +835,17 @@ void Renderer::_renderPostProcessingQuad(float gamma, float exposure) {
 	bool firstIteration = true;
 	unsigned int amount = 10;
 
-	_blurShader->use();
+	_bloomBlurShader->use();
 
 	//we will just use the quad and the first active texture, so we can just bind both once
 	glBindVertexArray(_screenQuadVAO);
 	glActiveTexture(GL_TEXTURE0);
 
 	for(unsigned int i = 0; i < amount; i++) {
-		glBindFramebuffer(GL_FRAMEBUFFER, _blurFBOs[horizontal]);
+		glBindFramebuffer(GL_FRAMEBUFFER, _bloomBlurFBOs[horizontal]);
 
-		_blurShader->setInt("horizontal", horizontal);
-		glBindTexture(GL_TEXTURE_2D, firstIteration ? _bloomBrightColorBuffer->getID() : _blurColorbuffers[!horizontal]->getID());  //bind texture of other framebuffer (or scene if first iteration)
+		_bloomBlurShader->setInt("horizontal", horizontal);
+		glBindTexture(GL_TEXTURE_2D, firstIteration ? _bloomBrightColorBuffer->getID() : _blurColorBuffers[!horizontal]->getID());  //bind texture of other framebuffer (or scene if first iteration)
 
 		//render quad
 		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
@@ -739,7 +875,8 @@ void Renderer::_renderPostProcessingQuad(float gamma, float exposure) {
 	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, _multiSampledColorBuffer->getID()); //bind multisampled texture
 
 	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, _blurColorbuffers[!horizontal]->getID()); //bind blurred bloom texture
+	//glBindTexture(GL_TEXTURE_2D, _blurColorBuffers[!horizontal]->getID()); //bind blurred bloom texture
+	glBindTexture(GL_TEXTURE_2D, _ssaoBlurColorBuffer->getID());
 
 	//render texture to the screen and tone map and gamma correct
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
@@ -761,10 +898,10 @@ void Renderer::_getSortedRenderComponents(std::vector<Node*>& renderables, glm::
 		renderPair.first = renderComponent;
 		renderPair.second = renderComponent->getOwner()->getTransform()->worldTransform;
 
-		if(material->getBlendMode() == BlendMode::Opaque) {
-			solidRenderables.push_back(renderPair);
-		} else {
+		if(material->getBlendMode() == BlendMode::Transparent) {
 			blendRenderables.push_back(renderPair);
+		} else {
+			solidRenderables.push_back(renderPair);
 		}
 	}
 
@@ -826,6 +963,50 @@ void Renderer::_fillShaderStorageBuffers(std::vector<std::pair<LightComponent*, 
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0); //unbind
 }
 
+void Renderer::_generateSSAOKernel() {
+	//generate kernel samples in tangent space
+
+	std::uniform_real_distribution<GLfloat> randomFloats(0.0f, 1.0f); //generates random floats between 0.0f and 1.0f
+	std::default_random_engine generator;
+
+	for(unsigned int i = 0; i < 64; i++) {
+		glm::vec3 sample(randomFloats(generator) * 2.0f - 1.0f, randomFloats(generator) * 2.0f - 1.0f, randomFloats(generator));
+		sample = glm::normalize(sample);
+		sample *= randomFloats(generator);
+		float scale = float(i) / 64.0f;
+
+		//scale samples so that they're more aligned to center of kernel
+		scale = _lerp(0.1f, 1.0f, scale * scale);
+		sample *= scale;
+
+		_ssaoKernel.push_back(sample);
+	}
+}
+
+void Renderer::_generateNoiseTexture() {
+	//generate random vectors
+	std::uniform_real_distribution<GLfloat> randomFloats(0.0f, 1.0f);
+	std::default_random_engine generator;
+
+	std::vector<glm::vec3> ssaoNoise;
+
+	for(unsigned int i = 0; i < 16; i++) {
+		glm::vec3 noise(randomFloats(generator) * 2.0 - 1.0, randomFloats(generator) * 2.0 - 1.0, 0.0f); // rotate around z-axis (in tangent space)
+		ssaoNoise.push_back(noise);
+	}
+
+	//generate small 4x4 noise texture
+	_ssaoNoiseTexture = new Texture();
+
+	glGenTextures(1, &_ssaoNoiseTexture->getID());
+	glBindTexture(GL_TEXTURE_2D, _ssaoNoiseTexture->getID());
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, 4, 4, 0, GL_RGB, GL_FLOAT, &ssaoNoise[0]);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+}
+
 void Renderer::_blitGDepthToHDR() {
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, _gBuffer);
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _multisampledHdrFBO);
@@ -842,4 +1023,8 @@ void Renderer::_blitHDRtoBloomFBO() {
 
 	//the resulting texture is stored in _bloomBrightColorBuffer
 	glBlitFramebuffer(0, 0, Window::ScreenWidth, Window::ScreenHeight, 0, 0, Window::ScreenWidth, Window::ScreenHeight, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+}
+
+float Renderer::_lerp(float a, float b, float f) {
+	return a + f * (b - a); //linear interpolation
 }

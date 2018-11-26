@@ -14,7 +14,8 @@ layout (std140) uniform matricesBlock {
 uniform mat4 modelMatrix;
 
 out VS_OUT {
-    vec3 fragPos;
+    vec3 fragPosWorld;
+    vec3 fragPosView;
     vec3 fragNormal;
     vec2 texCoord;
 
@@ -22,13 +23,14 @@ out VS_OUT {
 } vs_out;
 
 void main() {
-    mat3 normalMatrix = transpose(inverse(mat3(modelMatrix))); //fix normals in non uniform scaling
+    mat3 normalMatrix = transpose(inverse(mat3(viewMatrix * modelMatrix))); //fix normals in non uniform scaling
 
-    vs_out.fragPos = vec3(modelMatrix * vec4(aVertex, 1.0f));
-    vs_out.fragNormal = normalMatrix * aNormal;
+    vs_out.fragPosWorld = vec3(modelMatrix * vec4(aVertex, 1.0f)); //world space
+    vs_out.fragPosView = vec3(viewMatrix * modelMatrix * vec4(aVertex, 1.0f)); //view space
+    vs_out.fragNormal = normalMatrix * aNormal; //view space
     vs_out.texCoord = aUV;
 
-    //construct TBN matrix
+    //construct TBN matrix (transforms from tangent to view space)
     vec3 T = normalize(normalMatrix * aTangent);
     vec3 N = normalize(normalMatrix * aNormal);
     T = normalize(T - dot(T, N) * N); //re-orthogonalize with gram-schmidt process

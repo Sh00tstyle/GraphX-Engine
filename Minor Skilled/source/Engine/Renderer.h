@@ -38,7 +38,9 @@ class Renderer {
 		Shader* _lightingShader;
 		Shader* _shadowShader;
 		Shader* _skyboxShader;
-		Shader* _blurShader;
+		Shader* _ssaoShader;
+		Shader* _ssaoBlurShader;
+		Shader* _bloomBlurShader;
 		Shader* _postProcessingShader;
 
 		//texture buffers
@@ -51,7 +53,10 @@ class Renderer {
 		Texture* _multiSampledColorBuffer;
 		Texture* _multiSampledBrightColorBuffer;
 		Texture* _bloomBrightColorBuffer;
-		Texture* _blurColorbuffers[2];
+		Texture* _blurColorBuffers[2];
+		Texture* _ssaoNoiseTexture;
+		Texture* _ssaoColorBuffer;
+		Texture* _ssaoBlurColorBuffer;
 
 		//VAOs, VBOs
 		unsigned int _skyboxVAO;
@@ -72,11 +77,16 @@ class Renderer {
 		unsigned int _shadowFBO;
 		unsigned int _multisampledHdrFBO;
 		unsigned int _bloomFBO;
-		unsigned int _blurFBOs[2];
+		unsigned int _bloomBlurFBOs[2];
+		unsigned int _ssaoFBO;
+		unsigned int _ssaoBlurFBO;
 
 		unsigned int _gRBO;
 
 		unsigned int _multisampledHdrRBO;
+
+		//Kernels
+		std::vector<glm::vec3> _ssaoKernel;
 
 		//init functions
 		void _initShaders();
@@ -90,12 +100,14 @@ class Renderer {
 		void _initGBuffer();
 		void _initShadowFBO();
 		void _initMultisampledHdrFBO();
-		void _initBloomFBO();
-		void _initBlurFBOs();
+		void _initBloomFBOs();
+		void _initSSAOFBOs();
 		
 		//render functions
 		void _renderShadowMap(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, glm::mat4& lightSpaceMatrix);
 		void _renderSceneGeometry(std::vector<std::pair<RenderComponent*, glm::mat4>>& solidRenderComponents);
+		void _renderSSAO();
+		void _renderSSAOBlur();
 		void _renderSceneLighting();
 		void _renderScene(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, bool bindFBO);
 		void _renderSkybox(glm::mat4& viewMatrix, glm::mat4& projectionMatrix, Texture* skybox);
@@ -107,8 +119,13 @@ class Renderer {
 		void _fillUniformBuffers(glm::mat4& viewMatrix, glm::mat4& projectionMatrix, glm::mat4& lightSpaceMatrix, glm::vec3& cameraPos, glm::vec3& directionalLightPos, bool& useShadows);
 		void _fillShaderStorageBuffers(std::vector<std::pair<LightComponent*, glm::vec3>>& lightComponents);
 
+		void _generateSSAOKernel();
+		void _generateNoiseTexture();
+
 		void _blitGDepthToHDR();
 		void _blitHDRtoBloomFBO();
+
+		float _lerp(float a, float b, float f); //move to math helper class
 
 };
 
