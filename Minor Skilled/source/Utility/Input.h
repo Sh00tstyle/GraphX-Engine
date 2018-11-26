@@ -1,6 +1,8 @@
 #ifndef INPUT_H
 #define INPUT_H
 
+#include <map>
+
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
@@ -27,6 +29,8 @@ class Input {
 		static glm::vec2 GetCurrentMousePos();
 
 	private:
+		static std::map<Key, bool> _KeysReleased;
+
 		static GLFWwindow* _Window;
 
 		static bool _FirstMouse;
@@ -34,6 +38,7 @@ class Input {
 		static glm::vec2 _CurrentMousePos;
 
 		static void _MouseCallback(GLFWwindow* window, double xPos, double yPos);
+		static void _CheckKeyStatus();
 };
 
 #endif

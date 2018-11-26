@@ -166,20 +166,20 @@ void TextureMaterial::drawDeferred(glm::mat4 & modelMatrix) {
 
 	if(_specularMap != nullptr) {
 		glBindTexture(GL_TEXTURE_2D, _specularMap->getID());
-		_ForwardShader->setBool("material.hasSpecular", true);
+		_DeferredShader->setBool("material.hasSpecular", true);
 	} else {
 		glBindTexture(GL_TEXTURE_2D, 0);
-		_ForwardShader->setBool("material.hasSpecular", false);
+		_DeferredShader->setBool("material.hasSpecular", false);
 	}
 
 	glActiveTexture(GL_TEXTURE2); //normal
 
 	if(_normalMap != nullptr) {
 		glBindTexture(GL_TEXTURE_2D, _normalMap->getID());
-		_ForwardShader->setBool("material.hasNormal", true);
+		_DeferredShader->setBool("material.hasNormal", true);
 	} else {
 		glBindTexture(GL_TEXTURE_2D, 0);
-		_ForwardShader->setBool("material.hasNormal", false);
+		_DeferredShader->setBool("material.hasNormal", false);
 	}
 
 	glActiveTexture(GL_TEXTURE3); //emission
@@ -194,10 +194,10 @@ void TextureMaterial::drawDeferred(glm::mat4 & modelMatrix) {
 
 	if(_heightMap != nullptr) {
 		glBindTexture(GL_TEXTURE_2D, _heightMap->getID());
-		_ForwardShader->setBool("material.hasHeight", true);
+		_DeferredShader->setBool("material.hasHeight", true);
 	} else {
 		glBindTexture(GL_TEXTURE_2D, 0);
-		_ForwardShader->setBool("material.hasHeight", false);
+		_DeferredShader->setBool("material.hasHeight", false);
 	}
 
 	//set material properties
