@@ -2,6 +2,8 @@
 
 in vec2 texCoord;
 
+uniform bool useBloom;
+
 uniform float gamma;
 uniform float exposure;
 
@@ -21,13 +23,11 @@ vec3 GammaCorrect(vec3 color);
 
 void main() {
     vec3 color = MSAA();
-    //color += Bloom(); //additive blending
+    if(useBloom) color += Bloom(); //additive blending
     color = ExposureTonemap(color);
     color = GammaCorrect(color);
 
     fragColor = vec4(color, 1.0f);
-
-    //fragColor = vec4(vec3(texture(bloomBlur, texCoord).r), 1.0f);
 }
 
 vec3 MSAA() {

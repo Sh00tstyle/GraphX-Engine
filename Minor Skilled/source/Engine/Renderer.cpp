@@ -28,8 +28,7 @@
 #include "../Utility/Filepath.h"
 #include "../Utility/ComponentType.h"
 
-std::bitset<8> Renderer::Settings = 0;
-
+std::bitset<8> Renderer::_Settings = 0;
 const unsigned int Renderer::_ShadowHeight = 1024;
 const unsigned int Renderer::_ShadowWidth = 1024;
 
@@ -90,7 +89,6 @@ Renderer::Renderer(unsigned int msaaSamples): _msaaSamples(msaaSamples) {
 	glEnable(GL_DEPTH_TEST); //enable the z-buffer
 	glDepthFunc(GL_LESS); //set depth funtion to less
 
-	//glEnable(GL_BLEND); //enable blending
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); //set blending function
 
     //glEnable(GL_STENCIL_TEST); //enable the stencil buffer
@@ -178,6 +176,18 @@ Renderer::~Renderer() {
 	glDeleteRenderbuffers(1, &_multisampledHdrRBO);
 }
 
+void Renderer::Enable(std::bitset<8> settings) {
+	_Settings |= settings; //enable settings
+}
+
+void Renderer::Disable(std::bitset<8> settings) {
+	_Settings &= ~settings; //disable settings
+}
+
+bool Renderer::IsEnabled(std::bitset<8> settings) {
+	return (_Settings & settings) == settings; //returns true, if the setting is enabled
+}
+
 void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& lights, Node* mainCamera, Node* directionalLight, Texture* skybox) {
 	//render from main camera
 	if(mainCamera == nullptr) {
@@ -219,7 +229,7 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 	glm::mat4 lightView;
 	glm::mat4 lightSpaceMatrix;
 
-	bool useShadows = false;
+	bool useShadows = IsEnabled(RenderSettings::Shadows);
 
 	if(directionalLight != nullptr) {
 		LightComponent* directionalLightComponent = (LightComponent*)directionalLight->getComponent(ComponentType::Light);
@@ -245,17 +255,17 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 	_renderShadowMap(renderComponents, lightSpaceMatrix);
 
 	//render scene
-	bool deferred = true;
-
-	if(deferred) {
+	if(IsEnabled(RenderSettings::Deferred)) {
 		//render the geometry of the scene (deferred shading)
 		_renderSceneGeometry(solidRenderComponents);
 
-		//render ssao texture
-		_renderSSAO();
+		if(IsEnabled(RenderSettings::SSAO)) {
+			//render ssao texture (deferred shading)
+			_renderSSAO();
 
-		//blur ssao texture
-		_renderSSAOBlur();
+			//blur ssao texture (deferred shading)
+			_renderSSAOBlur();
+		}
 
 		//render lighting of the scene (deferred shading)
 		_renderSceneLighting();
@@ -407,7 +417,7 @@ void Renderer::_initGBuffer() {
 	_gPosition = new Texture();
 	glGenTextures(1, &_gPosition->getID());
 	glBindTexture(GL_TEXTURE_2D, _gPosition->getID());
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, Window::ScreenWidth, Window::ScreenHeight, 0, GL_RGB, GL_FLOAT, NULL); //32-bit precision RGB texture
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, 0, GL_RGB, GL_FLOAT, NULL); //16-bit precision RGB texture
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); //ensure we don't accidentally oversample
@@ -417,7 +427,7 @@ void Renderer::_initGBuffer() {
 	_gNormal = new Texture();
 	glGenTextures(1, &_gNormal->getID());
 	glBindTexture(GL_TEXTURE_2D, _gNormal->getID());
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, Window::ScreenWidth, Window::ScreenHeight, 0, GL_RGB, GL_FLOAT, NULL); //32-bit precision RGB texture
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, 0, GL_RGB, GL_FLOAT, NULL); //16-bit precision RGB texture
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
@@ -699,11 +709,11 @@ void Renderer::_renderSSAO() {
 		_ssaoShader->setVec3("samples[" + std::to_string(i) + "]", _ssaoKernel[i]);
 	}
 
-	_ssaoShader->setFloat("screenWidth", Window::ScreenWidth);
-	_ssaoShader->setFloat("screenHeight", Window::ScreenHeight);
+	_ssaoShader->setFloat("screenWidth", (float)Window::ScreenWidth);
+	_ssaoShader->setFloat("screenHeight", (float)Window::ScreenHeight);
 
 	_ssaoShader->setInt("kernelSize", 64);
-	_ssaoShader->setFloat("radius", 0.5f);
+	_ssaoShader->setFloat("radius", 0.3f);
 	_ssaoShader->setFloat("bias", 0.025f);
 	_ssaoShader->setFloat("power", 5.0f);
 
@@ -749,6 +759,8 @@ void Renderer::_renderSceneLighting() {
 
 	//use lighting shader and bind textures
 	_lightingShader->use();
+
+	_lightingShader->setBool("useSSAO", IsEnabled(RenderSettings::SSAO));
 
 	//bind position color buffer
 	glActiveTexture(GL_TEXTURE0);
@@ -862,6 +874,8 @@ void Renderer::_renderPostProcessingQuad(float gamma, float exposure) {
 
 	//set uniforms for gamma correction and tone mapping
 	_postProcessingShader->use();
+	_postProcessingShader->setBool("useBloom", IsEnabled(RenderSettings::Bloom));
+
 	_postProcessingShader->setFloat("gamma", gamma);
 	_postProcessingShader->setFloat("exposure", exposure);
 
@@ -875,8 +889,7 @@ void Renderer::_renderPostProcessingQuad(float gamma, float exposure) {
 	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, _multiSampledColorBuffer->getID()); //bind multisampled texture
 
 	glActiveTexture(GL_TEXTURE1);
-	//glBindTexture(GL_TEXTURE_2D, _blurColorBuffers[!horizontal]->getID()); //bind blurred bloom texture
-	glBindTexture(GL_TEXTURE_2D, _ssaoBlurColorBuffer->getID());
+	glBindTexture(GL_TEXTURE_2D, _blurColorBuffers[!horizontal]->getID()); //bind blurred bloom texture
 
 	//render texture to the screen and tone map and gamma correct
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
@@ -898,15 +911,15 @@ void Renderer::_getSortedRenderComponents(std::vector<Node*>& renderables, glm::
 		renderPair.first = renderComponent;
 		renderPair.second = renderComponent->getOwner()->getTransform()->worldTransform;
 
-		if(material->getBlendMode() == BlendMode::Transparent) {
-			blendRenderables.push_back(renderPair);
-		} else {
+		if(material->getBlendMode() == BlendMode::Opaque) {
 			solidRenderables.push_back(renderPair);
+		} else {
+			blendRenderables.push_back(renderPair);
 		}
 	}
 
 	//sort the blend objects based on the camera position
-	std::map<float, std::pair<RenderComponent*, glm::mat4>> sortedBlendObjects; //using a map, since it automatically sorts its entires by key
+	std::map<float, std::pair<RenderComponent*, glm::mat4>> sortedBlendObjects; //using a map, since it automatically sorts its entires by key (small first, ascending)
 	glm::vec3 objectPos;
 
 	for(unsigned int i = 0; i < blendRenderables.size(); i++) {
@@ -918,7 +931,14 @@ void Renderer::_getSortedRenderComponents(std::vector<Node*>& renderables, glm::
 			distance += 0.0001f;
 		}
 
-		sortedBlendObjects[distance] = blendRenderables[i]; //add entry
+		sortedBlendObjects[distance] = blendRenderables[i]; //add entry to map
+	}
+
+	//add sorted pairs back to the blend vector by iterating backwards through the sorted map
+	blendRenderables.clear();
+
+	for(std::map<float, std::pair<RenderComponent*, glm::mat4>>::reverse_iterator it = sortedBlendObjects.rbegin(); it != sortedBlendObjects.rend(); ++it) {
+		blendRenderables.push_back(it->second);
 	}
 }
 

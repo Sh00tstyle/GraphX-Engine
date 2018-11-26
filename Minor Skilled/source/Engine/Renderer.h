@@ -19,12 +19,16 @@ class Renderer {
 		Renderer(unsigned int msaaSamples = 4);
 		~Renderer();
 
-		static std::bitset<8> Settings; //probably needs more than 8 bits eventually
+		static void Enable(std::bitset<8> settings);
+		static void Disable(std::bitset<8> settings);
+		static bool IsEnabled(std::bitset<8> settings);
 
 		void render(std::vector<Node*>& renderables, std::vector<Node*>& lights, Node* mainCamera, Node* directionalLight, Texture* skybox);
 
 	private:
 		//configurations
+		static std::bitset<8> _Settings; //probably needs more than 8 bits eventually
+
 		static const unsigned int _ShadowWidth;
 		static const unsigned int _ShadowHeight;
 

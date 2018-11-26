@@ -100,13 +100,13 @@ void main() {
     switch(material.blendMode) {
         case CUTOUT:
             //discard fragment with alpha below or equal to 0.1f
-            alpha = texture(material.diffuse, fs_in.texCoord).a;
+            alpha = texture(material.diffuse, texCoord).a;
             if(alpha <= 0.1f) discard;
             break;
 
         case TRANSPARENT:
             //sample alpha so it can be applied to the frag color
-            alpha = texture(material.diffuse, fs_in.texCoord).a;
+            alpha = texture(material.diffuse, texCoord).a;
             break;
     }
 
@@ -130,7 +130,7 @@ void main() {
     }
 
     if(usedLights == 0) { //in case we have no light, simply sample from the diffuse map
-        result = texture(material.diffuse, fs_in.texCoord).rgb;
+        result = texture(material.diffuse, texCoord).rgb;
     }
 
     //shadows

@@ -44,6 +44,8 @@ layout(std430) buffer lightsBlock {
     Light lights[];
 };
 
+uniform bool useSSAO;
+
 uniform sampler2D gPosition;
 uniform sampler2D gNormal;
 uniform sampler2D gAlbedoSpec;
@@ -103,16 +105,21 @@ void main() {
     shadow = 1.0f - shadow * 0.5f;
     result *= shadow;
 
-    //ambient occlusion
-    float ao = texture(ssao, texCoord).r;
-    result *= ao;
-
     //emission
     vec3 emission = texture(gEmissionShiny, texCoord).rgb;
     result += emission;
 
-    fragColor = vec4(result, 1.0f);
+    //output bright color before applying AO
     brightColor = CalculateBrightColor(result);
+
+    //ambient occlusion
+    if(useSSAO) {
+        float ao = texture(ssao, texCoord).r;
+        result *= ao;
+    }
+
+    //output normal frag color with AO
+    fragColor = vec4(result, 1.0f);
 }
 
 vec3 CalculateDirectionalLight(Light light, vec3 normal, vec3 viewDirection, vec2 texCoord) {
