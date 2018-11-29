@@ -9,12 +9,13 @@
 #include "../Utility/RenderSettings.h"
 
 std::map<Key, bool> Input::_KeysReleased;
+std::map<MouseButton, bool> Input::_MouseButtonsReleased;
 GLFWwindow* Input::_Window = nullptr;
 glm::vec2 Input::_LastMousePos = glm::vec2(0.0f, 0.0f);
 glm::vec2 Input::_CurrentMousePos = glm::vec2(0.0f, 0.0f);
 bool Input::_FirstMouse = true;
 
-void Input::Initialize(GLFWwindow * window) {
+void Input::Initialize(GLFWwindow* window) {
 	_Window = window;
 
 	//register mouse callbacks
@@ -22,9 +23,6 @@ void Input::Initialize(GLFWwindow * window) {
 
 	//set input mode
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED); //captures the cursor and makes it invisible
-
-	//initialize keypress map
-
 }
 
 void Input::ProcessInput() {
@@ -53,12 +51,28 @@ void Input::ProcessInput() {
 		if(Renderer::IsEnabled(RenderSettings::SSAO)) Renderer::Disable(RenderSettings::SSAO);
 		else Renderer::Enable(RenderSettings::SSAO);
 	}
-
-	_CheckKeyStatus();
 }
 
 void Input::ResetMousePos() {
 	_LastMousePos = _CurrentMousePos;
+}
+
+void Input::CheckInputStatus() {
+	//reset the key if needed, done at the end of processing input
+	for(std::map<Key, bool>::iterator it = _KeysReleased.begin(); it != _KeysReleased.end(); it++) {
+		Key key = it->first;
+
+		if(!GetKey(key) && !_KeysReleased[key]) _KeysReleased[key] = true; //reset key to released state
+		else if(GetKey(key) && !_KeysReleased[key]) _KeysReleased[key] = false; //reset key to pressed state
+	}
+
+	//reset the mouse button if needed
+	for(std::map<MouseButton, bool>::iterator it = _MouseButtonsReleased.begin(); it != _MouseButtonsReleased.end(); it++) {
+		MouseButton mouseButton = it->first;
+
+		if(!GetMouse(mouseButton) && !_MouseButtonsReleased[mouseButton]) _MouseButtonsReleased[mouseButton] = true; //reset button to released state
+		else if(GetMouse(mouseButton) && !_MouseButtonsReleased[mouseButton]) _MouseButtonsReleased[mouseButton] = false; //reset button to pressed state
+	}
 }
 
 bool Input::GetKey(Key key) {
@@ -66,8 +80,12 @@ bool Input::GetKey(Key key) {
 }
 
 bool Input::GetKeyDown(Key key) {
-	if(GetKey(key) && (!_KeysReleased.count(key) || _KeysReleased[key])) {
-		_KeysReleased[key] = false; //update to show that the key is pressed
+	//lazy init
+	if(!_KeysReleased.count(key)) _KeysReleased[key] = true;
+
+	if(GetKey(key) && _KeysReleased[key]) {
+		//update to show that the key is pressed
+		_KeysReleased[key] = false;
 		return true;
 	} 
 
@@ -75,8 +93,12 @@ bool Input::GetKeyDown(Key key) {
 }
 
 bool Input::GetKeyUp(Key key) {
-	if(!GetKey(key) && (!_KeysReleased.count(key) || !_KeysReleased[key])) {
-		_KeysReleased[key] = true; //update to show that the key is released
+	//lazy init
+	if(!_KeysReleased.count(key)) _KeysReleased[key] = true;
+
+	if(!GetKey(key) && !_KeysReleased[key]) { //may skip one frame of detecting a key release in the early frames
+		//update to show that the key is released
+		_KeysReleased[key] = true;
 		return true;
 	}
 
@@ -88,12 +110,28 @@ bool Input::GetMouse(MouseButton mouseButton) {
 }
 
 bool Input::GetMouseDown(MouseButton mouseButton) {
-	//TODO
+	//lazy init
+	if(!_MouseButtonsReleased.count(mouseButton)) _MouseButtonsReleased[mouseButton] = true;
+
+	if(GetMouse(mouseButton) && _MouseButtonsReleased[mouseButton]) {
+		//update to show that the button is pressed
+		_MouseButtonsReleased[mouseButton] = false;
+		return true;
+	}
+
 	return false;
 }
 
 bool Input::GetMouseUp(MouseButton mouseButton) {
-	//TODO
+	//lazy init
+	if(!_MouseButtonsReleased.count(mouseButton)) _MouseButtonsReleased[mouseButton] = true;
+
+	if(!GetMouse(mouseButton) && !_MouseButtonsReleased[mouseButton]) { //may skip one frame of detecting a key release in the early frames
+		//update to show that the button is released
+		_MouseButtonsReleased[mouseButton] = true;
+		return true;
+	}
+
 	return false;
 }
 
@@ -117,18 +155,4 @@ void Input::_MouseCallback(GLFWwindow * window, double xPos, double yPos) {
 
 	_CurrentMousePos.x = (float)xPos;
 	_CurrentMousePos.y = (float)yPos;
-}
-
-void Input::_CheckKeyStatus() {
-	//reset the key status if needed, done at the end of processing input
-
-	for(std::map<Key, bool>::iterator it = _KeysReleased.begin(); it != _KeysReleased.end(); it++) {
-		Key key = it->first;
-
-		if(GetKey(key) && _KeysReleased[key]) {
-			_KeysReleased[key] = false; //reset to show that the key is pressed
-		} else if(!GetKey(key) && !_KeysReleased[key]) {
-			_KeysReleased[key] = true; //reset to show that the key is released
-		}
-	}
 }

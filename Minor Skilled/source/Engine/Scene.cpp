@@ -101,8 +101,9 @@ void Scene::_update() {
 	//update scene graph and pass in vectors to fill
 	_world->update(_renderables, _lights, _cameras); 
 
-	//resets the last mouse pos back to the current mouse pos
+	//resets the last mouse pos back to the current mouse pos and updates keypresses
 	Input::ResetMousePos(); 
+	Input::CheckInputStatus();
 }
 
 void Scene::_render() {

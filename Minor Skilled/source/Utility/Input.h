@@ -16,6 +16,7 @@ class Input {
 
 		static void ProcessInput();
 		static void ResetMousePos();
+		static void CheckInputStatus();
 
 		static bool GetKey(Key key);
 		static bool GetKeyDown(Key key);
@@ -30,6 +31,7 @@ class Input {
 
 	private:
 		static std::map<Key, bool> _KeysReleased;
+		static std::map<MouseButton, bool> _MouseButtonsReleased;
 
 		static GLFWwindow* _Window;
 
@@ -38,7 +40,6 @@ class Input {
 		static glm::vec2 _CurrentMousePos;
 
 		static void _MouseCallback(GLFWwindow* window, double xPos, double yPos);
-		static void _CheckKeyStatus();
 };
 
 #endif
