@@ -147,8 +147,9 @@ Renderer::~Renderer() {
 	delete _gEmissionShiny;
 
 	delete _shadowMap;
-	delete _multiSampledColorBuffer;
+	delete _multiSampledSceneColorBuffer;
 	delete _multiSampledBrightColorBuffer;
+	delete _sceneColorBuffer;
 	delete _bloomBrightColorBuffer;
 	delete _blurColorBuffers[1];
 	delete _blurColorBuffers[0];
@@ -259,7 +260,7 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 
 	//render shadow map
-	_renderShadowMap(renderComponents, lightSpaceMatrix);
+	if(useShadows) _renderShadowMap(renderComponents, lightSpaceMatrix);
 
 	//render scene
 	if(IsEnabled(RenderSettings::Deferred)) {
@@ -352,7 +353,8 @@ void Renderer::_initShaders() {
 
 	_postProcessingShader->use();
 	_postProcessingShader->setInt("multiSampledScreenTexture", 0);
-	_postProcessingShader->setInt("bloomBlur", 1);
+	_postProcessingShader->setInt("screenTexture", 1);
+	_postProcessingShader->setInt("bloomBlur", 2);
 }
 
 void Renderer::_initSkyboxVAO() {
@@ -513,9 +515,9 @@ void Renderer::_initShadowFBO() {
 
 void Renderer::_initMultisampledHdrFBO() {
 	//create multisampled floating point color buffer
-	_multiSampledColorBuffer = new Texture();
-	_multiSampledColorBuffer->bind(GL_TEXTURE_2D_MULTISAMPLE); //multi sampled texture
-	_multiSampledColorBuffer->initMultisample(GL_TEXTURE_2D_MULTISAMPLE, _msaaSamples, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight);
+	_multiSampledSceneColorBuffer = new Texture();
+	_multiSampledSceneColorBuffer->bind(GL_TEXTURE_2D_MULTISAMPLE); //multi sampled texture
+	_multiSampledSceneColorBuffer->initMultisample(GL_TEXTURE_2D_MULTISAMPLE, _msaaSamples, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight);
 
 	//create floating point bright color buffer
 	_multiSampledBrightColorBuffer = new Texture();
@@ -531,7 +533,7 @@ void Renderer::_initMultisampledHdrFBO() {
 	//create floating point framebuffer, attach color buffers and render buffer
 	_multisampledHdrFBO = new Framebuffer();
 	_multisampledHdrFBO->bind(GL_FRAMEBUFFER);
-	_multisampledHdrFBO->attachTexture(GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, _multiSampledColorBuffer); //attach color buffer
+	_multisampledHdrFBO->attachTexture(GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, _multiSampledSceneColorBuffer); //attach color buffer
 	_multisampledHdrFBO->attachTexture(GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D_MULTISAMPLE, _multiSampledBrightColorBuffer); //attach bright color buffer
 	_multisampledHdrFBO->attachRenderbuffer(GL_DEPTH_ATTACHMENT, _multisampledHdrRBO); //attach depth renderbuffer
 
@@ -549,6 +551,13 @@ void Renderer::_initMultisampledHdrFBO() {
 }
 
 void Renderer::_initBloomFBOs() {
+	//create scene color buffer (not multisampled)
+	_sceneColorBuffer = new Texture();
+	_sceneColorBuffer->bind(GL_TEXTURE_2D);
+	_sceneColorBuffer->init(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
 	//create bloom bright color buffer (not multisampled)
 	_bloomBrightColorBuffer = new Texture();
 	_bloomBrightColorBuffer->bind(GL_TEXTURE_2D);
@@ -561,7 +570,12 @@ void Renderer::_initBloomFBOs() {
 	//create framebuffer
 	_bloomFBO = new Framebuffer();
 	_bloomFBO->bind(GL_FRAMEBUFFER);
-	_bloomFBO->attachTexture(GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _bloomBrightColorBuffer); //attach the color buffer to attachment 1, since the bright color in the other FBO is stored there
+	_bloomFBO->attachTexture(GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _sceneColorBuffer); //attach the color buffer to attachment 0, since the scene is rendered into this slot in the hdr FBO
+	_bloomFBO->attachTexture(GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, _bloomBrightColorBuffer); //attach the bright color buffer to attachment 1, since the bright color in the other FBO is stored there
+
+	//tell OpenGL which color attachments this framebuffer will use for rendering
+	unsigned int attachments[2] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
+	glDrawBuffers(2, attachments);
 
 	//check for completion (no depth buffer needed)
 	if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
@@ -869,6 +883,7 @@ void Renderer::_renderPostProcessingQuad(float gamma, float exposure) {
 	//set uniforms for gamma correction and tone mapping
 	_postProcessingShader->use();
 	_postProcessingShader->setBool("useBloom", IsEnabled(RenderSettings::Bloom));
+	_postProcessingShader->setBool("useMSAA", !IsEnabled(RenderSettings::Deferred));
 
 	_postProcessingShader->setFloat("gamma", gamma);
 	_postProcessingShader->setFloat("exposure", exposure);
@@ -879,10 +894,15 @@ void Renderer::_renderPostProcessingQuad(float gamma, float exposure) {
 	_postProcessingShader->setInt("screenHeight", Window::ScreenHeight);
 	
 	//bind texture
-	glActiveTexture(GL_TEXTURE0);
-	_multiSampledColorBuffer->bind(GL_TEXTURE_2D_MULTISAMPLE); //bind multisampled texture
+	if(!IsEnabled(RenderSettings::Deferred)) {
+		glActiveTexture(GL_TEXTURE0);
+		_multiSampledSceneColorBuffer->bind(GL_TEXTURE_2D_MULTISAMPLE); //bind multisampled screen texture
+	} else {
+		glActiveTexture(GL_TEXTURE1);
+		_sceneColorBuffer->bind(GL_TEXTURE_2D); //bind screen texture
+	}
 
-	glActiveTexture(GL_TEXTURE1);
+	glActiveTexture(GL_TEXTURE2);
 	_blurColorBuffers[!horizontal]->bind(GL_TEXTURE_2D); //bind blurred bloom texture
 
 	//render texture to the screen and tone map and gamma correct
@@ -1029,9 +1049,17 @@ void Renderer::_blitGDepthToHDR() {
 void Renderer::_blitHDRtoBloomFBO() {
 	//blit from the multisampled framebuffer we rendered to into the non-multisampled framebuffer, so that we don't have to render the entire scene again
 	_multisampledHdrFBO->bind(GL_READ_FRAMEBUFFER);
-	glReadBuffer(GL_COLOR_ATTACHMENT1); //read from color attachment 1 (the bright color multisample texture)
 	_bloomFBO->bind(GL_DRAW_FRAMEBUFFER);
+
+	glReadBuffer(GL_COLOR_ATTACHMENT0); //read from color attachment 0 (multisample scene texture)
 	glDrawBuffer(GL_COLOR_ATTACHMENT0); //draw to color attachment 0
+
+	//the resulting texture is stored in _bloomBrightColorBuffer
+	glBlitFramebuffer(0, 0, Window::ScreenWidth, Window::ScreenHeight, 0, 0, Window::ScreenWidth, Window::ScreenHeight, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+
+	//blit the screen texture to get a non multisampled one
+	glReadBuffer(GL_COLOR_ATTACHMENT1); //read from color attachment 1 (bright color multisample texture)
+	glDrawBuffer(GL_COLOR_ATTACHMENT1); //draw to color attachment 1
 
 	//the resulting texture is stored in _bloomBrightColorBuffer
 	glBlitFramebuffer(0, 0, Window::ScreenWidth, Window::ScreenHeight, 0, 0, Window::ScreenWidth, Window::ScreenHeight, GL_COLOR_BUFFER_BIT, GL_NEAREST);

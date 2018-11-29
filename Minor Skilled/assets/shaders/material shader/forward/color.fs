@@ -1,5 +1,6 @@
 #version 460 core
 
+//light types
 const int DIRECTIONAL = 0;
 const int POINT = 1;
 const int SPOT = 2;
@@ -55,9 +56,9 @@ uniform sampler2D shadowMap;
 layout (location = 0) out vec4 fragColor;
 layout (location = 1) out vec4 brightColor;
 
-vec3 CalculateDirectionalLight(Light light, vec3 normal, vec3 viewDirection);
-vec3 CalculatePointLight(Light light, vec3 normal, vec3 viewDirection);
-vec3 CalculateSpotLight(Light light, vec3 normal, vec3 viewDirection);
+vec3 CalculateDirectionalLight(Light light, vec3 normal, vec3 viewDirection, float shadow);
+vec3 CalculatePointLight(Light light, vec3 normal, vec3 viewDirection, float shadow);
+vec3 CalculateSpotLight(Light light, vec3 normal, vec3 viewDirection, float shadow);
 
 float CalculateShadow(vec3 normal);
 
@@ -67,21 +68,25 @@ void main() {
     vec3 normal = normalize(fs_in.fragNormal);
     vec3 viewDirection = normalize(cameraPos - fs_in.fragPos);
 
+    //shadows
+    float shadow = CalculateShadow(normal);
+    shadow = 1.0f - shadow;
+
     //lighting
     vec3 result = vec3(0.0f);
 
     for(int i = 0; i < usedLights; i++) {
         switch(lights[i].type) {
             case DIRECTIONAL:
-                result += CalculateDirectionalLight(lights[i], normal, viewDirection);
+                result += CalculateDirectionalLight(lights[i], normal, viewDirection, shadow);
                 break;
 
             case POINT:
-                result += CalculatePointLight(lights[i], normal, viewDirection);
+                result += CalculatePointLight(lights[i], normal, viewDirection, shadow);
                 break;
 
             case SPOT:
-                result += CalculateSpotLight(lights[i], normal, viewDirection);
+                result += CalculateSpotLight(lights[i], normal, viewDirection, shadow);
                 break;
         }
     }
@@ -90,16 +95,11 @@ void main() {
         result = material.diffuse;
     }
 
-    //shadows
-    float shadow = CalculateShadow(normal);
-    shadow = 1.0f - shadow * 0.5f;
-    result *= shadow;
-
     fragColor = vec4(result, 1.0f);
     brightColor = CalculateBrightColor(result);
 }
 
-vec3 CalculateDirectionalLight(Light light, vec3 normal, vec3 viewDirection) {
+vec3 CalculateDirectionalLight(Light light, vec3 normal, vec3 viewDirection, float shadow) {
     //ambient
     vec3 ambient = light.ambient.rgb * material.ambient;
 
@@ -112,10 +112,10 @@ vec3 CalculateDirectionalLight(Light light, vec3 normal, vec3 viewDirection) {
     float specularity = pow(max(dot(normal, halfwayDireciton), 0.0f), material.shininess);
     vec3 specular = light.specular.rgb * specularity * material.specular;
 
-    return (ambient + diffuse + specular);
+    return (ambient + shadow * (diffuse + specular));
 }
 
-vec3 CalculatePointLight(Light light, vec3 normal, vec3 viewDirection) {
+vec3 CalculatePointLight(Light light, vec3 normal, vec3 viewDirection, float shadow) {
     vec3 lightDirection = normalize(light.position.xyz - fs_in.fragPos);
 
     //ambient
@@ -139,10 +139,10 @@ vec3 CalculatePointLight(Light light, vec3 normal, vec3 viewDirection) {
     diffuse *= attenuation;
     specular *= attenuation;
 
-    return (ambient + diffuse + specular);
+    return (ambient + shadow * (diffuse + specular));
 }
 
-vec3 CalculateSpotLight(Light light, vec3 normal, vec3 viewDirection) {
+vec3 CalculateSpotLight(Light light, vec3 normal, vec3 viewDirection, float shadow) {
     vec3 lightDirection = normalize(light.position.xyz - fs_in.fragPos);
 
     //ambient
@@ -171,7 +171,7 @@ vec3 CalculateSpotLight(Light light, vec3 normal, vec3 viewDirection) {
     diffuse *= attenuation * intensity;
     specular *= attenuation * intensity;
 
-    return (ambient + diffuse + specular);
+    return (ambient + shadow * (diffuse + specular));
 }
 
 float CalculateShadow(vec3 normal) {
@@ -191,7 +191,7 @@ float CalculateShadow(vec3 normal) {
 
     //calculate bias based on depth map resolution and slope
     vec3 lightDirection = normalize(directionalLightPos - fs_in.fragPos);
-    float bias = max(0.05f * (1.0f - dot(normal, lightDirection)), 0.005f);
+    float bias = max(0.15f * (1.0f - dot(normal, lightDirection)), 0.015f);
 
     //PCF
     float shadow = 0.0f;

@@ -57,9 +57,9 @@ uniform sampler2D shadowMap;
 layout (location = 0) out vec4 fragColor;
 layout (location = 1) out vec4 brightColor;
 
-vec3 CalculateDirectionalLight(Light light, vec3 normal, vec3 viewDirection, vec2 texCoord);
-vec3 CalculatePointLight(Light light, vec3 normal, vec3 fragPos, vec3 viewDirection, vec2 texCoord);
-vec3 CalculateSpotLight(Light light, vec3 normal, vec3 fragPos, vec3 viewDirection, vec2 texCoord);
+vec3 CalculateDirectionalLight(Light light, vec3 albedo, float spec, float shininess, vec3 normal, vec3 viewDirection, vec2 texCoord, float shadow);
+vec3 CalculatePointLight(Light light, vec3 albedo, float spec, float shininess, vec3 normal, vec3 fragPos, vec3 viewDirection, vec2 texCoord, float shadow);
+vec3 CalculateSpotLight(Light light, vec3 albedo, float spec, float shininess, vec3 normal, vec3 fragPos, vec3 viewDirection, vec2 texCoord, float shadow);
 
 float CalculateShadow(vec3 normal, vec3 fragPos, vec4 lightSpaceFragPos);
 
@@ -69,10 +69,19 @@ void main() {
     //sample data from the gBuffer textures
     vec3 fragPos = texture(gPosition, texCoord).rgb;
     vec3 normal = texture(gNormal, texCoord).rgb;
+    vec3 albedo = texture(gAlbedoSpec, texCoord).rgb;
+    float specular = texture(gAlbedoSpec, texCoord).a;
+    float shininess = texture(gEmissionShiny, texCoord).a * 255.0f;
 
     //transform to world pos
     vec3 worldFragPos = vec3(inverse(viewMatrix) * vec4(fragPos, 1.0f));
     vec3 worldNormal = vec3(inverse(viewMatrix) * vec4(normal, 0.0f));
+
+    //shadows
+    vec4 lightSpaceFragPos = lightSpaceMatrix * vec4(worldFragPos, 1.0f);
+
+    float shadow = CalculateShadow(worldNormal, worldFragPos, lightSpaceFragPos);
+    shadow = 1.0f - shadow;
 
     //lighting
     vec3 viewDirection = normalize(cameraPos - worldFragPos);
@@ -81,29 +90,22 @@ void main() {
     for(int i = 0; i < usedLights; i++) {
         switch(lights[i].type) {
             case DIRECTIONAL:
-                result += CalculateDirectionalLight(lights[i], worldNormal, viewDirection, texCoord);
+                result += CalculateDirectionalLight(lights[i], albedo, specular, shininess, worldNormal, viewDirection, texCoord, shadow);
                 break;
 
             case POINT:
-                result += CalculatePointLight(lights[i], worldNormal, worldFragPos, viewDirection, texCoord);
+                result += CalculatePointLight(lights[i], albedo, specular, shininess, worldNormal, worldFragPos, viewDirection, texCoord, shadow);
                 break;
 
             case SPOT:
-                result += CalculateSpotLight(lights[i], worldNormal, worldFragPos, viewDirection, texCoord);
+                result += CalculateSpotLight(lights[i], albedo, specular, shininess, worldNormal, worldFragPos, viewDirection, texCoord, shadow);
                 break;
         }
     }
 
     if(usedLights == 0) { //in case we have no light, simply take the albedo
-        result = texture(gAlbedoSpec, texCoord).rgb;
+        result = albedo;
     }
-
-    //shadows
-    vec4 lightSpaceFragPos = lightSpaceMatrix * vec4(worldFragPos, 1.0f);
-
-    float shadow = CalculateShadow(worldNormal, worldFragPos, lightSpaceFragPos);
-    shadow = 1.0f - shadow * 0.5f;
-    result *= shadow;
 
     //emission
     vec3 emission = texture(gEmissionShiny, texCoord).rgb;
@@ -122,37 +124,37 @@ void main() {
     fragColor = vec4(result, 1.0f);
 }
 
-vec3 CalculateDirectionalLight(Light light, vec3 normal, vec3 viewDirection, vec2 texCoord) {
+vec3 CalculateDirectionalLight(Light light, vec3 albedo, float spec, float shininess, vec3 normal, vec3 viewDirection, vec2 texCoord, float shadow) {
     //ambient
-    vec3 ambient = light.ambient.rgb * texture(gAlbedoSpec, texCoord).rgb;
+    vec3 ambient = light.ambient.rgb * albedo;
 
     //diffuse
     float difference = max(dot(normal, -light.direction.xyz), 0.0f);
-    vec3 diffuse = light.diffuse.rgb * difference * texture(gAlbedoSpec, texCoord).rgb;
+    vec3 diffuse = light.diffuse.rgb * difference * albedo;
 
     //specular
     vec3 halfwayDireciton = normalize(light.direction.xyz + viewDirection); //blinn-phong
-    float specularity = pow(max(dot(normal, halfwayDireciton), 0.0f), texture(gEmissionShiny, texCoord).a * 255.0f);
-    vec3 specular = light.specular.rgb * specularity * texture(gAlbedoSpec, texCoord).a;
+    float specularity = pow(max(dot(normal, halfwayDireciton), 0.0f), shininess);
+    vec3 specular = light.specular.rgb * specularity * spec;
 
     //combine results
-    return (ambient + diffuse + specular);
+    return (ambient + shadow * (diffuse + specular));
 }
 
-vec3 CalculatePointLight(Light light, vec3 normal, vec3 fragPos, vec3 viewDirection, vec2 texCoord) {
+vec3 CalculatePointLight(Light light, vec3 albedo, float spec, float shininess, vec3 normal, vec3 fragPos, vec3 viewDirection, vec2 texCoord, float shadow) {
     vec3 lightDirection = normalize(light.position.xyz - fragPos);
 
     //ambient
-    vec3 ambient = light.ambient.rgb * texture(gAlbedoSpec, texCoord).rgb;
+    vec3 ambient = light.ambient.rgb * albedo;
 
     //diffuse
     float difference = max(dot(normal, lightDirection), 0.0f);
-    vec3 diffuse = light.diffuse.rgb * difference * texture(gAlbedoSpec, texCoord).rgb;
+    vec3 diffuse = light.diffuse.rgb * difference * albedo;
 
     //specular
     vec3 halfwayDireciton = normalize(lightDirection + viewDirection); //blinn-phong
-    float specularity = pow(max(dot(normal, halfwayDireciton), 0.0f), texture(gEmissionShiny, texCoord).a * 255.0f);
-    vec3 specular = light.specular.rgb * specularity * texture(gAlbedoSpec, texCoord).a;
+    float specularity = pow(max(dot(normal, halfwayDireciton), 0.0f), shininess);
+    vec3 specular = light.specular.rgb * specularity * spec;
 
     //attenuation
     float distance = length(light.position.xyz - fragPos);
@@ -163,23 +165,23 @@ vec3 CalculatePointLight(Light light, vec3 normal, vec3 fragPos, vec3 viewDirect
     diffuse *= attenuation;
     specular *= attenuation;
 
-    return (ambient + diffuse + specular);
+    return (ambient + shadow * (diffuse + specular));
 }
 
-vec3 CalculateSpotLight(Light light, vec3 normal, vec3 fragPos, vec3 viewDirection, vec2 texCoord) {
+vec3 CalculateSpotLight(Light light, vec3 albedo, float spec, float shininess, vec3 normal, vec3 fragPos, vec3 viewDirection, vec2 texCoord, float shadow) {
     vec3 lightDirection = normalize(light.position.xyz - fragPos);
 
     //ambient
-    vec3 ambient = light.ambient.rgb * texture(gAlbedoSpec, texCoord).rgb;
+    vec3 ambient = light.ambient.rgb * albedo;
 
     //diffuse
     float difference = max(dot(normal, lightDirection), 0.0f);
-    vec3 diffuse = light.diffuse.rgb * difference * texture(gAlbedoSpec, texCoord).rgb;
+    vec3 diffuse = light.diffuse.rgb * difference * albedo;
 
     //specular
     vec3 halfwayDireciton = normalize(lightDirection + viewDirection); //blinn-phong
-    float specularity = pow(max(dot(normal, halfwayDireciton), 0.0f), texture(gEmissionShiny, texCoord).a * 255.0f);
-    vec3 specular = light.specular.rgb * specularity *  texture(gAlbedoSpec, texCoord).a;
+    float specularity = pow(max(dot(normal, halfwayDireciton), 0.0f), shininess);
+    vec3 specular = light.specular.rgb * specularity * spec;
 
     //attenuation
     float distance = length(light.position.xyz - fragPos);
@@ -195,7 +197,7 @@ vec3 CalculateSpotLight(Light light, vec3 normal, vec3 fragPos, vec3 viewDirecti
     diffuse *= attenuation * intensity;
     specular *= attenuation * intensity;
 
-    return (ambient + diffuse + specular);
+    return (ambient + shadow * (diffuse + specular));
 }
 
 float CalculateShadow(vec3 normal, vec3 fragPos, vec4 lightSpaceFragPos) {
@@ -215,7 +217,7 @@ float CalculateShadow(vec3 normal, vec3 fragPos, vec4 lightSpaceFragPos) {
 
     //calculate bias based on depth map resolution and slope
     vec3 lightDirection = normalize(directionalLightPos - fragPos);
-    float bias = max(0.05f * (1.0f - dot(normal, lightDirection)), 0.005f);
+    float bias = max(0.15f * (1.0f - dot(normal, lightDirection)), 0.015f);
 
     //PCF
     float shadow = 0.0f;

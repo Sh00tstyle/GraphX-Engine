@@ -78,21 +78,25 @@ vec3 GetSpecular();
 vec3 GetNormal();
 vec2 ParallaxMapping(vec3 viewDirection);
 
-vec3 CalculateDirectionalLight(Light light, vec3 normal, vec3 viewDirection, vec2 texCoord);
-vec3 CalculatePointLight(Light light, vec3 normal, vec3 viewDirection, vec2 texCoord);
-vec3 CalculateSpotLight(Light light, vec3 normal, vec3 viewDirection, vec2 texCoord);
+vec3 CalculateDirectionalLight(Light light, vec3 diff, vec3 spec, vec3 normal, vec3 viewDirection, vec2 texCoord, float shadow);
+vec3 CalculatePointLight(Light light, vec3 diff, vec3 spec, vec3 normal, vec3 viewDirection, vec2 texCoord, float shadow);
+vec3 CalculateSpotLight(Light light, vec3 diff, vec3 spec, vec3 normal, vec3 viewDirection, vec2 texCoord, float shadow);
 
 float CalculateShadow(vec3 normal);
 
 vec4 CalculateBrightColor(vec3 color);
 
 void main() {
-    vec3 normal = GetNormal();
     vec3 viewDirection = normalize(cameraPos - fs_in.fragPos);
 
     //parallax mapping
     vec2 texCoord = ParallaxMapping(viewDirection);
     if(material.hasHeight && (texCoord.x > 1.0f || texCoord.y > 1.0f || texCoord.x < 0.0f || texCoord.y < 0.0f)) discard; //cutoff edges to avoid artifacts when using parallax mapping
+
+    //get values from textures
+    vec3 diffuse = texture(material.diffuse, fs_in.texCoord).rgb;
+    vec3 specular = GetSpecular();
+    vec3 normal = GetNormal();
 
     //blend modes
     float alpha = 1.0f; //default (opaque)
@@ -110,21 +114,25 @@ void main() {
             break;
     }
 
+    //shadows
+    float shadow = CalculateShadow(normal);
+    shadow = 1.0f - shadow;
+
     //lighting
     vec3 result = vec3(0.0f);
 
     for(int i = 0; i < usedLights; i++) {
         switch(lights[i].type) {
             case DIRECTIONAL:
-                result += CalculateDirectionalLight(lights[i], normal, viewDirection, texCoord);
+                result += CalculateDirectionalLight(lights[i], diffuse, specular, normal, viewDirection, texCoord, shadow);
                 break;
 
             case POINT:
-                result += CalculatePointLight(lights[i], normal, viewDirection, texCoord);
+                result += CalculatePointLight(lights[i], diffuse, specular, normal, viewDirection, texCoord, shadow);
                 break;
 
             case SPOT:
-                result += CalculateSpotLight(lights[i], normal, viewDirection, texCoord);
+                result += CalculateSpotLight(lights[i], diffuse, specular, normal, viewDirection, texCoord, shadow);
                 break;
         }
     }
@@ -132,11 +140,6 @@ void main() {
     if(usedLights == 0) { //in case we have no light, simply sample from the diffuse map
         result = texture(material.diffuse, texCoord).rgb;
     }
-
-    //shadows
-    float shadow = CalculateShadow(normal);
-    shadow = 1.0f - shadow * 0.5f;
-    result *= shadow;
 
     //emission
     vec3 emission = texture(material.emission, texCoord).rgb; //if there is no emission map, nothing will be added
@@ -218,37 +221,37 @@ vec2 ParallaxMapping(vec3 viewDirection) {
     return finalTexCoords;
 }
 
-vec3 CalculateDirectionalLight(Light light, vec3 normal, vec3 viewDirection, vec2 texCoord) {
+vec3 CalculateDirectionalLight(Light light, vec3 diff, vec3 spec, vec3 normal, vec3 viewDirection, vec2 texCoord, float shadow) {
     //ambient
-    vec3 ambient = light.ambient.rgb * texture(material.diffuse, texCoord).rgb;
+    vec3 ambient = light.ambient.rgb * diff;
 
     //diffuse
     float difference = max(dot(normal, -light.direction.xyz), 0.0f);
-    vec3 diffuse = light.diffuse.rgb * difference * texture(material.diffuse, texCoord).rgb;
+    vec3 diffuse = light.diffuse.rgb * difference * diff;
 
     //specular
     vec3 halfwayDireciton = normalize(light.direction.xyz + viewDirection); //blinn-phong
     float specularity = pow(max(dot(normal, halfwayDireciton), 0.0f), material.shininess);
-    vec3 specular = light.specular.rgb * specularity * GetSpecular();
+    vec3 specular = light.specular.rgb * specularity * spec;
 
     //combine results
-    return (ambient + diffuse + specular);
+    return (ambient + shadow * (diffuse + specular));
 }
 
-vec3 CalculatePointLight(Light light, vec3 normal, vec3 viewDirection, vec2 texCoord) {
+vec3 CalculatePointLight(Light light, vec3 diff, vec3 spec, vec3 normal, vec3 viewDirection, vec2 texCoord, float shadow) {
     vec3 lightDirection = normalize(light.position.xyz - fs_in.fragPos);
 
     //ambient
-    vec3 ambient = light.ambient.rgb * texture(material.diffuse, texCoord).rgb;
+    vec3 ambient = light.ambient.rgb * diff;
 
     //diffuse
     float difference = max(dot(normal, lightDirection), 0.0f);
-    vec3 diffuse = light.diffuse.rgb * difference * texture(material.diffuse, texCoord).rgb;
+    vec3 diffuse = light.diffuse.rgb * difference * diff;
 
     //specular
     vec3 halfwayDireciton = normalize(lightDirection + viewDirection); //blinn-phong
     float specularity = pow(max(dot(normal, halfwayDireciton), 0.0f), material.shininess);
-    vec3 specular = light.specular.rgb * specularity * GetSpecular();
+    vec3 specular = light.specular.rgb * specularity * spec;
 
     //attenuation
     float distance = length(light.position.xyz - fs_in.fragPos);
@@ -259,23 +262,23 @@ vec3 CalculatePointLight(Light light, vec3 normal, vec3 viewDirection, vec2 texC
     diffuse *= attenuation;
     specular *= attenuation;
 
-    return (ambient + diffuse + specular);
+    return (ambient + shadow * (diffuse + specular));
 }
 
-vec3 CalculateSpotLight(Light light, vec3 normal, vec3 viewDirection, vec2 texCoord) {
+vec3 CalculateSpotLight(Light light, vec3 diff, vec3 spec, vec3 normal, vec3 viewDirection, vec2 texCoord, float shadow) {
     vec3 lightDirection = normalize(light.position.xyz - fs_in.fragPos);
 
     //ambient
-    vec3 ambient = light.ambient.rgb * texture(material.diffuse, texCoord).rgb;
+    vec3 ambient = light.ambient.rgb * diff;
 
     //diffuse
     float difference = max(dot(normal, lightDirection), 0.0f);
-    vec3 diffuse = light.diffuse.rgb * difference * texture(material.diffuse, texCoord).rgb;
+    vec3 diffuse = light.diffuse.rgb * difference * diff;
 
     //specular
     vec3 halfwayDireciton = normalize(lightDirection + viewDirection); //blinn-phong
     float specularity = pow(max(dot(normal, halfwayDireciton), 0.0f), material.shininess);
-    vec3 specular = light.specular.rgb * specularity * GetSpecular();
+    vec3 specular = light.specular.rgb * specularity * spec;
 
     //attenuation
     float distance = length(light.position.xyz - fs_in.fragPos);
@@ -291,7 +294,7 @@ vec3 CalculateSpotLight(Light light, vec3 normal, vec3 viewDirection, vec2 texCo
     diffuse *= attenuation * intensity;
     specular *= attenuation * intensity;
 
-    return (ambient + diffuse + specular);
+    return (ambient + shadow * (diffuse + specular));
 }
 
 float CalculateShadow(vec3 normal) {
@@ -311,7 +314,7 @@ float CalculateShadow(vec3 normal) {
 
     //calculate bias based on depth map resolution and slope
     vec3 lightDirection = normalize(directionalLightPos - fs_in.fragPos);
-    float bias = max(0.05f * (1.0f - dot(normal, lightDirection)), 0.005f);
+    float bias = max(0.15f * (1.0f - dot(normal, lightDirection)), 0.015f);
 
     //PCF
     float shadow = 0.0f;

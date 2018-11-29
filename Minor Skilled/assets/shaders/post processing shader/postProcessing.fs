@@ -2,6 +2,7 @@
 
 in vec2 texCoord;
 
+uniform bool useMSAA;
 uniform bool useBloom;
 
 uniform float gamma;
@@ -12,6 +13,7 @@ uniform int screenWidth;
 uniform int screenHeight;
 
 uniform sampler2DMS multiSampledScreenTexture;
+uniform sampler2D screenTexture;
 uniform sampler2D bloomBlur;
 
 out vec4 fragColor;
@@ -22,9 +24,19 @@ vec3 ExposureTonemap(vec3 color);
 vec3 GammaCorrect(vec3 color);
 
 void main() {
-    vec3 color = MSAA();
+    vec3 color;
+
+    //MSAA (only in forward)
+    if(useMSAA) color = MSAA();
+    else color = texture(screenTexture, texCoord).rgb;
+
+    //bloom
     if(useBloom) color += Bloom(); //additive blending
+
+    //hdr tonemap
     color = ExposureTonemap(color);
+
+    //gamma correct
     color = GammaCorrect(color);
 
     fragColor = vec4(color, 1.0f);

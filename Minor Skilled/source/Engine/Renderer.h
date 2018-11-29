@@ -58,8 +58,9 @@ class Renderer {
 		Texture* _gEmissionShiny;
 
 		Texture* _shadowMap;
-		Texture* _multiSampledColorBuffer;
+		Texture* _multiSampledSceneColorBuffer;
 		Texture* _multiSampledBrightColorBuffer;
+		Texture* _sceneColorBuffer;
 		Texture* _bloomBrightColorBuffer;
 		Texture* _blurColorBuffers[2];
 
