@@ -4,6 +4,9 @@
 #include <string>
 #include <vector>
 
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
+
 #include "../Utility/TextureFilter.h"
 
 class Texture {
@@ -13,11 +16,18 @@ public:
 
 	unsigned int& getID();
 
+	void bind(GLenum target);
+
+	void init(GLenum target, GLenum internalFormat, unsigned int width, unsigned int height, GLenum format, GLenum type);
+	void initMultisample(GLenum target, unsigned int samples, GLenum format, unsigned int width, unsigned int height);
+
 	static Texture* LoadTexture(std::string path, TextureFilter filter = TextureFilter::Repeat, bool sRGB = false);
 	static Texture* LoadCubemap(std::vector<std::string>& faces, bool sRGB = false);
 
 private:
 	unsigned int _id;
+
+	void _generate();
 };
 
 #endif

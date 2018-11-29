@@ -13,6 +13,10 @@ class Shader;
 class Texture;
 class RenderComponent;
 class LightComponent;
+class VertexArray;
+class Buffer;
+class Framebuffer;
+class Renderbuffer;
 
 class Renderer {
 	public:
@@ -35,8 +39,8 @@ class Renderer {
 		unsigned int _msaaSamples;
 
 		//vertex data
-		static const float _SkyboxVertices[];
-		static const float _ScreenQuadVertices[];
+		static const std::vector<float> _SkyboxVertices;
+		static const std::vector<float> _ScreenQuadVertices;
 
 		//shaders
 		Shader* _lightingShader;
@@ -58,38 +62,39 @@ class Renderer {
 		Texture* _multiSampledBrightColorBuffer;
 		Texture* _bloomBrightColorBuffer;
 		Texture* _blurColorBuffers[2];
+
 		Texture* _ssaoNoiseTexture;
 		Texture* _ssaoColorBuffer;
 		Texture* _ssaoBlurColorBuffer;
 
 		//VAOs, VBOs
-		unsigned int _skyboxVAO;
-		unsigned int _skyboxVBO;
+		VertexArray* _skyboxVAO;
+		VertexArray* _screenQuadVAO;
 
-		unsigned int _screenQuadVAO;
-		unsigned int _screenQuadVBO;
+		Buffer* _skyboxVBO;
+		Buffer* _screenQuadVBO;
 
 		//UBOs, SSBOs
-		unsigned int _matricesUBO;
-		unsigned int _dataUBO;
+		Buffer* _matricesUBO;
+		Buffer* _dataUBO;
 
-		unsigned int _lightsSSBO;
+		Buffer* _lightsSSBO;
 
 		//FBOs, RBOs
-		unsigned int _gBuffer;
+		Framebuffer* _gBuffer;
 
-		unsigned int _shadowFBO;
-		unsigned int _multisampledHdrFBO;
-		unsigned int _bloomFBO;
-		unsigned int _bloomBlurFBOs[2];
-		unsigned int _ssaoFBO;
-		unsigned int _ssaoBlurFBO;
+		Framebuffer* _shadowFBO;
+		Framebuffer* _multisampledHdrFBO;
+		Framebuffer* _bloomFBO;
+		Framebuffer* _bloomBlurFBOs[2];
+		Framebuffer* _ssaoFBO;
+		Framebuffer* _ssaoBlurFBO;
 
-		unsigned int _gRBO;
+		Renderbuffer* _gRBO;
 
-		unsigned int _multisampledHdrRBO;
+		Renderbuffer* _multisampledHdrRBO;
 
-		//Kernels
+		//kernels
 		std::vector<glm::vec3> _ssaoKernel;
 
 		//init functions
@@ -128,9 +133,6 @@ class Renderer {
 
 		void _blitGDepthToHDR();
 		void _blitHDRtoBloomFBO();
-
-		float _lerp(float a, float b, float f); //move to math helper class
-
 };
 
 #endif

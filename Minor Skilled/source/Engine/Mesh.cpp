@@ -3,33 +3,40 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
+#include "../Engine/VertexArray.h"
+#include "../Engine/Buffer.h"
+
 Mesh::Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices):_vertices(vertices), _indices(indices) {
 	_setupMesh();
 }
 
 Mesh::~Mesh() {
+	delete _VAO;
+	delete _VBO;
+	delete _EBO;
 }
 
 void Mesh::draw() {
-	glBindVertexArray(_VAO);
+	_VAO->bind();
+
 	glDrawElements(GL_TRIANGLES, _indices.size(), GL_UNSIGNED_INT, 0);
 	glBindVertexArray(0);
 }
 
 void Mesh::_setupMesh() {
 	//generate vertex array and buffer objects
-	glGenVertexArrays(1, &_VAO);
-	glGenBuffers(1, &_VBO);
-	glGenBuffers(1, &_EBO);
+	_VAO = new VertexArray();
+	_VBO = new Buffer();
+	_EBO = new Buffer();
 
 	//buffer data
-	glBindVertexArray(_VAO); //bind, so it can store all configurations done from here
+	_VAO->bind(); //bind, so it can store all configurations done from here
 
-	glBindBuffer(GL_ARRAY_BUFFER, _VBO);
-	glBufferData(GL_ARRAY_BUFFER, _vertices.size() * sizeof(Vertex), &_vertices[0], GL_STATIC_DRAW); //fill the vertex buffer object with vertex data
+	_VBO->bind(GL_ARRAY_BUFFER);
+	_VBO->bufferData(GL_ARRAY_BUFFER, &_vertices[0], _vertices.size() * sizeof(Vertex)); //fill the vertex buffer object with vertex data
 
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _EBO);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, _indices.size() * sizeof(unsigned int), &_indices[0], GL_STATIC_DRAW); //fill the element bufer with index data
+	_EBO->bind(GL_ELEMENT_ARRAY_BUFFER);
+	_EBO->bufferData(GL_ELEMENT_ARRAY_BUFFER, &_indices[0], _indices.size() * sizeof(unsigned int)); //fill the element bufer with index data
 
 	//vertex positions
 	glEnableVertexAttribArray(0);

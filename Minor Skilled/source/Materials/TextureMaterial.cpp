@@ -96,7 +96,7 @@ void TextureMaterial::drawForward(glm::mat4& modelMatrix) {
 	glActiveTexture(GL_TEXTURE0); //diffuse
 
 	if(_diffuseMap != nullptr) {
-		glBindTexture(GL_TEXTURE_2D, _diffuseMap->getID());
+		_diffuseMap->bind(GL_TEXTURE_2D);
 	} else {
 		glBindTexture(GL_TEXTURE_2D, 0);
 		std::cout << "ERROR: No diffuse map in the texture material. Ensure that there is at least a diffuse map present!" << std::endl;
@@ -105,7 +105,7 @@ void TextureMaterial::drawForward(glm::mat4& modelMatrix) {
 	glActiveTexture(GL_TEXTURE1); //specular
 
 	if(_specularMap != nullptr) {
-		glBindTexture(GL_TEXTURE_2D, _specularMap->getID());
+		_specularMap->bind(GL_TEXTURE_2D);
 		_ForwardShader->setBool("material.hasSpecular", true);
 	} else {
 		glBindTexture(GL_TEXTURE_2D, 0);
@@ -115,7 +115,7 @@ void TextureMaterial::drawForward(glm::mat4& modelMatrix) {
 	glActiveTexture(GL_TEXTURE2); //normal
 
 	if(_normalMap != nullptr) {
-		glBindTexture(GL_TEXTURE_2D, _normalMap->getID());
+		_normalMap->bind(GL_TEXTURE_2D);
 		_ForwardShader->setBool("material.hasNormal", true);
 	} else {
 		glBindTexture(GL_TEXTURE_2D, 0);
@@ -125,7 +125,7 @@ void TextureMaterial::drawForward(glm::mat4& modelMatrix) {
 	glActiveTexture(GL_TEXTURE3); //emission
 
 	if(_emissionMap != nullptr) {
-		glBindTexture(GL_TEXTURE_2D, _emissionMap->getID());
+		_emissionMap->bind(GL_TEXTURE_2D);
 	} else {
 		glBindTexture(GL_TEXTURE_2D, 0);
 	}
@@ -133,7 +133,7 @@ void TextureMaterial::drawForward(glm::mat4& modelMatrix) {
 	glActiveTexture(GL_TEXTURE4); //height
 
 	if(_heightMap != nullptr) {
-		glBindTexture(GL_TEXTURE_2D, _heightMap->getID());
+		_heightMap->bind(GL_TEXTURE_2D);
 		_ForwardShader->setBool("material.hasHeight", true);
 	} else {
 		glBindTexture(GL_TEXTURE_2D, 0);
@@ -156,7 +156,7 @@ void TextureMaterial::drawDeferred(glm::mat4 & modelMatrix) {
 	glActiveTexture(GL_TEXTURE0); //diffuse
 
 	if(_diffuseMap != nullptr) {
-		glBindTexture(GL_TEXTURE_2D, _diffuseMap->getID());
+		_diffuseMap->bind(GL_TEXTURE_2D);
 	} else {
 		glBindTexture(GL_TEXTURE_2D, 0);
 		std::cout << "ERROR: No diffuse map in the texture material. Ensure that there is at least a diffuse map present!" << std::endl;
@@ -165,7 +165,7 @@ void TextureMaterial::drawDeferred(glm::mat4 & modelMatrix) {
 	glActiveTexture(GL_TEXTURE1); //specular
 
 	if(_specularMap != nullptr) {
-		glBindTexture(GL_TEXTURE_2D, _specularMap->getID());
+		_specularMap->bind(GL_TEXTURE_2D);
 		_DeferredShader->setBool("material.hasSpecular", true);
 	} else {
 		glBindTexture(GL_TEXTURE_2D, 0);
@@ -175,7 +175,7 @@ void TextureMaterial::drawDeferred(glm::mat4 & modelMatrix) {
 	glActiveTexture(GL_TEXTURE2); //normal
 
 	if(_normalMap != nullptr) {
-		glBindTexture(GL_TEXTURE_2D, _normalMap->getID());
+		_normalMap->bind(GL_TEXTURE_2D);
 		_DeferredShader->setBool("material.hasNormal", true);
 	} else {
 		glBindTexture(GL_TEXTURE_2D, 0);
@@ -185,7 +185,7 @@ void TextureMaterial::drawDeferred(glm::mat4 & modelMatrix) {
 	glActiveTexture(GL_TEXTURE3); //emission
 
 	if(_emissionMap != nullptr) {
-		glBindTexture(GL_TEXTURE_2D, _emissionMap->getID());
+		_emissionMap->bind(GL_TEXTURE_2D);
 	} else {
 		glBindTexture(GL_TEXTURE_2D, 0);
 	}
@@ -193,7 +193,7 @@ void TextureMaterial::drawDeferred(glm::mat4 & modelMatrix) {
 	glActiveTexture(GL_TEXTURE4); //height
 
 	if(_heightMap != nullptr) {
-		glBindTexture(GL_TEXTURE_2D, _heightMap->getID());
+		_heightMap->bind(GL_TEXTURE_2D);
 		_DeferredShader->setBool("material.hasHeight", true);
 	} else {
 		glBindTexture(GL_TEXTURE_2D, 0);

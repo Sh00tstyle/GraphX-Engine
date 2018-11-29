@@ -9,6 +9,9 @@
 
 #include "../Engine/Vertex.h"
 
+class VertexArray;
+class Buffer;
+
 class Mesh {
 	public:
 		Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices);
@@ -20,9 +23,9 @@ class Mesh {
 		std::vector<Vertex> _vertices;
 		std::vector<unsigned int> _indices;
 
-		unsigned int _VAO;
-		unsigned int _VBO;
-		unsigned int _EBO;
+		VertexArray* _VAO;
+		Buffer* _VBO;
+		Buffer* _EBO;
 
 		void _setupMesh();
 

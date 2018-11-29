@@ -102,6 +102,21 @@
     <ClCompile Include="source\Engine\Renderer.cpp">
       <Filter>source\Engine</Filter>
     </ClCompile>
+    <ClCompile Include="source\Engine\VertexArray.cpp">
+      <Filter>source\Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Engine\Buffer.cpp">
+      <Filter>source\Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Engine\Framebuffer.cpp">
+      <Filter>source\Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Engine\Renderbuffer.cpp">
+      <Filter>source\Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Utility\Math.cpp">
+      <Filter>source\Utility</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="source\Engine\Shader.h">
@@ -196,6 +211,21 @@
     </ClInclude>
     <ClInclude Include="source\Engine\GLLight.h">
       <Filter>source\Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Engine\VertexArray.h">
+      <Filter>source\Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Engine\Buffer.h">
+      <Filter>source\Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Engine\Framebuffer.h">
+      <Filter>source\Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Engine\Renderbuffer.h">
+      <Filter>source\Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Utility\Math.h">
+      <Filter>source\Utility</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -10,6 +10,7 @@
 #include "../Utility/Filepath.h"
 
 Texture::Texture() {
+	_generate();
 }
 
 Texture::~Texture() {
@@ -20,6 +21,18 @@ unsigned int& Texture::getID() {
 	return _id;
 }
 
+void Texture::bind(GLenum target) {
+	glBindTexture(target, _id);
+}
+
+void Texture::init(GLenum target, GLenum internalFormat, unsigned int width, unsigned int height, GLenum format, GLenum type) {
+	glTexImage2D(target, 0, internalFormat, width, height, 0, format, type, NULL);
+}
+
+void Texture::initMultisample(GLenum target, unsigned int samples, GLenum format, unsigned int width, unsigned int height) {
+	glTexImage2DMultisample(target, samples, format, width, height, GL_TRUE);
+}
+
 Texture * Texture::LoadTexture(std::string path, TextureFilter filter, bool sRGB) { 
 	//sRGB textures are essentially gamma corrected already and usually the colorspace they are created in
 	//when setting the sRGB parameter to true, OpenGL transform the texture from gamma corrected/sRGB color space back to linear color space so that they can/have to be gamma corrected in the shaders
@@ -27,7 +40,6 @@ Texture * Texture::LoadTexture(std::string path, TextureFilter filter, bool sRGB
 
 	//create opengl texture object
 	Texture* texture = new Texture();
-	glGenTextures(1, &texture->_id);
 
 	//load texture from file
 	int width, height, nrComponents;
@@ -49,7 +61,7 @@ Texture * Texture::LoadTexture(std::string path, TextureFilter filter, bool sRGB
 		}
 
 		//load texture into opengl
-		glBindTexture(GL_TEXTURE_2D, texture->_id);
+		texture->bind(GL_TEXTURE_2D);
 		glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, dataFormat, GL_UNSIGNED_BYTE, textureData);
 		glGenerateMipmap(GL_TEXTURE_2D);
 
@@ -109,4 +121,8 @@ Texture * Texture::LoadCubemap(std::vector<std::string>& faces, bool sRGB) {
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
 	return texture;
+}
+
+void Texture::_generate() {
+	glGenTextures(1, &_id);
 }
