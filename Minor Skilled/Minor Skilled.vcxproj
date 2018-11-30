@@ -46,6 +46,7 @@
     <ClCompile Include="source\Utility\Filepath.cpp" />
     <ClCompile Include="source\Utility\Input.cpp" />
     <ClCompile Include="source\Utility\Math.cpp" />
+    <ClCompile Include="source\Utility\RenderSettings.cpp" />
     <ClCompile Include="source\Utility\Time.cpp" />
   </ItemGroup>
   <ItemGroup>

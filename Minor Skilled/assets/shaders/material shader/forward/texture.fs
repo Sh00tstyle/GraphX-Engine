@@ -1,5 +1,14 @@
 #version 460 core
 
+//array of offset directions for sampling
+vec3 gridSamplingDisk[20] = vec3[] (
+   vec3(1, 1,  1), vec3( 1, -1,  1), vec3(-1, -1,  1), vec3(-1, 1,  1), 
+   vec3(1, 1, -1), vec3( 1, -1, -1), vec3(-1, -1, -1), vec3(-1, 1, -1),
+   vec3(1, 1,  0), vec3( 1, -1,  0), vec3(-1, -1,  0), vec3(-1, 1,  0),
+   vec3(1, 0,  1), vec3(-1,  0,  1), vec3( 1,  0, -1), vec3(-1, 0, -1),
+   vec3(0, 1,  1), vec3( 0, -1,  1), vec3( 0, -1, -1), vec3( 0, 1, -1)
+);
+
 //light types
 const int DIRECTIONAL = 0;
 const int POINT = 1;
@@ -58,9 +67,13 @@ in VS_OUT {
 
 layout (std140) uniform dataBlock {
     bool useShadows;
+    int usedCubeShadows;
+    float farPlane;
 
     vec3 cameraPos;
     vec3 directionalLightPos;
+
+    vec3 pointLightPositions[5];
 };
 
 layout(std430) buffer lightsBlock {
@@ -70,6 +83,7 @@ layout(std430) buffer lightsBlock {
 
 uniform Material material;
 uniform sampler2D shadowMap;
+uniform samplerCube shadowCubemaps[5];
 
 layout (location = 0) out vec4 fragColor;
 layout (location = 1) out vec4 brightColor;
@@ -83,6 +97,7 @@ vec3 CalculatePointLight(Light light, vec3 diff, vec3 spec, vec3 normal, vec3 vi
 vec3 CalculateSpotLight(Light light, vec3 diff, vec3 spec, vec3 normal, vec3 viewDirection, vec2 texCoord, float shadow);
 
 float CalculateShadow(vec3 normal);
+float CalculateCubemapShadow(vec3 fragPos, int index);
 
 vec4 CalculateBrightColor(vec3 color);
 
@@ -116,6 +131,12 @@ void main() {
 
     //shadows
     float shadow = CalculateShadow(normal);
+
+    for(int i = 0; i < usedCubeShadows; i++) {
+        shadow += CalculateCubemapShadow(fs_in.fragPos, i);
+    }
+
+    if(shadow > 1.0f) shadow = 1.0f;
     shadow = 1.0f - shadow;
 
     //lighting
@@ -331,6 +352,36 @@ float CalculateShadow(vec3 normal) {
     //keep the shadow at 0.0f when outside the far plane region of the lights frustum.
     if(projectedCoords.z > 1.0f) shadow = 0.0f;
 
+    return shadow;
+}
+
+float CalculateCubemapShadow(vec3 fragPos, int index) {
+    if(!useShadows) return 0.0f; //no shadows
+
+    vec3 lightPos = pointLightPositions[index];
+
+    //get vector between fragment position and light position
+    vec3 fragToLight = fragPos - lightPos;
+
+    //now get current linear depth as the length between the fragment and light position
+    float currentDepth = length(fragToLight);
+
+    float shadow = 0.0f;
+    float bias = 0.15f;
+    int samples = 20;
+    float viewDistance = length(cameraPos - fragPos);
+    float diskRadius = (1.0f + (viewDistance / farPlane)) / farPlane;
+    float closestDepth;
+
+    for(int i = 0; i < samples; i++) {
+        closestDepth = texture(shadowCubemaps[index], fragToLight + gridSamplingDisk[i] * diskRadius).r;
+        closestDepth *= farPlane; //undo mapping [0, 1]
+
+        if(currentDepth - bias > closestDepth) shadow += 1.0f;
+    }
+
+    shadow /= float(samples);
+        
     return shadow;
 }
 

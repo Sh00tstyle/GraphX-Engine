@@ -8,6 +8,7 @@
 #include "../Components/LightComponent.h"
 
 #include "../Utility/Filepath.h"
+#include "../Utility/RenderSettings.h"
 
 Shader* TextureMaterial::_ForwardShader = nullptr;
 Shader* TextureMaterial::_DeferredShader = nullptr;
@@ -218,6 +219,10 @@ void TextureMaterial::_initShader() {
 		_ForwardShader->setInt("material.height", 4);
 
 		_ForwardShader->setInt("shadowMap", 8); //assign to slot 8, so that it shares it with the other materials which have more textures
+
+		for(unsigned int i = 0; i < RenderSettings::MaxCubeShadows; i++) {
+			_ForwardShader->setInt("shadowCubemaps[" + std::to_string(i) + "]", 9 + i);
+		}
 
 		_ForwardShader->setUniformBlockBinding("matricesBlock", 0); //set uniform block "matrices" to binding point 0
 		_ForwardShader->setUniformBlockBinding("dataBlock", 1); //set uniform block "data" to binding point 1

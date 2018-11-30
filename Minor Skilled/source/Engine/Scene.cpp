@@ -33,11 +33,9 @@ Scene::~Scene() {
 void Scene::initialize() {
 	std::cout << "---Initializing Engine---" << std::endl;
 
-	unsigned int msaaSamples = 4; //move to rendering settings
-
-	_window = new Window(1280, 720, "GraphX Engine", msaaSamples);
+	_window = new Window(1280, 720, "GraphX Engine");
 	_world = new World(); //scene graph
-	_renderer = new Renderer(msaaSamples);
+	_renderer = new Renderer();
 
 	_skybox = nullptr;
 	_mainCamera = nullptr;

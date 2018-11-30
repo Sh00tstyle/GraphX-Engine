@@ -24,7 +24,6 @@
 #include "../Utility/Filepath.h"
 #include "../Utility/LightType.h"
 #include "../Utility/BlendMode.h"
-#include "../Utility/RenderSettings.h"
 
 DemoScene::DemoScene():Scene() {
 }
@@ -151,10 +150,6 @@ void DemoScene::_initializeScene() {
 	_setMainCamera(mainCamera);
 	_setDirectionalLight(directionalLight);
 	_setSkybox(skybox);
-
-	//set render settings
-	std::bitset<8> renderSettings = RenderSettings::Deferred | RenderSettings::Bloom | RenderSettings::Shadows | RenderSettings::SSAO; //enable all
-	Renderer::Enable(renderSettings);
 
 	std::cout << "Scene initialized" << std::endl;
 }

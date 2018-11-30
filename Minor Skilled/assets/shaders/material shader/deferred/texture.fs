@@ -30,11 +30,15 @@ layout (std140) uniform matricesBlock {
     mat4 lightSpaceMatrix;
 };
 
-layout(std140) uniform dataBlock {
+layout (std140) uniform dataBlock {
     bool useShadows;
+    int usedCubeShadows;
+    float farPlane;
 
     vec3 cameraPos;
     vec3 directionalLightPos;
+
+    vec3 pointLightPositions[5];
 };
 
 uniform Material material;

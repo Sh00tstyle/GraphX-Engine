@@ -4,8 +4,6 @@
 #include <iostream>
 #include <string>
 
-#include "../Engine/Renderer.h"
-
 #include "../Utility/RenderSettings.h"
 
 std::map<Key, bool> Input::_KeysReleased;
@@ -30,26 +28,26 @@ void Input::ProcessInput() {
 
 	//shadows
 	if(GetKeyDown(Key::KEY1)) {
-		if(Renderer::IsEnabled(RenderSettings::Shadows)) Renderer::Disable(RenderSettings::Shadows);
-		else Renderer::Enable(RenderSettings::Shadows);
+		if(RenderSettings::IsEnabled(RenderSettings::Shadows)) RenderSettings::Disable(RenderSettings::Shadows);
+		else RenderSettings::Enable(RenderSettings::Shadows);
 	}
 
 	//bloom
 	if(GetKeyDown(Key::KEY2)) {
-		if(Renderer::IsEnabled(RenderSettings::Bloom)) Renderer::Disable(RenderSettings::Bloom);
-		else Renderer::Enable(RenderSettings::Bloom);
+		if(RenderSettings::IsEnabled(RenderSettings::Bloom)) RenderSettings::Disable(RenderSettings::Bloom);
+		else RenderSettings::Enable(RenderSettings::Bloom);
 	}
 
 	//deferred
 	if(GetKeyDown(Key::KEY3)) {
-		if(Renderer::IsEnabled(RenderSettings::Deferred)) Renderer::Disable(RenderSettings::Deferred);
-		else Renderer::Enable(RenderSettings::Deferred);
+		if(RenderSettings::IsEnabled(RenderSettings::Deferred)) RenderSettings::Disable(RenderSettings::Deferred);
+		else RenderSettings::Enable(RenderSettings::Deferred);
 	}
 
 	//ssao
 	if(GetKeyDown(Key::KEY4)) {
-		if(Renderer::IsEnabled(RenderSettings::SSAO)) Renderer::Disable(RenderSettings::SSAO);
-		else Renderer::Enable(RenderSettings::SSAO);
+		if(RenderSettings::IsEnabled(RenderSettings::SSAO)) RenderSettings::Disable(RenderSettings::SSAO);
+		else RenderSettings::Enable(RenderSettings::SSAO);
 	}
 }
 

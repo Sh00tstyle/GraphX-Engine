@@ -17,6 +17,7 @@ class Framebuffer {
 		void bind(GLenum target);
 
 		void attachTexture(GLenum attachment, GLenum textureTarget, Texture* texture);
+		void attachCubemap(GLenum attachment, Texture* cubemap);
 		void attachRenderbuffer(GLenum attachment, Renderbuffer* renderbuffer);
 
 	private:

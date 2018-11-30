@@ -23,6 +23,10 @@ void Framebuffer::attachTexture(GLenum attachment, GLenum textureTarget, Texture
 	glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, textureTarget, texture->getID(), 0);
 }
 
+void Framebuffer::attachCubemap(GLenum attachment, Texture* cubemap) {
+	glFramebufferTexture(GL_FRAMEBUFFER, attachment, cubemap->getID(), 0);
+}
+
 void Framebuffer::attachRenderbuffer(GLenum attachment, Renderbuffer* renderbuffer) {
 	glFramebufferRenderbuffer(GL_FRAMEBUFFER, attachment, GL_RENDERBUFFER, renderbuffer->getID());
 }

@@ -3,15 +3,16 @@
 #include <iostream>
 
 #include "../Utility/Input.h"
+#include "../Utility/RenderSettings.h"
 
 unsigned int Window::ScreenWidth = 1280;
 unsigned int Window::ScreenHeight = 720;
 
-Window::Window(unsigned int width, unsigned int height, std::string name, int msaa) {
+Window::Window(unsigned int width, unsigned int height, std::string name) {
 	ScreenWidth = width;
 	ScreenHeight = height;
 
-	_initializeGLFW(msaa);
+	_initializeGLFW(RenderSettings::MsaaSamples);
 	_initializeWindow(name);
 	_initializeGLAD();
 

@@ -32,10 +32,7 @@
 #include "../Utility/Filepath.h"
 #include "../Utility/ComponentType.h"
 #include "../Utility/Math.h"
-
-std::bitset<8> Renderer::_Settings = 0;
-const unsigned int Renderer::_ShadowHeight = 1024;
-const unsigned int Renderer::_ShadowWidth = 1024;
+#include "../Utility/RenderSettings.h"
 
 const std::vector<float> Renderer::_SkyboxVertices = {
 	//vertices          
@@ -90,7 +87,7 @@ const std::vector<float> Renderer::_ScreenQuadVertices = {
 	1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
 };
 
-Renderer::Renderer(unsigned int msaaSamples): _msaaSamples(msaaSamples) {
+Renderer::Renderer() {
 	glEnable(GL_DEPTH_TEST); //enable the z-buffer
 	glDepthFunc(GL_LESS); //set depth funtion to less
 
@@ -101,9 +98,9 @@ Renderer::Renderer(unsigned int msaaSamples): _msaaSamples(msaaSamples) {
 	//glEnable(GL_CULL_FACE); //enable face culling
 	//glCullFace(GL_BACK); //cull backfaces
 
-	glEnable(GL_MULTISAMPLE); //enable MSAA (only works in forward rendering and on the default framebuffer)
-
 	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS); //enable seamless cubemap sampling for lower mip map levels in the pre filter map
+
+	glEnable(GL_MULTISAMPLE); //enable MSAA (only works in forward rendering and on the default framebuffer)
 
 	//shaders
 	_initShaders();
@@ -120,6 +117,7 @@ Renderer::Renderer(unsigned int msaaSamples): _msaaSamples(msaaSamples) {
 	_initGBuffer();
 
 	_initShadowFBO();
+	_initShadowCubeFBOs();
 	_initMultisampledHdrFBO();
 
 	//setup post processing
@@ -134,6 +132,7 @@ Renderer::~Renderer() {
 	//delete shaders
 	delete _lightingShader;
 	delete _shadowShader;
+	delete _shadowCubeShader;
 	delete _skyboxShader;
 	delete _ssaoShader;
 	delete _ssaoBlurShader;
@@ -147,6 +146,11 @@ Renderer::~Renderer() {
 	delete _gEmissionShiny;
 
 	delete _shadowMap;
+
+	for(unsigned int i = 0; i < _shadowCubeMaps.size(); i++) {
+		delete _shadowCubeMaps[i];
+	}
+
 	delete _multiSampledSceneColorBuffer;
 	delete _multiSampledBrightColorBuffer;
 	delete _sceneColorBuffer;
@@ -171,8 +175,14 @@ Renderer::~Renderer() {
 
 	delete _lightsSSBO;
 
+	//delete framebuffers
 	delete _gBuffer;
 	delete _shadowFBO;
+
+	for(unsigned int i = 0; i < _shadowCubeFBOs.size(); i++) {
+		delete _shadowCubeFBOs[i];
+	}
+
 	delete _multisampledHdrFBO;
 	delete _bloomFBO;
 	delete _bloomBlurFBOs[0]; 
@@ -180,20 +190,9 @@ Renderer::~Renderer() {
 	delete _ssaoFBO;
 	delete _ssaoBlurFBO;
 
+	//delete renderbuffers
 	delete _gRBO;
 	delete _multisampledHdrRBO;
-}
-
-void Renderer::Enable(std::bitset<8> settings) {
-	_Settings |= settings; //enable settings
-}
-
-void Renderer::Disable(std::bitset<8> settings) {
-	_Settings &= ~settings; //disable settings
-}
-
-bool Renderer::IsEnabled(std::bitset<8> settings) {
-	return (_Settings & settings) == settings; //returns true, if the setting is enabled
 }
 
 void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& lights, Node* mainCamera, Node* directionalLight, Texture* skybox) {
@@ -231,13 +230,14 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 	}
 
 	//setup light space matrix
+	std::vector<glm::vec3> pointLightPositions;
 	glm::vec3 directionalLightPos;
 
 	glm::mat4 lightProjection;
 	glm::mat4 lightView;
 	glm::mat4 lightSpaceMatrix;
 
-	bool useShadows = IsEnabled(RenderSettings::Shadows);
+	bool useShadows = RenderSettings::IsEnabled(RenderSettings::Shadows);
 
 	if(directionalLight != nullptr) {
 		LightComponent* directionalLightComponent = (LightComponent*)directionalLight->getComponent(ComponentType::Light);
@@ -252,22 +252,25 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 		std::cout << "WARNING: No directional light assigned. Unable to render shadowmap." << std::endl;
 	}
 
+	//get closest point lights
+	if(useShadows) pointLightPositions = _getClosestPointLights(cameraPos, lightComponents);
+
 	//store the matrices and the vectors in the uniform buffer
-	_fillUniformBuffers(viewMatrix, projectionMatrix, lightSpaceMatrix, cameraPos, directionalLightPos, useShadows);
+	_fillUniformBuffers(viewMatrix, projectionMatrix, lightSpaceMatrix, cameraPos, directionalLightPos, useShadows, pointLightPositions);
 	_fillShaderStorageBuffers(lightComponents);
 
 	//clear screen in light grey
 	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 
 	//render shadow map
-	if(useShadows) _renderShadowMap(renderComponents, lightSpaceMatrix);
+	if(useShadows) _renderShadowMaps(renderComponents, pointLightPositions, lightSpaceMatrix);
 
 	//render scene
-	if(IsEnabled(RenderSettings::Deferred)) {
+	if(RenderSettings::IsEnabled(RenderSettings::Deferred)) {
 		//render the geometry of the scene (deferred shading)
 		_renderSceneGeometry(solidRenderComponents);
 
-		if(IsEnabled(RenderSettings::SSAO)) {
+		if(RenderSettings::IsEnabled(RenderSettings::SSAO)) {
 			//render ssao texture (deferred shading)
 			_renderSSAO();
 
@@ -282,12 +285,12 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 		_blitGDepthToHDR();
 	} else {
 		//render and light the scene (forward shading)
-		_renderScene(solidRenderComponents, true); //bind the hdr here and clear buffer bits
+		_renderScene(solidRenderComponents, pointLightPositions.size(), useShadows, true); //bind the hdr here and clear buffer bits
 	}
 
 	//render blend objects (forward shading)
 	glEnable(GL_BLEND);
-	_renderScene(blendRenderComponents, false); //do not bind the hbr here and clear buffer bits since the solid objects are needed in the fbo
+	_renderScene(blendRenderComponents, pointLightPositions.size(), useShadows, false); //do not bind the hbr here and clear buffer bits since the solid objects are needed in the fbo
 	glDisable(GL_BLEND);
 	
 	//render skybox
@@ -297,7 +300,7 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 	_blitHDRtoBloomFBO();
 
 	//render screen quad
-	_renderPostProcessingQuad(2.2f, 1.0f);
+	_renderPostProcessingQuad();
 }
 
 void Renderer::_initShaders() {
@@ -312,6 +315,10 @@ void Renderer::_initShaders() {
 	_lightingShader->setInt("ssao", 4);
 	_lightingShader->setInt("shadowMap", 8);
 
+	for(unsigned int i = 0; i < RenderSettings::MaxCubeShadows; i++) {
+		_lightingShader->setInt("shadowCubemaps[" + std::to_string(i) + "]", 9 + i);
+	}
+
 	_lightingShader->setUniformBlockBinding("matricesBlock", 0); //set uniform block "matrices" to binding point 0
 	_lightingShader->setUniformBlockBinding("dataBlock", 1); //set uniform block "data" to binding point 1
 
@@ -319,6 +326,9 @@ void Renderer::_initShaders() {
 
 	//initialize shadow shader
 	_shadowShader = new Shader(Filepath::ShaderPath + "shadow shader/shadow.vs", Filepath::ShaderPath + "shadow shader/shadow.fs");
+
+	//initialize shadow cubemap shader (including geometry shader)
+	_shadowCubeShader = new Shader(Filepath::ShaderPath + "shadow shader/shadowCube.vs", Filepath::ShaderPath + "shadow shader/shadowCube.gs", Filepath::ShaderPath + "shadow shader/shadowCube.fs");
 
 	//initialize skybox shader
 	_skyboxShader = new Shader(Filepath::ShaderPath + "skybox shader/skybox.vs", Filepath::ShaderPath + "skybox shader/skybox.fs");
@@ -399,7 +409,7 @@ void Renderer::_initUniformBuffers() {
 	_matricesUBO->bindBufferRange(GL_UNIFORM_BUFFER, 0, neededMemory);
 
 	//create data uniform buffer
-	neededMemory = sizeof(glm::vec4) * 3; //2x vec3 and a bool, but needs the memory layout of a three vec4 because of padding
+	neededMemory = sizeof(glm::vec4) * 3 + sizeof(glm::vec4) * RenderSettings::MaxCubeShadows;
 
 	_dataUBO = new Buffer();
 	_dataUBO->bind(GL_UNIFORM_BUFFER);
@@ -413,7 +423,7 @@ void Renderer::_initUniformBuffers() {
 
 void Renderer::_initShaderStorageBuffers() {
 	//create lights shader storage buffer (enables use of dynamic arrays within shaders)
-	unsigned int neededMemory = sizeof(glm::vec4) + sizeof(GLLight) * LightComponent::LightAmount; //112 bytes per light struct + 16 for an additional int
+	unsigned int neededMemory = sizeof(glm::vec4) + sizeof(GLLight) * RenderSettings::MaxLights; //112 bytes per light struct + 16 for an additional int
 
 	_lightsSSBO = new Buffer();
 	_lightsSSBO->bind(GL_SHADER_STORAGE_BUFFER);
@@ -488,7 +498,7 @@ void Renderer::_initShadowFBO() {
 	//create shadow texture
 	_shadowMap = new Texture();
 	_shadowMap->bind(GL_TEXTURE_2D);
-	_shadowMap->init(GL_TEXTURE_2D, GL_DEPTH_COMPONENT, _ShadowWidth, _ShadowHeight, GL_DEPTH_COMPONENT, GL_FLOAT); //we only need the depth component
+	_shadowMap->init(GL_TEXTURE_2D, GL_DEPTH_COMPONENT, RenderSettings::ShadowWidth, RenderSettings::ShadowHeight, GL_DEPTH_COMPONENT, GL_FLOAT); //we only need the depth component
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
@@ -513,21 +523,58 @@ void Renderer::_initShadowFBO() {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0); 
 }
 
+void Renderer::_initShadowCubeFBOs() {
+	//create shadow cubemap texture for each possible light
+	for(unsigned int i = 0; i < RenderSettings::MaxCubeShadows; i++) {
+		_shadowCubeMaps.push_back(new Texture()); //add to vector
+
+		_shadowCubeMaps[i]->bind(GL_TEXTURE_CUBE_MAP);
+
+		//init all cubemap faces
+		for(unsigned int j = 0; j < 6; j++) {
+			_shadowCubeMaps[i]->init(GL_TEXTURE_CUBE_MAP_POSITIVE_X + j, GL_DEPTH_COMPONENT, RenderSettings::ShadowWidth, RenderSettings::ShadowHeight, GL_DEPTH_COMPONENT, GL_FLOAT); //we only need the depth component
+		}
+
+		//set texture filter options
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+		//create shadow framebuffer and attach the shadow map to it, so the framebuffer can render to it
+		_shadowCubeFBOs.push_back(new Framebuffer());
+
+		_shadowCubeFBOs[i]->bind(GL_FRAMEBUFFER);
+		_shadowCubeFBOs[i]->attachCubemap(GL_DEPTH_ATTACHMENT, _shadowCubeMaps[i]); //attach texture
+		glDrawBuffer(GL_NONE); //explicitly tell OpenGL that we are only using the depth attachments and no color attachments, otherwise the FBO will be incomplete
+		glReadBuffer(GL_NONE);
+
+		//check for completion
+		if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+			std::cout << "ERROR: Shadow cubemap " + std::to_string(i) + " framebuffer is incomplete." << std::endl;
+		}
+	}
+
+	//bind back to default framebuffer
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
 void Renderer::_initMultisampledHdrFBO() {
 	//create multisampled floating point color buffer
 	_multiSampledSceneColorBuffer = new Texture();
 	_multiSampledSceneColorBuffer->bind(GL_TEXTURE_2D_MULTISAMPLE); //multi sampled texture
-	_multiSampledSceneColorBuffer->initMultisample(GL_TEXTURE_2D_MULTISAMPLE, _msaaSamples, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight);
+	_multiSampledSceneColorBuffer->initMultisample(GL_TEXTURE_2D_MULTISAMPLE, RenderSettings::MsaaSamples, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight);
 
 	//create floating point bright color buffer
 	_multiSampledBrightColorBuffer = new Texture();
 	_multiSampledBrightColorBuffer->bind(GL_TEXTURE_2D_MULTISAMPLE); //multi sampled texture
-	_multiSampledBrightColorBuffer->initMultisample(GL_TEXTURE_2D_MULTISAMPLE, _msaaSamples, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight);
+	_multiSampledBrightColorBuffer->initMultisample(GL_TEXTURE_2D_MULTISAMPLE, RenderSettings::MsaaSamples, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight);
 
 	//create depth renderbuffer
 	_multisampledHdrRBO = new Renderbuffer();
 	_multisampledHdrRBO->bind();
-	_multisampledHdrRBO->initMultisample(_msaaSamples, GL_DEPTH_COMPONENT, Window::ScreenWidth, Window::ScreenHeight);
+	_multisampledHdrRBO->initMultisample(RenderSettings::MsaaSamples, GL_DEPTH_COMPONENT, Window::ScreenWidth, Window::ScreenHeight);
 	glBindRenderbuffer(GL_RENDERBUFFER, 0);
 
 	//create floating point framebuffer, attach color buffers and render buffer
@@ -589,16 +636,15 @@ void Renderer::_initBloomFBOs() {
 		_bloomBlurFBOs[i]->bind(GL_FRAMEBUFFER);
 
 		//create texture buffers
-		Texture* blurColorbuffer = new Texture();
-		_blurColorBuffers[i] = blurColorbuffer; //store texture in the array
-		blurColorbuffer->bind(GL_TEXTURE_2D);
-		blurColorbuffer->init(GL_TEXTURE_2D, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT);
+		_blurColorBuffers[i] = new Texture();
+		_blurColorBuffers[i]->bind(GL_TEXTURE_2D);
+		_blurColorBuffers[i]->init(GL_TEXTURE_2D, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); //clamp to the edge as the blur filter would otherwise sample repeated texture values
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-		_bloomBlurFBOs[i]->attachTexture(GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, blurColorbuffer); //attach blur colorbuffer to the blur framebuffer
+		_bloomBlurFBOs[i]->attachTexture(GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _blurColorBuffers[i]); //attach blur colorbuffer to the blur framebuffer
 
 		//check for framebuffer completion (no need for depth buffer)
 		if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
@@ -651,22 +697,21 @@ void Renderer::_initSSAOFBOs() {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void Renderer::_renderShadowMap(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, glm::mat4& lightSpaceMatrix) {
+void Renderer::_renderShadowMaps(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, std::vector<glm::vec3>& pointLights, glm::mat4& lightSpaceMatrix) {
+	//adjust viewport and bind to shadow framebuffer
+	glViewport(0, 0, RenderSettings::ShadowWidth, RenderSettings::ShadowHeight);
+	_shadowFBO->bind(GL_FRAMEBUFFER);
+	glClear(GL_DEPTH_BUFFER_BIT);
+
 	//setup shader uniforms
 	_shadowShader->use();
 	_shadowShader->setMat4("lightSpaceMatrix", lightSpaceMatrix);
-
-	//adjust viewport and bind to shadow framebuffer
-	glViewport(0, 0, _ShadowWidth, _ShadowHeight);
-	_shadowFBO->bind(GL_FRAMEBUFFER);
-
-	//render scene from the lights perspective
-	glClear(GL_DEPTH_BUFFER_BIT);
 
 	glm::mat4 modelMatrix;
 	Material* material;
 	Model* model;
 
+	//render all models' depth into the shadow map from the lights perspective
 	for(unsigned int i = 0; i < renderComponents.size(); i++) {
 		modelMatrix = renderComponents[i].second;
 		material = renderComponents[i].first->material;
@@ -676,6 +721,51 @@ void Renderer::_renderShadowMap(std::vector<std::pair<RenderComponent*, glm::mat
 
 		_shadowShader->setMat4("modelMatrix", modelMatrix);
 		model->draw();
+	}
+
+	//use shadow cubemap shader
+	_shadowCubeShader->use();
+
+	//render a cubemap for each point light
+	std::vector<glm::mat4> shadowTransforms;
+	glm::vec3 lightPos;
+
+	for(unsigned int i = 0; i < pointLights.size(); i++) {
+		//bind to correct cubemap shadow framebuffer
+		_shadowCubeFBOs[i]->bind(GL_FRAMEBUFFER);
+		glClear(GL_DEPTH_BUFFER_BIT);
+
+		//create depth cubemap shadow matrices
+		lightPos = pointLights[i];
+		glm::mat4 shadowProjection = glm::perspective(glm::radians(90.0f), (float)RenderSettings::ShadowWidth / (float)RenderSettings::ShadowHeight, RenderSettings::CubeNearPlane, RenderSettings::CubeFarPlane);
+
+		shadowTransforms.clear();
+		shadowTransforms.push_back(shadowProjection * glm::lookAt(lightPos, lightPos + glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)));
+		shadowTransforms.push_back(shadowProjection * glm::lookAt(lightPos, lightPos + glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)));
+		shadowTransforms.push_back(shadowProjection * glm::lookAt(lightPos, lightPos + glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)));
+		shadowTransforms.push_back(shadowProjection * glm::lookAt(lightPos, lightPos + glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f)));
+		shadowTransforms.push_back(shadowProjection * glm::lookAt(lightPos, lightPos + glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f)));
+		shadowTransforms.push_back(shadowProjection * glm::lookAt(lightPos, lightPos + glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f)));
+
+		//setup shader uniforms
+		for(unsigned int i = 0; i < 6; i++) {
+			_shadowCubeShader->setMat4("shadowMatrices[" + std::to_string(i) + "]", shadowTransforms[i]);
+		}
+
+		_shadowCubeShader->setFloat("farPlane", RenderSettings::CubeFarPlane);
+		_shadowCubeShader->setVec3("lightPos", lightPos);
+
+		//render all models' depth into the shadow cubemap from the lights perspective
+		for(unsigned int i = 0; i < renderComponents.size(); i++) {
+			modelMatrix = renderComponents[i].second;
+			material = renderComponents[i].first->material;
+			model = renderComponents[i].first->model;
+
+			if(!material->getCastsShadows()) continue; //skip this model, if it should not cast shadows (e.g. like glass)
+
+			_shadowCubeShader->setMat4("modelMatrix", modelMatrix);
+			model->draw();
+		}
 	}
 
 	//reset viewport
@@ -709,17 +799,17 @@ void Renderer::_renderSSAO() {
 	//set ssao properties
 	_ssaoShader->use();
 
-	for(int i = 0; i < 64; i++) {
+	for(unsigned int i = 0; i < RenderSettings::SsaoKernelSize; i++) {
 		_ssaoShader->setVec3("samples[" + std::to_string(i) + "]", _ssaoKernel[i]);
 	}
 
 	_ssaoShader->setFloat("screenWidth", (float)Window::ScreenWidth);
 	_ssaoShader->setFloat("screenHeight", (float)Window::ScreenHeight);
 
-	_ssaoShader->setInt("kernelSize", 64);
-	_ssaoShader->setFloat("radius", 0.3f);
-	_ssaoShader->setFloat("bias", 0.025f);
-	_ssaoShader->setFloat("power", 5.0f);
+	_ssaoShader->setInt("kernelSize", RenderSettings::SsaoKernelSize);
+	_ssaoShader->setFloat("radius", RenderSettings::SsaoRadius);
+	_ssaoShader->setFloat("bias", RenderSettings::SsaoBias);
+	_ssaoShader->setFloat("power", RenderSettings::SsaoPower);
 
 	//bind position color buffer
 	glActiveTexture(GL_TEXTURE0);
@@ -764,7 +854,7 @@ void Renderer::_renderSceneLighting() {
 	//use lighting shader and bind textures
 	_lightingShader->use();
 
-	_lightingShader->setBool("useSSAO", IsEnabled(RenderSettings::SSAO));
+	_lightingShader->setBool("useSSAO", RenderSettings::IsEnabled(RenderSettings::SSAO));
 
 	//bind position color buffer
 	glActiveTexture(GL_TEXTURE0);
@@ -790,22 +880,35 @@ void Renderer::_renderSceneLighting() {
 	glActiveTexture(GL_TEXTURE8);
 	_shadowMap->bind(GL_TEXTURE_2D);
 
+	//bind shadow cubemap
+	for(unsigned int i = 0; i < 2; i++) {
+		glActiveTexture(GL_TEXTURE9 + i);
+		_shadowCubeMaps[i]->bind(GL_TEXTURE_CUBE_MAP);
+	}
+
 	//render quad
 	_screenQuadVAO->bind();
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 	glBindVertexArray(0);
 }
 
-void Renderer::_renderScene(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, bool bindFBO) {
+void Renderer::_renderScene(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, unsigned int pointLightCount, bool useShadows, bool bindFBO) {
 	//bind to hdr framebuffer if needed and render each renderable 
 	if(bindFBO) {
 		_multisampledHdrFBO->bind(GL_FRAMEBUFFER);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	}
 
-	//bind shadow map
-	glActiveTexture(GL_TEXTURE8);
-	_shadowMap->bind(GL_TEXTURE_2D);
+	//bind shadow maps
+	if(useShadows) {
+		glActiveTexture(GL_TEXTURE8);
+		_shadowMap->bind(GL_TEXTURE_2D);
+
+		for(unsigned int i = 0; i < pointLightCount; i++) {
+			glActiveTexture(GL_TEXTURE9 + i);
+			_shadowCubeMaps[i]->bind(GL_TEXTURE_CUBE_MAP);
+		}
+	}
 
 	glm::mat4 modelMatrix;
 	Material* material;
@@ -828,7 +931,7 @@ void Renderer::_renderSkybox(glm::mat4& viewMatrix, glm::mat4& projectionMatrix,
 	}
 
 	//remove translation from view matrix
-	glm::mat4 newViewMatrix = glm::mat4(glm::mat3(viewMatrix)); 
+	glm::mat4 newViewMatrix = glm::mat4(glm::mat3(viewMatrix));
 
 	//set shader uniforms
 	_skyboxShader->use();
@@ -838,6 +941,7 @@ void Renderer::_renderSkybox(glm::mat4& viewMatrix, glm::mat4& projectionMatrix,
 	//render skybox (done in the same framebuffer as the one used in _renderScene)
 	glDepthFunc(GL_LEQUAL); //set depth funtion to less than AND equal for skybox depth trick
 	_skyboxVAO->bind();
+
 	glActiveTexture(GL_TEXTURE0);
 	skybox->bind(GL_TEXTURE_CUBE_MAP);
 
@@ -846,11 +950,10 @@ void Renderer::_renderSkybox(glm::mat4& viewMatrix, glm::mat4& projectionMatrix,
 	glDepthFunc(GL_LESS); //depth function set back to default
 }
 
-void Renderer::_renderPostProcessingQuad(float gamma, float exposure) {
+void Renderer::_renderPostProcessingQuad() {
 	//blur bright fragments with two-pass Gaussian Blur 
 	bool horizontal = true;
 	bool firstIteration = true;
-	unsigned int amount = 10;
 
 	_bloomBlurShader->use();
 
@@ -858,7 +961,7 @@ void Renderer::_renderPostProcessingQuad(float gamma, float exposure) {
 	_screenQuadVAO->bind();
 	glActiveTexture(GL_TEXTURE0);
 
-	for(unsigned int i = 0; i < amount; i++) {
+	for(unsigned int i = 0; i < RenderSettings::BloomBlurAmount; i++) {
 		_bloomBlurFBOs[horizontal]->bind(GL_FRAMEBUFFER);
 
 		_bloomBlurShader->setInt("horizontal", horizontal);
@@ -882,19 +985,19 @@ void Renderer::_renderPostProcessingQuad(float gamma, float exposure) {
 
 	//set uniforms for gamma correction and tone mapping
 	_postProcessingShader->use();
-	_postProcessingShader->setBool("useBloom", IsEnabled(RenderSettings::Bloom));
-	_postProcessingShader->setBool("useMSAA", !IsEnabled(RenderSettings::Deferred));
+	_postProcessingShader->setBool("useBloom", RenderSettings::IsEnabled(RenderSettings::Bloom));
+	_postProcessingShader->setBool("useMSAA", !RenderSettings::IsEnabled(RenderSettings::Deferred));
 
-	_postProcessingShader->setFloat("gamma", gamma);
-	_postProcessingShader->setFloat("exposure", exposure);
+	_postProcessingShader->setFloat("gamma", RenderSettings::Gamma);
+	_postProcessingShader->setFloat("exposure", RenderSettings::Exposure);
 
 	//set uniform for MSAA
-	_postProcessingShader->setInt("msaaSamples", _msaaSamples);
+	_postProcessingShader->setInt("msaaSamples", RenderSettings::MsaaSamples);
 	_postProcessingShader->setInt("screenWidth", Window::ScreenWidth);
 	_postProcessingShader->setInt("screenHeight", Window::ScreenHeight);
 	
 	//bind texture
-	if(!IsEnabled(RenderSettings::Deferred)) {
+	if(!RenderSettings::IsEnabled(RenderSettings::Deferred)) {
 		glActiveTexture(GL_TEXTURE0);
 		_multiSampledSceneColorBuffer->bind(GL_TEXTURE_2D_MULTISAMPLE); //bind multisampled screen texture
 	} else {
@@ -911,9 +1014,8 @@ void Renderer::_renderPostProcessingQuad(float gamma, float exposure) {
 }
 
 void Renderer::_getSortedRenderComponents(std::vector<Node*>& renderables, glm::vec3& cameraPos, std::vector<std::pair<RenderComponent*, glm::mat4>>& solidRenderables, std::vector<std::pair<RenderComponent*, glm::mat4>>& blendRenderables) {
-	//returns a vector of pairs  of render components and their respective model matrix (sorted by Opaque -> distance to camera)
-
 	//fill both vectors with the objects
+	std::vector<std::pair<RenderComponent*, glm::mat4>> newBlendRenderables;
 	RenderComponent* renderComponent;
 	Material* material;
 
@@ -928,35 +1030,67 @@ void Renderer::_getSortedRenderComponents(std::vector<Node*>& renderables, glm::
 		if(material->getBlendMode() == BlendMode::Opaque) {
 			solidRenderables.push_back(renderPair);
 		} else {
-			blendRenderables.push_back(renderPair);
+			newBlendRenderables.push_back(renderPair);
 		}
 	}
 
 	//sort the blend objects based on the camera position
-	std::map<float, std::pair<RenderComponent*, glm::mat4>> sortedBlendObjects; //using a map, since it automatically sorts its entires by key (small first, ascending)
+	std::map<float, unsigned int> sortedBlendObjects; //using a map, since it automatically sorts its entires by key (small first, ascending)
 	glm::vec3 objectPos;
+	float distance;
 
-	for(unsigned int i = 0; i < blendRenderables.size(); i++) {
-		objectPos = blendRenderables[i].first->getOwner()->getTransform()->getWorldPosition();
+	for(unsigned int i = 0; i < newBlendRenderables.size(); i++) {
+		objectPos = newBlendRenderables[i].first->getOwner()->getTransform()->getWorldPosition();
 
-		float distance = glm::distance2(cameraPos, objectPos); //squared distance, since we are only comparing distances against each other
+		distance = glm::distance2(cameraPos, objectPos); //squared distance, since we are only comparing distances against each other
 
-		while(sortedBlendObjects[distance].first != nullptr) { //offset the distance slightly if there is an objects with the exact same distance already to allow having both in the map
+		while(sortedBlendObjects.count(distance)) { //offset the distance slightly if there is an objects with the exact same distance already to allow having both in the map
 			distance += 0.0001f;
 		}
 
-		sortedBlendObjects[distance] = blendRenderables[i]; //add entry to map
+		sortedBlendObjects[distance] = i; //add entry to map
 	}
 
 	//add sorted pairs back to the blend vector by iterating backwards through the sorted map
 	blendRenderables.clear();
 
-	for(std::map<float, std::pair<RenderComponent*, glm::mat4>>::reverse_iterator it = sortedBlendObjects.rbegin(); it != sortedBlendObjects.rend(); ++it) {
-		blendRenderables.push_back(it->second);
+	for(std::map<float, unsigned int>::reverse_iterator it = sortedBlendObjects.rbegin(); it != sortedBlendObjects.rend(); ++it) {
+		blendRenderables.push_back(newBlendRenderables[it->second]);
 	}
 }
 
-void Renderer::_fillUniformBuffers(glm::mat4& viewMatrix, glm::mat4& projectionMatrix, glm::mat4& lightSpaceMatrix, glm::vec3& cameraPos, glm::vec3& directionalLightPos, bool& useShadows) {
+std::vector<glm::vec3> Renderer::_getClosestPointLights(glm::vec3 cameraPos, std::vector<std::pair<LightComponent*, glm::vec3>>& lightComponents) {
+	//insert all point lights into the map to sort them automatically
+	std::map<float, unsigned int> sortedPointLights;
+	float distance;
+
+	for(unsigned int i = 0; i < lightComponents.size(); i++) {
+		if(lightComponents[i].first->lightType != LightType::Point) continue; //skip every non point light
+
+		distance = glm::distance2(cameraPos, lightComponents[i].second); //distance squared for comparisons
+
+		while(sortedPointLights.count(distance)) { //offset the distance slightly if there is an objects with the exact same distance already to allow having both in the map
+			distance += 0.0001f;
+		}
+
+		sortedPointLights[distance] = i; //add index of light pair to map
+	}
+
+	//fill vector with the light entires closest to the camera
+	unsigned int counter = 0;
+	std::vector<glm::vec3> closestPointLights;
+
+	for(std::map<float, unsigned int>::iterator it = sortedPointLights.begin(); it != sortedPointLights.end(); it++) {
+		if(counter >= RenderSettings::MaxCubeShadows) break; //do not allow more point lights than specified in the settings
+
+		closestPointLights.push_back(lightComponents[it->second].second); //add to new vector by indexing the unsorted one
+		counter++;
+	}
+
+	return closestPointLights;
+}
+
+void Renderer::_fillUniformBuffers(glm::mat4& viewMatrix, glm::mat4& projectionMatrix, glm::mat4& lightSpaceMatrix, glm::vec3& cameraPos, glm::vec3& directionalLightPos, bool useShadows, std::vector<glm::vec3>& pointLightPositions) {
 	//store the matrices in the matrices uniform buffer
 	_matricesUBO->bind(GL_UNIFORM_BUFFER);
 	_matricesUBO->bufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(viewMatrix)); //buffer view matrix
@@ -964,10 +1098,19 @@ void Renderer::_fillUniformBuffers(glm::mat4& viewMatrix, glm::mat4& projectionM
 	_matricesUBO->bufferSubData(GL_UNIFORM_BUFFER, 2 * sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(lightSpaceMatrix)); //buffer light space matrix
 
 	//store the data in the data uniform buffer
+	unsigned int pointLightCount = pointLightPositions.size();
+
 	_dataUBO->bind(GL_UNIFORM_BUFFER);
-	_dataUBO->bufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(GLboolean), &useShadows); //buffer use shadows bool
+	_dataUBO->bufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(GLint), &useShadows); //buffer use shadows bool
+	_dataUBO->bufferSubData(GL_UNIFORM_BUFFER, 4, sizeof(GLint), &pointLightCount); //buffer point light amount
+	_dataUBO->bufferSubData(GL_UNIFORM_BUFFER, 8, sizeof(GLfloat), &RenderSettings::CubeFarPlane); //buffer cube map far plane
+
 	_dataUBO->bufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::vec4), sizeof(glm::vec4), glm::value_ptr(cameraPos)); //buffer cameraPos
 	_dataUBO->bufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::vec4) * 2, sizeof(glm::vec4), glm::value_ptr(directionalLightPos)); //buffer directional light pos
+
+	for(unsigned int i = 0; i < pointLightCount; i++) {
+		_dataUBO->bufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::vec4) * 3 + sizeof(glm::vec4) * i, sizeof(glm::vec4), glm::value_ptr(pointLightPositions[i])); //buffer point light positions
+	}
 
 	glBindBuffer(GL_UNIFORM_BUFFER, 0); //unbind
 }
@@ -979,7 +1122,7 @@ void Renderer::_fillShaderStorageBuffers(std::vector<std::pair<LightComponent*, 
 	glm::vec3 currentLightPos;
 
 	unsigned int usedLights = lightComponents.size();
-	if(usedLights > LightComponent::LightAmount) usedLights = LightComponent::LightAmount; //limit the amount of possible lights
+	if(usedLights > RenderSettings::MaxLights) usedLights = RenderSettings::MaxLights; //limit the amount of possible lights
 
 	_lightsSSBO->bind(GL_SHADER_STORAGE_BUFFER);
 
@@ -1003,11 +1146,11 @@ void Renderer::_generateSSAOKernel() {
 	std::uniform_real_distribution<GLfloat> randomFloats(0.0f, 1.0f); //generates random floats between 0.0f and 1.0f
 	std::default_random_engine generator;
 
-	for(unsigned int i = 0; i < 64; i++) {
+	for(unsigned int i = 0; i < RenderSettings::SsaoKernelSize; i++) {
 		glm::vec3 sample(randomFloats(generator) * 2.0f - 1.0f, randomFloats(generator) * 2.0f - 1.0f, randomFloats(generator));
 		sample = glm::normalize(sample);
 		sample *= randomFloats(generator);
-		float scale = float(i) / 64.0f;
+		float scale = float(i) / (float)RenderSettings::SsaoKernelSize;
 
 		//scale samples so that they're more aligned to center of kernel
 		scale = Math::Lerp(0.1f, 1.0f, scale * scale);

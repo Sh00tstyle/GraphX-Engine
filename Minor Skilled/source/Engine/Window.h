@@ -8,7 +8,7 @@
 
 class Window {
 	public:
-		Window(unsigned int width, unsigned int height, std::string name, int msaa = 4);
+		Window(unsigned int width, unsigned int height, std::string name);
 		~Window();
 
 		static unsigned int ScreenWidth;
