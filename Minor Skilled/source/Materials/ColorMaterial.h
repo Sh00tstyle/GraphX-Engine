@@ -24,6 +24,7 @@ class ColorMaterial : public Material {
 		void setSpecularColor(glm::vec3 specularColor);
 		void setShininess(float shininess);
 
+		virtual void drawSimple(Shader* shader);
 		virtual void drawForward(glm::mat4& modelMatrix);
 		virtual void drawDeferred(glm::mat4& modelMatrix);
 

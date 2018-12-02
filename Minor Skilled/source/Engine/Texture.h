@@ -10,24 +10,24 @@
 #include "../Utility/TextureFilter.h"
 
 class Texture {
-public:
-	Texture();
-	~Texture();
+	public:
+		Texture();
+		~Texture();
 
-	unsigned int& getID();
+		unsigned int& getID();
 
-	void bind(GLenum target);
+		void bind(GLenum target);
 
-	void init(GLenum target, GLenum internalFormat, unsigned int width, unsigned int height, GLenum format, GLenum type);
-	void initMultisample(GLenum target, unsigned int samples, GLenum format, unsigned int width, unsigned int height);
+		void init(GLenum target, GLenum internalFormat, unsigned int width, unsigned int height, GLenum format, GLenum type);
+		void initMultisample(GLenum target, unsigned int samples, GLenum format, unsigned int width, unsigned int height);
 
-	static Texture* LoadTexture(std::string path, TextureFilter filter = TextureFilter::Repeat, bool sRGB = false);
-	static Texture* LoadCubemap(std::vector<std::string>& faces, bool sRGB = false);
+		static Texture* LoadTexture(std::string path, TextureFilter filter = TextureFilter::Repeat, bool sRGB = false);
+		static Texture* LoadCubemap(std::vector<std::string>& faces, bool sRGB = false);
 
-private:
-	unsigned int _id;
+	private:
+		unsigned int _id;
 
-	void _generate();
+		void _generate();
 };
 
 #endif

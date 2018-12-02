@@ -81,6 +81,7 @@
     <ClInclude Include="source\Utility\Input.h" />
     <ClInclude Include="source\Utility\Key.h" />
     <ClInclude Include="source\Utility\LightType.h" />
+    <ClInclude Include="source\Utility\MaterialType.h" />
     <ClInclude Include="source\Utility\Math.h" />
     <ClInclude Include="source\Utility\MouseButton.h" />
     <ClInclude Include="source\Utility\RenderSettings.h" />

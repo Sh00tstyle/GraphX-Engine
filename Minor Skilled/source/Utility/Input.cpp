@@ -49,6 +49,12 @@ void Input::ProcessInput() {
 		if(RenderSettings::IsEnabled(RenderSettings::SSAO)) RenderSettings::Disable(RenderSettings::SSAO);
 		else RenderSettings::Enable(RenderSettings::SSAO);
 	}
+	
+	//environment mapping
+	if(GetKeyDown(Key::KEY5)) {
+		if(RenderSettings::IsEnabled(RenderSettings::EnvironmentMapping)) RenderSettings::Disable(RenderSettings::EnvironmentMapping);
+		else RenderSettings::Enable(RenderSettings::EnvironmentMapping);
+	}
 }
 
 void Input::ResetMousePos() {

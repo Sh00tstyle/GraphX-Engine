@@ -16,9 +16,9 @@ class Texture;
 
 class TextureMaterial : public Material {
 	public:
-		TextureMaterial(Texture* diffuseMap, float shininess = 32.0f);
-		TextureMaterial(Texture* diffuseMap, Texture* specularMap = nullptr, Texture* normalMap = nullptr, Texture* heightMap = nullptr, Texture* emissionMap = nullptr, 
-						float shininess = 32.0f, float heightScale = 1.0f, BlendMode blendMode = BlendMode::Opaque, bool castsShadows = true);
+		TextureMaterial(Texture* diffuseMap, BlendMode blendMode);
+		TextureMaterial(Texture* diffuseMap, Texture* specularMap = nullptr, Texture* normalMap = nullptr, Texture* emissionMap = nullptr, Texture* reflectionMap = nullptr,
+						Texture* heightMap = nullptr, float shininess = 32.0f, float refractionFactor = 0.0f, float heightScale = 1.0f, BlendMode blendMode = BlendMode::Opaque, bool castsShadows = true);
 		~TextureMaterial();
 
 		Texture* getDiffuseMap();
@@ -26,7 +26,9 @@ class TextureMaterial : public Material {
 		Texture* getNormalMap();
 		Texture* getEmissionMap();
 		Texture* getHeightMap();
+		Texture* getReflectionMap();
 		float getShininess();
+		float getRefractionFactor();
 		float getHeightScale();
 
 		void setDiffuseMap(Texture* diffuseMap);
@@ -34,9 +36,12 @@ class TextureMaterial : public Material {
 		void setNormalMap(Texture* normalMap);
 		void setEmissionMap(Texture* emissionMap);
 		void setHeightMap(Texture* heightMap);
+		void setReflectionMap(Texture* reflectionMap);
 		void setShininess(float shininess);
+		void setRefractionFactor(float refrationFactor);
 		void setHeightScale(float heightScale);
 
+		virtual void drawSimple(Shader* shader);
 		virtual void drawForward(glm::mat4& modelMatrix);
 		virtual void drawDeferred(glm::mat4& modelMatrix);
 
@@ -49,7 +54,9 @@ class TextureMaterial : public Material {
 		Texture* _normalMap;
 		Texture* _heightMap;
 		Texture* _emissionMap;
+		Texture* _reflectionMap;
 		float _shininess;
+		float _refractionFactor;
 		float _heightScale;
 
 		virtual void _initShader();

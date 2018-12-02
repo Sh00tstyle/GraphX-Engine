@@ -8,8 +8,8 @@ layout (std140) uniform matricesBlock {
     mat4 lightSpaceMatrix;
 };
 
-uniform sampler2D gPosition;
-uniform sampler2D gNormal;
+uniform sampler2D gPositionRefract;
+uniform sampler2D gNormalReflect;
 uniform sampler2D noiseTexture;
 
 uniform vec3 samples[64];
@@ -29,8 +29,8 @@ void main() {
     vec2 noiseScale = vec2(screenWidth / 4.0f, screenHeight / 4.0f);
 
     //get input for SSAO algorithm
-    vec3 fragPos = texture(gPosition, texCoord).xyz;
-    vec3 normal = normalize(texture(gNormal, texCoord).rgb);
+    vec3 fragPos = texture(gPositionRefract, texCoord).xyz;
+    vec3 normal = normalize(texture(gNormalReflect, texCoord).rgb);
     vec3 randomVec = normalize(texture(noiseTexture, texCoord * noiseScale).xyz);
 
     //create TBN change-of-basis matrix: from tangent-space to view-space
@@ -53,7 +53,7 @@ void main() {
         offset.xyz = offset.xyz * 0.5f + 0.5f; //transform to range 0.0 - 1.0
         
         //get sample depth
-        float sampleDepth = texture(gPosition, offset.xy).z; //get depth value of kernel sample
+        float sampleDepth = texture(gPositionRefract, offset.xy).z; //get depth value of kernel sample
         
         //range check & accumulate
         float rangeCheck = smoothstep(0.0f, 1.0f, radius / abs(fragPos.z - sampleDepth));

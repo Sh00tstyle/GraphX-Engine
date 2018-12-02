@@ -72,11 +72,15 @@ void DemoScene::_initializeScene() {
 	Texture* cyborgNormal = Texture::LoadTexture(Filepath::ModelPath + "cyborg/cyborg_normal.png");
 	Texture* cyborgEmission = Texture::LoadTexture(Filepath::ModelPath + "cyborg/cyborg_emission.png", TextureFilter::Repeat, true); //load emission textures in linear space
 
+	Texture* reflectionMap = Texture::LoadTexture(Filepath::TexturePath + "reflection.png");
 	Texture* blendTexture = Texture::LoadTexture(Filepath::TexturePath + "window.png", TextureFilter::Repeat, true);
 
 	//create materials
 	TextureMaterial* textureMaterial = new TextureMaterial(cyborgDiffuse, cyborgSpecular, cyborgNormal, cyborgEmission);
-	TextureMaterial* blendMaterial = new TextureMaterial(blendTexture, 32.0f);
+	TextureMaterial* reflectionMaterial = new TextureMaterial(reflectionMap, BlendMode::Opaque);
+	reflectionMaterial->setReflectionMap(reflectionMap);
+	//reflectionMaterial->setRefractionFactor(1.33f);
+	TextureMaterial* blendMaterial = new TextureMaterial(blendTexture, BlendMode::Opaque);
 	blendMaterial->setBlendMode(BlendMode::Transparent);
 
 	ColorMaterial* colorMaterial = new ColorMaterial(glm::vec3(0.1f), glm::vec3(0.5f), glm::vec3(0.3f), 32.0f);
@@ -95,6 +99,12 @@ void DemoScene::_initializeScene() {
 	Texture* skybox = Texture::LoadCubemap(cubemapFaces, true); //load skyboxed in linear space
 
 	//create components for each node and fill with data
+	RenderComponent* cyborgRenderComponent = new RenderComponent(cyborgModel, textureMaterial);
+	RenderComponent* planeRenderComponent = new RenderComponent(planeModel, colorMaterial);
+	RenderComponent* sphereRenderComponent = new RenderComponent(sphereModel, reflectionMaterial);
+	RenderComponent* cubeRenderComponent = new RenderComponent(cubeModel, colorMaterial);
+	RenderComponent* glassRenderComponent = new RenderComponent(planeModel, blendMaterial);
+
 	CameraComponent* cameraComponent = new CameraComponent(glm::perspective(glm::radians(45.0f), (float)Window::ScreenWidth / (float)Window::ScreenHeight, 0.1f, 100.0f), 45.0f, 5.0f, 25.0f);
 	LightComponent* spotLightComponent = new LightComponent(LightType::Spot);
 	spotLightComponent->lightAmbient = glm::vec3(0.1f);
@@ -119,12 +129,6 @@ void DemoScene::_initializeScene() {
 	directionalLightComponent->lightDiffuse = glm::vec3(0.5f);
 	directionalLightComponent->lightSpecular = glm::vec3(0.1f);
 	directionalLightComponent->lightDirection = glm::vec3(1.0f, -2.0f, -1.0f);
-
-	RenderComponent* cyborgRenderComponent = new RenderComponent(cyborgModel, textureMaterial);
-	RenderComponent* planeRenderComponent = new RenderComponent(planeModel, colorMaterial);
-	RenderComponent* sphereRenderComponent = new RenderComponent(sphereModel, sphereMaterial);
-	RenderComponent* cubeRenderComponent = new RenderComponent(cubeModel, colorMaterial);
-	RenderComponent* glassRenderComponent = new RenderComponent(planeModel, blendMaterial);
 
 	//add components to their respective nodes
 	mainCamera->addComponent(cameraComponent);

@@ -43,13 +43,16 @@ struct Material {
     sampler2D specular;
     sampler2D normal;
     sampler2D emission;
+    sampler2D reflection;
     sampler2D height;
 
     float shininess;
+    float refractionFactor;
     float heightScale;
 
     bool hasSpecular;
     bool hasNormal;
+    bool hasReflection;
     bool hasHeight;
 
     int blendMode;
@@ -82,6 +85,8 @@ layout(std430) buffer lightsBlock {
 };
 
 uniform Material material;
+
+uniform samplerCube environmentMap;
 uniform sampler2D shadowMap;
 uniform samplerCube shadowCubemaps[5];
 
@@ -90,6 +95,7 @@ layout (location = 1) out vec4 brightColor;
 
 vec3 GetSpecular();
 vec3 GetNormal();
+vec3 GetReflection(vec3 normal, vec2 texCoord);
 vec2 ParallaxMapping(vec3 viewDirection);
 
 vec3 CalculateDirectionalLight(Light light, vec3 diff, vec3 spec, vec3 normal, vec3 viewDirection, vec2 texCoord, float shadow);
@@ -112,6 +118,16 @@ void main() {
     vec3 diffuse = texture(material.diffuse, fs_in.texCoord).rgb;
     vec3 specular = GetSpecular();
     vec3 normal = GetNormal();
+
+    //reflection
+    vec3 reflection = GetReflection(normal, texCoord);
+
+    if(reflection != vec3(0.0f)) {
+        //output reflection and ignore everything else
+        fragColor = vec4(reflection, 1.0f);
+        brightColor = vec4(vec3(0.0f), 1.0f);
+        return;
+    }
 
     //blend modes
     float alpha = 1.0f; //default (opaque)
@@ -196,6 +212,32 @@ vec3 GetNormal() {
     }
 
     return normal;
+}
+
+vec3 GetReflection(vec3 normal, vec2 texCoord) {
+    if(!material.hasReflection) return vec3(0.0f);
+
+    float reflectionAmount = texture(material.reflection, texCoord).r;
+
+    if(reflectionAmount <= 0.01f) return vec3(0.0f);
+
+    vec3 I = normalize(fs_in.fragPos - cameraPos);
+    vec3 R;
+
+    if(material.refractionFactor > 0.0f) {
+        //use refraction if the factor is not 0
+        float ratio = 1.0f / material.refractionFactor;
+
+        R = refract (I, normalize(normal), ratio);
+    } else {
+        //use reflection
+        R = reflect(I, normalize(normal));
+    }
+
+    //sample from dynamic environment map
+    vec3 color = texture(environmentMap, R).rgb;
+
+    return color;
 }
 
 vec2 ParallaxMapping(vec3 viewDirection) {
@@ -367,14 +409,13 @@ float CalculateCubemapShadow(vec3 fragPos, int index) {
     float currentDepth = length(fragToLight);
 
     float shadow = 0.0f;
-    float bias = 0.15f;
+    float bias = 0.4f;
     int samples = 20;
     float viewDistance = length(cameraPos - fragPos);
     float diskRadius = (1.0f + (viewDistance / farPlane)) / farPlane;
-    float closestDepth;
 
     for(int i = 0; i < samples; i++) {
-        closestDepth = texture(shadowCubemaps[index], fragToLight + gridSamplingDisk[i] * diskRadius).r;
+        float closestDepth = texture(shadowCubemaps[index], fragToLight + gridSamplingDisk[i] * diskRadius).r;
         closestDepth *= farPlane; //undo mapping [0, 1]
 
         if(currentDepth - bias > closestDepth) shadow += 1.0f;

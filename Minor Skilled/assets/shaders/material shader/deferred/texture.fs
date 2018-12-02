@@ -5,13 +5,16 @@ struct Material {
     sampler2D specular;
     sampler2D normal;
     sampler2D emission;
+    sampler2D reflection;
     sampler2D height;
 
     float shininess;
+    float refractionFactor;
     float heightScale;
 
     bool hasSpecular;
     bool hasNormal;
+    bool hasReflection;
     bool hasHeight;
 };
 
@@ -43,13 +46,14 @@ layout (std140) uniform dataBlock {
 
 uniform Material material;
 
-layout (location = 0) out vec3 gPosition;
-layout (location = 1) out vec3 gNormal;
+layout (location = 0) out vec4 gPositionRefract;
+layout (location = 1) out vec4 gNormalReflect;
 layout (location = 2) out vec4 gAlbedoSpec;
 layout (location = 3) out vec4 gEmissionShiny;
 
 vec3 GetSpecular();
 vec3 GetNormal();
+float GetReflectionValue(vec2 texCoord);
 vec2 ParallaxMapping(vec3 viewDirection);
 
 void main() {
@@ -61,9 +65,11 @@ void main() {
     if(material.hasHeight && (texCoord.x > 1.0f || texCoord.y > 1.0f || texCoord.x < 0.0f || texCoord.y < 0.0f)) discard; //cutoff edges to avoid artifacts when using parallax mapping
 
     //store the data in the gBuffer
-    gPosition = fs_in.fragPosView;
+    gPositionRefract.rgb = fs_in.fragPosView;
+    gPositionRefract.a = material.refractionFactor;
 
-    gNormal = normal;
+    gNormalReflect.rgb = normal;
+    gNormalReflect.a = GetReflectionValue(texCoord);
 
     gAlbedoSpec.rgb = texture(material.diffuse, texCoord).rgb;
     gAlbedoSpec.a = GetSpecular().r;
@@ -98,6 +104,13 @@ vec3 GetNormal() {
     }
 
     return normal;
+}
+
+float GetReflectionValue(vec2 texCoord) {
+    //return the reflection amount of this fragment
+    if(!material.hasReflection) return 0.0f;
+
+    return texture(material.reflection, texCoord).r;
 }
 
 vec2 ParallaxMapping(vec3 viewDirection) {

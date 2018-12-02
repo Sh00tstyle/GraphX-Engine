@@ -37,7 +37,7 @@ void main() {
     vec3 B = cross(N, T); 
     vs_out.TBN = mat3(T, B, N);
 
-    vs_out.lightSpaceFragPos =  lightSpaceMatrix * modelMatrix * vec4(aVertex, 1.0f);
+    vs_out.lightSpaceFragPos = lightSpaceMatrix * modelMatrix * vec4(aVertex, 1.0f);
 
     gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(aVertex, 1.0f);
 }

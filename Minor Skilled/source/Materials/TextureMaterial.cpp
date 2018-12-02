@@ -13,13 +13,13 @@
 Shader* TextureMaterial::_ForwardShader = nullptr;
 Shader* TextureMaterial::_DeferredShader = nullptr;
 
-TextureMaterial::TextureMaterial(Texture* diffuseMap, float shininess) :Material(BlendMode::Opaque, true), _diffuseMap(diffuseMap), _specularMap(nullptr),
-_normalMap(nullptr), _emissionMap(nullptr), _heightMap(nullptr), _shininess(shininess), _heightScale(1.0f) {
+TextureMaterial::TextureMaterial(Texture* diffuseMap, BlendMode blendMode) :Material(MaterialType::Textures, blendMode, true), _diffuseMap(diffuseMap), _specularMap(nullptr),
+_normalMap(nullptr), _emissionMap(nullptr), _heightMap(nullptr), _shininess(32.0f), _refractionFactor(0.0f), _heightScale(1.0f) {
 	_initShader();
 }
 
-TextureMaterial::TextureMaterial(Texture * diffuseMap, Texture * specularMap, Texture * normalMap, Texture* emissionMap, Texture* heightMap, float shininess, float heightScale, BlendMode blendMode, bool castsShadows) :
-	Material(blendMode, castsShadows),_diffuseMap(diffuseMap), _specularMap(specularMap), _normalMap(normalMap), _heightMap(heightMap), _emissionMap(emissionMap), _shininess(shininess), _heightScale(heightScale) {
+TextureMaterial::TextureMaterial(Texture * diffuseMap, Texture * specularMap, Texture * normalMap, Texture* emissionMap, Texture* reflectionMap, Texture* heightMap, float shininess, float refractionFactor, float heightScale, BlendMode blendMode, bool castsShadows) :
+	Material(MaterialType::Textures, blendMode, castsShadows),_diffuseMap(diffuseMap), _specularMap(specularMap), _normalMap(normalMap), _emissionMap(emissionMap), _reflectionMap(reflectionMap), _heightMap(heightMap), _shininess(shininess), _refractionFactor(0.0f), _heightScale(heightScale) {
 	_initShader();
 }
 
@@ -28,6 +28,7 @@ TextureMaterial::~TextureMaterial() {
 	delete _specularMap;
 	delete _normalMap;
 	delete _emissionMap;
+	delete _reflectionMap;
 	delete _heightMap;
 }
 
@@ -51,8 +52,16 @@ Texture * TextureMaterial::getHeightMap() {
 	return _heightMap;
 }
 
+Texture * TextureMaterial::getReflectionMap() {
+	return _reflectionMap;
+}
+
 float TextureMaterial::getShininess() {
 	return _shininess;
+}
+
+float TextureMaterial::getRefractionFactor() {
+	return _refractionFactor;
 }
 
 float TextureMaterial::getHeightScale() {
@@ -79,12 +88,28 @@ void TextureMaterial::setHeightMap(Texture * heightMap) {
 	_heightMap = heightMap;
 }
 
+void TextureMaterial::setReflectionMap(Texture * reflectionMap) {
+	_reflectionMap = reflectionMap;
+}
+
 void TextureMaterial::setShininess(float shininess) {
 	_shininess = shininess;
 }
 
+void TextureMaterial::setRefractionFactor(float refractionFactor) {
+	_refractionFactor = refractionFactor;
+}
+
 void TextureMaterial::setHeightScale(float heightScale) {
 	_heightScale = heightScale;
+}
+
+void TextureMaterial::drawSimple(Shader* shader) {
+	//set environment shader properties
+	shader->setBool("useTexture", true);
+
+	glActiveTexture(GL_TEXTURE0);
+	_diffuseMap->bind(GL_TEXTURE_2D);
 }
 
 void TextureMaterial::drawForward(glm::mat4& modelMatrix) {
@@ -131,7 +156,17 @@ void TextureMaterial::drawForward(glm::mat4& modelMatrix) {
 		glBindTexture(GL_TEXTURE_2D, 0);
 	}
 
-	glActiveTexture(GL_TEXTURE4); //height
+	glActiveTexture(GL_TEXTURE4); //reflection
+
+	if(_reflectionMap != nullptr) {
+		_reflectionMap->bind(GL_TEXTURE_2D);
+		_ForwardShader->setBool("material.hasReflection", true);
+	} else {
+		glBindTexture(GL_TEXTURE_2D, 0);
+		_ForwardShader->setBool("material.hasReflection", false);
+	}
+
+	glActiveTexture(GL_TEXTURE5); //height
 
 	if(_heightMap != nullptr) {
 		_heightMap->bind(GL_TEXTURE_2D);
@@ -143,7 +178,9 @@ void TextureMaterial::drawForward(glm::mat4& modelMatrix) {
 
 	//set material properties
 	_ForwardShader->setFloat("material.shininess", _shininess);
+	_ForwardShader->setFloat("material.refractionFactor", _refractionFactor);
 	_ForwardShader->setFloat("material.heightScale", _heightScale);
+
 	_ForwardShader->setInt("material.blendMode", _blendMode);
 }
 
@@ -191,7 +228,17 @@ void TextureMaterial::drawDeferred(glm::mat4 & modelMatrix) {
 		glBindTexture(GL_TEXTURE_2D, 0);
 	}
 
-	glActiveTexture(GL_TEXTURE4); //height
+	glActiveTexture(GL_TEXTURE4); //reflection
+
+	if(_reflectionMap != nullptr) {
+		_reflectionMap->bind(GL_TEXTURE_2D);
+		_DeferredShader->setBool("material.hasReflection", true);
+	} else {
+		glBindTexture(GL_TEXTURE_2D, 0);
+		_DeferredShader->setBool("material.hasReflection", false);
+	}
+
+	glActiveTexture(GL_TEXTURE5); //height
 
 	if(_heightMap != nullptr) {
 		_heightMap->bind(GL_TEXTURE_2D);
@@ -203,6 +250,7 @@ void TextureMaterial::drawDeferred(glm::mat4 & modelMatrix) {
 
 	//set material properties
 	_DeferredShader->setFloat("material.shininess", _shininess);
+	_DeferredShader->setFloat("material.refractionFactor", _refractionFactor);
 	_DeferredShader->setFloat("material.heightScale", _heightScale);
 }
 
@@ -216,8 +264,10 @@ void TextureMaterial::_initShader() {
 		_ForwardShader->setInt("material.specular", 1);
 		_ForwardShader->setInt("material.normal", 2);
 		_ForwardShader->setInt("material.emission", 3);
-		_ForwardShader->setInt("material.height", 4);
+		_ForwardShader->setInt("material.reflection", 4);
+		_ForwardShader->setInt("material.height", 5);
 
+		_ForwardShader->setInt("environmentMap", 7);
 		_ForwardShader->setInt("shadowMap", 8); //assign to slot 8, so that it shares it with the other materials which have more textures
 
 		for(unsigned int i = 0; i < RenderSettings::MaxCubeShadows; i++) {
@@ -238,7 +288,8 @@ void TextureMaterial::_initShader() {
 		_DeferredShader->setInt("material.specular", 1);
 		_DeferredShader->setInt("material.normal", 2);
 		_DeferredShader->setInt("material.emission", 3);
-		_DeferredShader->setInt("material.height", 4);
+		_DeferredShader->setInt("material.reflection", 4);
+		_DeferredShader->setInt("material.height", 5);
 
 		_DeferredShader->setUniformBlockBinding("matricesBlock", 0); //set uniform block "matrices" to binding point 0
 	}

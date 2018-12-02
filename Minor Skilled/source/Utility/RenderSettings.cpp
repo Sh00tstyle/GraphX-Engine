@@ -5,10 +5,11 @@ const unsigned char RenderSettings::Shadows = 1 << 0;
 const unsigned char RenderSettings::Bloom = 1 << 1;
 const unsigned char RenderSettings::Deferred = 1 << 2;
 const unsigned char RenderSettings::SSAO = 1 << 3;
-const unsigned char RenderSettings::FXAA = 1 << 4;
+const unsigned char RenderSettings::EnvironmentMapping = 1 << 4;
+const unsigned char RenderSettings::FXAA = 1 << 5;
 
 //active render modes
-std::bitset<8> RenderSettings::Options = RenderSettings::Deferred | RenderSettings::Bloom | RenderSettings::Shadows | RenderSettings::SSAO;; //everything enabled
+std::bitset<8> RenderSettings::Options = RenderSettings::Deferred | RenderSettings::Bloom | RenderSettings::Shadows | RenderSettings::SSAO | RenderSettings::EnvironmentMapping; //everything enabled
 
 //shadow configurations
 const unsigned int RenderSettings::MaxCubeShadows = 5; 
@@ -19,6 +20,10 @@ const unsigned int RenderSettings::ShadowHeight = 1024;
 //cubemap render configurations
 float RenderSettings::CubeNearPlane = 1.0f;
 float RenderSettings::CubeFarPlane = 35.0f;
+
+//enviroment cubemap configurations
+const unsigned int RenderSettings::EnvironmentHeight = 256;
+const unsigned int RenderSettings::EnvironmentWidth = 256;
 
 //SSAO configurations
 unsigned int RenderSettings::SsaoKernelSize = 64;

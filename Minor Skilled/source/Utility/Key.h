@@ -15,7 +15,8 @@ enum Key {
 	KEY1 = GLFW_KEY_1,
 	KEY2 = GLFW_KEY_2,
 	KEY3 = GLFW_KEY_3,
-	KEY4 = GLFW_KEY_4
+	KEY4 = GLFW_KEY_4,
+	KEY5 = GLFW_KEY_5
 };
 
 #endif

@@ -230,6 +230,9 @@
     <ClInclude Include="source\Utility\Math.h">
       <Filter>source\Utility</Filter>
     </ClInclude>
+    <ClInclude Include="source\Utility\MaterialType.h">
+      <Filter>source\Utility</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="assets\shaders\material shader\color.fs">

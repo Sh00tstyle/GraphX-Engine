@@ -32,6 +32,8 @@ class Renderer {
 		Shader* _lightingShader;
 		Shader* _shadowShader;
 		Shader* _shadowCubeShader;
+		Shader* _environmentShader;
+		Shader* _faceToCubeShader;
 		Shader* _skyboxShader;
 		Shader* _ssaoShader;
 		Shader* _ssaoBlurShader;
@@ -39,13 +41,15 @@ class Renderer {
 		Shader* _postProcessingShader;
 
 		//texture buffers
-		Texture* _gPosition;
-		Texture* _gNormal;
+		Texture* _gPositionRefract;
+		Texture* _gNormalReflect;
 		Texture* _gAlbedoSpec;
 		Texture* _gEmissionShiny;
 
 		Texture* _shadowMap;
 		std::vector<Texture*> _shadowCubeMaps;
+		std::vector<Texture*> _environmentMapFaces;
+		Texture* _environmentMap;
 		Texture* _multiSampledSceneColorBuffer;
 		Texture* _multiSampledBrightColorBuffer;
 		Texture* _sceneColorBuffer;
@@ -74,6 +78,8 @@ class Renderer {
 
 		Framebuffer* _shadowFBO;
 		std::vector<Framebuffer*> _shadowCubeFBOs;
+		std::vector<Framebuffer*> _environmentFBOs;
+		Framebuffer* _environmentCubeFBO;
 		Framebuffer* _multisampledHdrFBO;
 		Framebuffer* _bloomFBO;
 		Framebuffer* _bloomBlurFBOs[2];
@@ -82,6 +88,7 @@ class Renderer {
 
 		Renderbuffer* _gRBO;
 
+		Renderbuffer* _environmentRBO;
 		Renderbuffer* _multisampledHdrRBO;
 
 		//kernels
@@ -99,23 +106,26 @@ class Renderer {
 		void _initGBuffer();
 		void _initShadowFBO();
 		void _initShadowCubeFBOs();
+		void _initEnvironmentCubeFBO();
 		void _initMultisampledHdrFBO();
 		void _initBloomFBOs();
 		void _initSSAOFBOs();
 		
 		//render functions
 		void _renderShadowMaps(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, std::vector<glm::vec3>& pointLights, glm::mat4& lightSpaceMatrix);
-		void _renderSceneGeometry(std::vector<std::pair<RenderComponent*, glm::mat4>>& solidRenderComponents);
+		void _renderEnvironmentMap(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, Texture* skybox, glm::vec3& cameraPos, unsigned int pointLightCount);
+		void _renderGeometry(std::vector<std::pair<RenderComponent*, glm::mat4>>& solidRenderComponents);
 		void _renderSSAO();
 		void _renderSSAOBlur();
-		void _renderSceneLighting();
-		void _renderScene(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, unsigned int pointLightCount, bool useShadows, bool bindFBO);
+		void _renderLighting(Texture* skybox, unsigned int pointLightCount);
+		void _renderScene(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, Texture* skybox, unsigned int pointLightCount, bool useShadows, bool bindFBO);
 		void _renderSkybox(glm::mat4& viewMatrix, glm::mat4& projectionMatrix, Texture* skybox);
 		void _renderPostProcessingQuad();
 
 		//helper functions
 		void _getSortedRenderComponents(std::vector<Node*>& renderables, glm::vec3& cameraPos, std::vector<std::pair<RenderComponent*, glm::mat4>>& solidRenderables, std::vector<std::pair<RenderComponent*, glm::mat4>>& blendRenderables);
 		std::vector<glm::vec3> _getClosestPointLights(glm::vec3 cameraPos, std::vector<std::pair<LightComponent*, glm::vec3>>& lightComponents);
+		glm::vec3 _getClosestReflection(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, glm::vec3& cameraPos);
 
 		void _fillUniformBuffers(glm::mat4& viewMatrix, glm::mat4& projectionMatrix, glm::mat4& lightSpaceMatrix, glm::vec3& cameraPos, glm::vec3& directionalLightPos, bool useShadows, std::vector<glm::vec3>& pointLightPositions);
 		void _fillShaderStorageBuffers(std::vector<std::pair<LightComponent*, glm::vec3>>& lightComponents);
