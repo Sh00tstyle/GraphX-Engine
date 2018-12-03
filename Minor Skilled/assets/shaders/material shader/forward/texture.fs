@@ -417,7 +417,7 @@ float CalculateCubemapShadow(vec3 normal, vec3 fragPos, int index) {
 
     //calculate bias based on depth map resolution and slope
     vec3 lightDirection = normalize(lightPos - fragPos);
-    float bias = max(0.1f * (1.0f - dot(normal, lightDirection)), 0.1f);
+    float bias = max(0.25f * (1.0f - dot(normal, lightDirection)), 0.1f);
 
     //test for shadows and apply PCF
     float shadow = 0.0f;

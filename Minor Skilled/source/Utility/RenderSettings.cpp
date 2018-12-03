@@ -20,7 +20,7 @@ const unsigned int RenderSettings::ShadowHeight = 1024;
 
 //cubemap render configurations
 float RenderSettings::CubeNearPlane = 0.5f;
-float RenderSettings::CubeFarPlane = 35.0f;
+float RenderSettings::CubeFarPlane = 50.0f;
 
 //enviroment cubemap configurations
 const unsigned int RenderSettings::EnvironmentHeight = 256;
