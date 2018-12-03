@@ -24,7 +24,7 @@ class Window {
 
 		static void _framebufferSizeCallback(GLFWwindow* window, int width, int height); //needs to be static to be passed into GLFW
 
-		void _initializeGLFW(int msaa);
+		void _initializeGLFW();
 		void _initializeWindow(std::string name);
 		void _initializeGLAD();
 };

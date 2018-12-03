@@ -31,5 +31,5 @@ void main() {
     gAlbedoSpec.a = material.specular.r;
     
     gEmissionShiny.rgb = vec3(0.0f);
-    gEmissionShiny.a = material.shininess;
+    gEmissionShiny.a = material.shininess / 255.0f;
 }

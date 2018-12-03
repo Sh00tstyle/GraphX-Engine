@@ -59,7 +59,8 @@ struct Material {
 };
 
 in VS_OUT {
-    vec3 fragPos;
+    vec3 fragPosWorld;
+    vec3 fragPosView;
     vec3 fragNormal;
     vec2 texCoord;
 
@@ -93,36 +94,37 @@ uniform samplerCube shadowCubemaps[5];
 layout (location = 0) out vec4 fragColor;
 layout (location = 1) out vec4 brightColor;
 
-vec3 GetSpecular();
-vec3 GetNormal();
-vec3 GetReflection(vec3 normal, vec2 texCoord);
-vec2 ParallaxMapping(vec3 viewDirection);
+vec3 GetSpecular(vec2 texCoord);
+vec3 GetNormal(vec2 texCoord);
+vec3 GetReflection(vec3 normal, vec2 texCoord, out bool hasReflection);
+vec2 ParallaxMapping();
 
 vec3 CalculateDirectionalLight(Light light, vec3 diff, vec3 spec, vec3 normal, vec3 viewDirection, vec2 texCoord, float shadow);
 vec3 CalculatePointLight(Light light, vec3 diff, vec3 spec, vec3 normal, vec3 viewDirection, vec2 texCoord, float shadow);
 vec3 CalculateSpotLight(Light light, vec3 diff, vec3 spec, vec3 normal, vec3 viewDirection, vec2 texCoord, float shadow);
 
 float CalculateShadow(vec3 normal);
-float CalculateCubemapShadow(vec3 fragPos, int index);
+float CalculateCubemapShadow(vec3 normal, vec3 fragPos, int index);
 
 vec4 CalculateBrightColor(vec3 color);
 
 void main() {
-    vec3 viewDirection = normalize(cameraPos - fs_in.fragPos);
+    vec3 viewDirection = normalize(cameraPos - fs_in.fragPosWorld);
 
     //parallax mapping
-    vec2 texCoord = ParallaxMapping(viewDirection);
+    vec2 texCoord = ParallaxMapping();
     if(material.hasHeight && (texCoord.x > 1.0f || texCoord.y > 1.0f || texCoord.x < 0.0f || texCoord.y < 0.0f)) discard; //cutoff edges to avoid artifacts when using parallax mapping
 
     //get values from textures
-    vec3 diffuse = texture(material.diffuse, fs_in.texCoord).rgb;
-    vec3 specular = GetSpecular();
-    vec3 normal = GetNormal();
+    vec3 diffuse = texture(material.diffuse, texCoord).rgb;
+    vec3 specular = GetSpecular(texCoord);
+    vec3 normal = GetNormal(texCoord);
 
     //reflection
-    vec3 reflection = GetReflection(normal, texCoord);
+    bool hasReflection; //gets filled by the GetReflection function
+    vec3 reflection = GetReflection(normal, texCoord, hasReflection);
 
-    if(reflection != vec3(0.0f)) {
+    if(hasReflection) {
         //output reflection and ignore everything else
         fragColor = vec4(reflection, 1.0f);
         brightColor = vec4(vec3(0.0f), 1.0f);
@@ -149,7 +151,7 @@ void main() {
     float shadow = CalculateShadow(normal);
 
     for(int i = 0; i < usedCubeShadows; i++) {
-        shadow += CalculateCubemapShadow(fs_in.fragPos, i);
+        shadow += CalculateCubemapShadow(normal, fs_in.fragPosWorld, i);
     }
 
     if(shadow > 1.0f) shadow = 1.0f;
@@ -186,12 +188,12 @@ void main() {
     brightColor = CalculateBrightColor(result);
 }
 
-vec3 GetSpecular() {
+vec3 GetSpecular(vec2 texCoord) {
     //take the specular contribution from the specular map, otherwise use vec3(0.2f)
     vec3 specular;
 
     if(material.hasSpecular) {
-        specular = texture(material.specular, fs_in.texCoord).rgb;
+        specular = texture(material.specular, texCoord).rgb;
     } else {
         specular = vec3(0.2f);
     }
@@ -199,12 +201,12 @@ vec3 GetSpecular() {
     return specular;
 }
 
-vec3 GetNormal() {
+vec3 GetNormal(vec2 texCoord) {
     //take the normal from the normal map if there is one, otherwise use frag normal
     vec3 normal;
 
     if(material.hasNormal) {
-        normal = texture(material.normal, fs_in.texCoord).rgb; //range [0, 1]
+        normal = texture(material.normal, texCoord).rgb; //range [0, 1]
         normal = normalize(normal * 2.0f - 1.0f); //bring to range [-1, 1]
         normal = normalize(fs_in.TBN * normal); //transform normal from tangent to world space
     } else {
@@ -214,35 +216,40 @@ vec3 GetNormal() {
     return normal;
 }
 
-vec3 GetReflection(vec3 normal, vec2 texCoord) {
+vec3 GetReflection(vec3 normal, vec2 texCoord, out bool hasReflection) {
     if(!material.hasReflection) return vec3(0.0f);
 
     float reflectionAmount = texture(material.reflection, texCoord).r;
 
-    if(reflectionAmount <= 0.01f) return vec3(0.0f);
+    if(reflectionAmount <= 0.01f) {
+        hasReflection = false;
+        return vec3(0.0f);
+    } else {
+        hasReflection = true;
+    }
 
-    vec3 I = normalize(fs_in.fragPos - cameraPos);
+    vec3 I = normalize(fs_in.fragPosWorld - cameraPos);
     vec3 R;
 
     if(material.refractionFactor > 0.0f) {
         //use refraction if the factor is not 0
         float ratio = 1.0f / material.refractionFactor;
 
-        R = refract (I, normalize(normal), ratio);
+        R = refract(I, normalize(normal), ratio);
     } else {
         //use reflection
         R = reflect(I, normalize(normal));
     }
 
     //sample from dynamic environment map
-    vec3 color = texture(environmentMap, R).rgb;
-
-    return color;
+    return texture(environmentMap, R).rgb;
 }
 
-vec2 ParallaxMapping(vec3 viewDirection) {
+vec2 ParallaxMapping() {
     //use normal texCoords if there is no height map, otherwise apply parallax occulsion mapping
     if(!material.hasHeight) return fs_in.texCoord; 
+
+    vec3 viewDirection = normalize(-fs_in.fragPosView);
 
     //number of depth layers
     const float minLayers = 8.0f;
@@ -260,7 +267,7 @@ vec2 ParallaxMapping(vec3 viewDirection) {
     //get initial values
     vec2 currentTexCoords = fs_in.texCoord;
     float currentDepthMapValue = texture(material.height, currentTexCoords).r;
-      
+    
     while(currentLayerDepth < currentDepthMapValue) { //basically raycasting
         //shift texture coordinates along direction of P
         currentTexCoords -= deltaTexCoords;
@@ -302,7 +309,7 @@ vec3 CalculateDirectionalLight(Light light, vec3 diff, vec3 spec, vec3 normal, v
 }
 
 vec3 CalculatePointLight(Light light, vec3 diff, vec3 spec, vec3 normal, vec3 viewDirection, vec2 texCoord, float shadow) {
-    vec3 lightDirection = normalize(light.position.xyz - fs_in.fragPos);
+    vec3 lightDirection = normalize(light.position.xyz - fs_in.fragPosWorld);
 
     //ambient
     vec3 ambient = light.ambient.rgb * diff;
@@ -317,7 +324,7 @@ vec3 CalculatePointLight(Light light, vec3 diff, vec3 spec, vec3 normal, vec3 vi
     vec3 specular = light.specular.rgb * specularity * spec;
 
     //attenuation
-    float distance = length(light.position.xyz - fs_in.fragPos);
+    float distance = length(light.position.xyz - fs_in.fragPosWorld);
     float attenuation = 1.0f / (light.constant + light.linear * distance + light.quadratic * (distance * distance));
 
     //combine results
@@ -329,7 +336,7 @@ vec3 CalculatePointLight(Light light, vec3 diff, vec3 spec, vec3 normal, vec3 vi
 }
 
 vec3 CalculateSpotLight(Light light, vec3 diff, vec3 spec, vec3 normal, vec3 viewDirection, vec2 texCoord, float shadow) {
-    vec3 lightDirection = normalize(light.position.xyz - fs_in.fragPos);
+    vec3 lightDirection = normalize(light.position.xyz - fs_in.fragPosWorld);
 
     //ambient
     vec3 ambient = light.ambient.rgb * diff;
@@ -344,7 +351,7 @@ vec3 CalculateSpotLight(Light light, vec3 diff, vec3 spec, vec3 normal, vec3 vie
     vec3 specular = light.specular.rgb * specularity * spec;
 
     //attenuation
-    float distance = length(light.position.xyz - fs_in.fragPos);
+    float distance = length(light.position.xyz - fs_in.fragPosWorld);
     float attenuation = 1.0f / (light.constant + light.linear * distance + light.quadratic * (distance * distance));
 
     //spotlight
@@ -376,7 +383,7 @@ float CalculateShadow(vec3 normal) {
     float currentDepth = projectedCoords.z;
 
     //calculate bias based on depth map resolution and slope
-    vec3 lightDirection = normalize(directionalLightPos - fs_in.fragPos);
+    vec3 lightDirection = normalize(directionalLightPos - fs_in.fragPosWorld);
     float bias = max(0.15f * (1.0f - dot(normal, lightDirection)), 0.015f);
 
     //PCF
@@ -397,7 +404,7 @@ float CalculateShadow(vec3 normal) {
     return shadow;
 }
 
-float CalculateCubemapShadow(vec3 fragPos, int index) {
+float CalculateCubemapShadow(vec3 normal, vec3 fragPos, int index) {
     if(!useShadows) return 0.0f; //no shadows
 
     vec3 lightPos = pointLightPositions[index];
@@ -408,11 +415,15 @@ float CalculateCubemapShadow(vec3 fragPos, int index) {
     //now get current linear depth as the length between the fragment and light position
     float currentDepth = length(fragToLight);
 
+    //calculate bias based on depth map resolution and slope
+    vec3 lightDirection = normalize(lightPos - fragPos);
+    float bias = max(0.1f * (1.0f - dot(normal, lightDirection)), 0.1f);
+
+    //test for shadows and apply PCF
     float shadow = 0.0f;
-    float bias = 0.4f;
     int samples = 20;
     float viewDistance = length(cameraPos - fragPos);
-    float diskRadius = (1.0f + (viewDistance / farPlane)) / farPlane;
+    float diskRadius = (1.0f + (viewDistance / farPlane)) / 22.0f;
 
     for(int i = 0; i < samples; i++) {
         float closestDepth = texture(shadowCubemaps[index], fragToLight + gridSamplingDisk[i] * diskRadius).r;

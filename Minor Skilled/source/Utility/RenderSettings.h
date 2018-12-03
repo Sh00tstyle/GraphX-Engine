@@ -32,12 +32,14 @@ class RenderSettings {
 
 		static const unsigned int MaxLights;
 
-		static const unsigned int MsaaSamples;
-
 		static unsigned int BloomBlurAmount;
 
 		static float Gamma;
 		static float Exposure;
+
+		static float FxaaSpanMax;
+		static float FxaaReduceMin;
+		static float FxaaReduceMul;
 
 		//helper functions
 		static void Enable(std::bitset<8> options);

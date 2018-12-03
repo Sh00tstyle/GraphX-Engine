@@ -75,7 +75,7 @@ vec3 CalculatePointLight(Light light, vec3 normal, vec3 viewDirection, float sha
 vec3 CalculateSpotLight(Light light, vec3 normal, vec3 viewDirection, float shadow);
 
 float CalculateShadow(vec3 normal);
-float CalculateCubemapShadow(vec3 fragPos, int index);
+float CalculateCubemapShadow(vec3 normal, vec3 fragPos, int index);
 
 vec4 CalculateBrightColor(vec3 color);
 
@@ -87,7 +87,7 @@ void main() {
     float shadow = CalculateShadow(normal);
 
     for(int i = 0; i < usedCubeShadows; i++) {
-        shadow += CalculateCubemapShadow(fs_in.fragPos, i);
+        shadow += CalculateCubemapShadow(normal, fs_in.fragPos, i);
     }
 
     if(shadow > 1.0f) shadow = 1.0f;
@@ -232,7 +232,7 @@ float CalculateShadow(vec3 normal) {
     return shadow;
 }
 
-float CalculateCubemapShadow(vec3 fragPos, int index) {
+float CalculateCubemapShadow(vec3 normal, vec3 fragPos, int index) {
     if(!useShadows) return 0.0f; //no shadows
 
     vec3 lightPos = pointLightPositions[index];
@@ -243,11 +243,15 @@ float CalculateCubemapShadow(vec3 fragPos, int index) {
     //now get current linear depth as the length between the fragment and light position
     float currentDepth = length(fragToLight);
 
+    //calculate bias based on depth map resolution and slope
+    vec3 lightDirection = normalize(lightPos - fragPos);
+    float bias = max(0.1f * (1.0f - dot(normal, lightDirection)), 0.1f);
+
+    //test for shadows and apply PCF
     float shadow = 0.0f;
-    float bias = 0.4f;
     int samples = 20;
     float viewDistance = length(cameraPos - fragPos);
-    float diskRadius = (1.0f + (viewDistance / farPlane)) / farPlane;
+    float diskRadius = (1.0f + (viewDistance / farPlane)) / 22.0f;
 
     for(int i = 0; i < samples; i++) {
         float closestDepth = texture(shadowCubemaps[index], fragToLight + gridSamplingDisk[i] * diskRadius).r;

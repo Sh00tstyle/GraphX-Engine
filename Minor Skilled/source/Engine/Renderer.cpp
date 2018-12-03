@@ -102,7 +102,7 @@ Renderer::Renderer() {
 
 	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS); //enable seamless cubemap sampling for lower mip map levels in the pre filter map
 
-	glEnable(GL_MULTISAMPLE); //enable MSAA (only works in forward rendering and on the default framebuffer)
+	//glEnable(GL_MULTISAMPLE); //enable MSAA (only works in forward rendering and on the default framebuffer)
 
 	//shaders
 	_initShaders();
@@ -121,10 +121,10 @@ Renderer::Renderer() {
 	_initShadowFBO();
 	_initShadowCubeFBOs();
 	_initEnvironmentCubeFBO();
-	_initMultisampledHdrFBO();
+	_initHdrFBO();
 
 	//setup post processing
-	_initBloomFBOs();
+	_initBlurFBOs();
 	_initSSAOFBOs();
 
 	_generateSSAOKernel();
@@ -161,10 +161,8 @@ Renderer::~Renderer() {
 	}
 
 	delete _environmentMap;
-	delete _multiSampledSceneColorBuffer;
-	delete _multiSampledBrightColorBuffer;
 	delete _sceneColorBuffer;
-	delete _bloomBrightColorBuffer;
+	delete _brightColorBuffer;
 	delete _blurColorBuffers[1];
 	delete _blurColorBuffers[0];
 
@@ -198,7 +196,7 @@ Renderer::~Renderer() {
 	}
 
 	delete _environmentCubeFBO;
-	delete _multisampledHdrFBO;
+	delete _hdrFBO;
 	delete _bloomFBO;
 	delete _bloomBlurFBOs[0]; 
 	delete _bloomBlurFBOs[1];
@@ -209,7 +207,7 @@ Renderer::~Renderer() {
 	delete _gRBO;
 
 	delete _environmentRBO;
-	delete _multisampledHdrRBO;
+	delete _hdrRBO;
 }
 
 void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& lights, Node* mainCamera, Node* directionalLight, Texture* skybox) {
@@ -248,6 +246,7 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 
 	//setup light space matrix
 	std::vector<glm::vec3> pointLightPositions;
+	unsigned int pointLightCount;
 	glm::vec3 directionalLightPos;
 
 	glm::mat4 lightProjection;
@@ -258,7 +257,7 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 
 	if(directionalLight != nullptr) {
 		LightComponent* directionalLightComponent = (LightComponent*)directionalLight->getComponent(ComponentType::Light);
-		directionalLightPos = glm::normalize(directionalLightComponent->lightDirection) * -3.0f; //offset light position 3 units in the opposite direction of the light direction
+		directionalLightPos = glm::normalize(directionalLightComponent->lightDirection) * -4.0f; //offset light position 4 units in the opposite direction of the light direction
 
 		lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 1.0f, 7.5f);
 		lightView = glm::lookAt(directionalLightPos, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
@@ -271,6 +270,7 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 
 	//get closest point lights
 	if(useShadows) pointLightPositions = _getClosestPointLights(cameraPos, lightComponents);
+	pointLightCount = pointLightPositions.size();
 
 	//store the matrices and the vectors in the uniform buffer
 	_fillUniformBuffers(viewMatrix, projectionMatrix, lightSpaceMatrix, cameraPos, directionalLightPos, useShadows, pointLightPositions);
@@ -283,7 +283,7 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 	if(useShadows) _renderShadowMaps(renderComponents, pointLightPositions, lightSpaceMatrix);
 
 	//render low quality environment map
-	if(RenderSettings::IsEnabled(RenderSettings::EnvironmentMapping)) _renderEnvironmentMap(renderComponents, skybox, cameraPos, pointLightPositions.size());
+	if(RenderSettings::IsEnabled(RenderSettings::EnvironmentMapping)) _renderEnvironmentMap(renderComponents, skybox, cameraPos, pointLightCount);
 
 	//render scene
 	if(RenderSettings::IsEnabled(RenderSettings::Deferred)) {
@@ -299,25 +299,22 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 		}
 
 		//render lighting of the scene (deferred shading)
-		_renderLighting(skybox, pointLightPositions.size());
+		_renderLighting(skybox, pointLightCount);
 
 		//blit gBuffer depth buffer into the hdr framebuffer depth buffer to enable forward rendering into the deferred scene
 		_blitGDepthToHDR();
 	} else {
 		//render and light the scene (forward shading)
-		_renderScene(solidRenderComponents, skybox, pointLightPositions.size(), useShadows, true); //bind the hdr here and clear buffer bits
+		_renderScene(solidRenderComponents, skybox, pointLightCount, useShadows, true); //bind the hdr here and clear buffer bits
 	}
-
-	//render blend objects (forward shading)
-	glEnable(GL_BLEND);
-	_renderScene(blendRenderComponents, skybox, pointLightPositions.size(), useShadows, false); //do not bind the hbr here and clear buffer bits since the solid objects are needed in the fbo
-	glDisable(GL_BLEND);
 
 	//render skybox
 	_renderSkybox(viewMatrix, projectionMatrix, skybox);
 
-	//blit multisampled bright color texture into the bloom fbo to get a non-multisampled bright color texture
-	_blitHDRtoBloomFBO();
+	//render blend objects (forward shading)
+	glEnable(GL_BLEND);
+	_renderScene(blendRenderComponents, skybox, pointLightCount, useShadows, false); //do not bind the hbr here and clear buffer bits since the solid objects are needed in the fbo
+	glDisable(GL_BLEND);
 
 	//render screen quad
 	_renderPostProcessingQuad();
@@ -405,9 +402,8 @@ void Renderer::_initShaders() {
 	_postProcessingShader = new Shader(Filepath::ShaderPath + "post processing shader/screenQuad.vs", Filepath::ShaderPath + "post processing shader/postProcessing.fs");
 
 	_postProcessingShader->use();
-	_postProcessingShader->setInt("multiSampledScreenTexture", 0);
-	_postProcessingShader->setInt("screenTexture", 1);
-	_postProcessingShader->setInt("bloomBlur", 2);
+	_postProcessingShader->setInt("screenTexture", 0);
+	_postProcessingShader->setInt("bloomBlur", 1);
 }
 
 void Renderer::_initSkyboxVAO() {
@@ -542,6 +538,8 @@ void Renderer::_initShadowFBO() {
 	_shadowMap = new Texture();
 	_shadowMap->bind(GL_TEXTURE_2D);
 	_shadowMap->init(GL_TEXTURE_2D, GL_DEPTH_COMPONENT, RenderSettings::ShadowWidth, RenderSettings::ShadowHeight, GL_DEPTH_COMPONENT, GL_FLOAT); //we only need the depth component
+
+	//set texture filter options
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
@@ -672,29 +670,37 @@ void Renderer::_initEnvironmentCubeFBO() {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void Renderer::_initMultisampledHdrFBO() {
-	//create multisampled floating point color buffer
-	_multiSampledSceneColorBuffer = new Texture();
-	_multiSampledSceneColorBuffer->bind(GL_TEXTURE_2D_MULTISAMPLE); //multi sampled texture
-	_multiSampledSceneColorBuffer->initMultisample(GL_TEXTURE_2D_MULTISAMPLE, RenderSettings::MsaaSamples, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight);
+void Renderer::_initHdrFBO() {
+	//create floating point color buffer
+	_sceneColorBuffer = new Texture();
+	_sceneColorBuffer->bind(GL_TEXTURE_2D);
+	_sceneColorBuffer->init(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGBA, GL_FLOAT);
+
+	//set texture filter options
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 	//create floating point bright color buffer
-	_multiSampledBrightColorBuffer = new Texture();
-	_multiSampledBrightColorBuffer->bind(GL_TEXTURE_2D_MULTISAMPLE); //multi sampled texture
-	_multiSampledBrightColorBuffer->initMultisample(GL_TEXTURE_2D_MULTISAMPLE, RenderSettings::MsaaSamples, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight);
+	_brightColorBuffer = new Texture();
+	_brightColorBuffer->bind(GL_TEXTURE_2D);
+	_brightColorBuffer->init(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGBA, GL_FLOAT);
+
+	//set texture filter options
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 	//create depth renderbuffer
-	_multisampledHdrRBO = new Renderbuffer();
-	_multisampledHdrRBO->bind();
-	_multisampledHdrRBO->initMultisample(RenderSettings::MsaaSamples, GL_DEPTH_COMPONENT, Window::ScreenWidth, Window::ScreenHeight);
+	_hdrRBO = new Renderbuffer();
+	_hdrRBO->bind();
+	_hdrRBO->init(GL_DEPTH_COMPONENT, Window::ScreenWidth, Window::ScreenHeight);
 	glBindRenderbuffer(GL_RENDERBUFFER, 0);
 
 	//create floating point framebuffer, attach color buffers and render buffer
-	_multisampledHdrFBO = new Framebuffer();
-	_multisampledHdrFBO->bind(GL_FRAMEBUFFER);
-	_multisampledHdrFBO->attachTexture(GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, _multiSampledSceneColorBuffer); //attach color buffer
-	_multisampledHdrFBO->attachTexture(GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D_MULTISAMPLE, _multiSampledBrightColorBuffer); //attach bright color buffer
-	_multisampledHdrFBO->attachRenderbuffer(GL_DEPTH_ATTACHMENT, _multisampledHdrRBO); //attach depth renderbuffer
+	_hdrFBO = new Framebuffer();
+	_hdrFBO->bind(GL_FRAMEBUFFER);
+	_hdrFBO->attachTexture(GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _sceneColorBuffer); //attach color buffer
+	_hdrFBO->attachTexture(GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, _brightColorBuffer); //attach bright color buffer
+	_hdrFBO->attachRenderbuffer(GL_DEPTH_ATTACHMENT, _hdrRBO); //attach depth renderbuffer
 
 	//tell OpenGL which color attachments this framebuffer will use for rendering
 	unsigned int attachments[2] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
@@ -709,38 +715,7 @@ void Renderer::_initMultisampledHdrFBO() {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void Renderer::_initBloomFBOs() {
-	//create scene color buffer (not multisampled)
-	_sceneColorBuffer = new Texture();
-	_sceneColorBuffer->bind(GL_TEXTURE_2D);
-	_sceneColorBuffer->init(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-	//create bloom bright color buffer (not multisampled)
-	_bloomBrightColorBuffer = new Texture();
-	_bloomBrightColorBuffer->bind(GL_TEXTURE_2D);
-	_bloomBrightColorBuffer->init(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);  //clamp to the edge as the blur filter would otherwise sample repeated texture values
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-	//create framebuffer
-	_bloomFBO = new Framebuffer();
-	_bloomFBO->bind(GL_FRAMEBUFFER);
-	_bloomFBO->attachTexture(GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _sceneColorBuffer); //attach the color buffer to attachment 0, since the scene is rendered into this slot in the hdr FBO
-	_bloomFBO->attachTexture(GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, _bloomBrightColorBuffer); //attach the bright color buffer to attachment 1, since the bright color in the other FBO is stored there
-
-	//tell OpenGL which color attachments this framebuffer will use for rendering
-	unsigned int attachments[2] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
-	glDrawBuffers(2, attachments);
-
-	//check for completion (no depth buffer needed)
-	if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-		std::cout << "ERROR: Bloom framebuffer is incomplete" << std::endl;
-	}
-
+void Renderer::_initBlurFBOs() {
 	//create floating point blur colorbuffers
 	for(unsigned int i = 0; i < 2; i++) {
 		//create and bind framebuffer
@@ -1034,8 +1009,8 @@ void Renderer::_renderSSAOBlur() {
 }
 
 void Renderer::_renderLighting(Texture* skybox, unsigned int pointLightCount) {
-	//bind to multisampled hdr framebuffer
-	_multisampledHdrFBO->bind(GL_FRAMEBUFFER);
+	//bind to hdr framebuffer
+	_hdrFBO->bind(GL_FRAMEBUFFER);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	//use lighting shader and bind textures
@@ -1087,7 +1062,7 @@ void Renderer::_renderLighting(Texture* skybox, unsigned int pointLightCount) {
 void Renderer::_renderScene(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, Texture* skybox, unsigned int pointLightCount, bool useShadows, bool bindFBO) {
 	//bind to hdr framebuffer if needed and render each renderable 
 	if(bindFBO) {
-		_multisampledHdrFBO->bind(GL_FRAMEBUFFER);
+		_hdrFBO->bind(GL_FRAMEBUFFER);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	}
 
@@ -1164,7 +1139,7 @@ void Renderer::_renderPostProcessingQuad() {
 		_bloomBlurShader->setInt("horizontal", horizontal);
 
 		//bind texture of other framebuffer (or scene if first iteration)
-		if(firstIteration) _bloomBrightColorBuffer->bind(GL_TEXTURE_2D);
+		if(firstIteration) _brightColorBuffer->bind(GL_TEXTURE_2D);
 		else _blurColorBuffers[!horizontal]->bind(GL_TEXTURE_2D);
 
 		//render quad
@@ -1183,26 +1158,22 @@ void Renderer::_renderPostProcessingQuad() {
 	//set uniforms for gamma correction and tone mapping
 	_postProcessingShader->use();
 	_postProcessingShader->setBool("useBloom", RenderSettings::IsEnabled(RenderSettings::Bloom));
-	_postProcessingShader->setBool("useMSAA", !RenderSettings::IsEnabled(RenderSettings::Deferred));
+	_postProcessingShader->setBool("useFXAA", RenderSettings::IsEnabled(RenderSettings::FXAA));
 
 	_postProcessingShader->setFloat("gamma", RenderSettings::Gamma);
 	_postProcessingShader->setFloat("exposure", RenderSettings::Exposure);
 
-	//set uniform for MSAA
-	_postProcessingShader->setInt("msaaSamples", RenderSettings::MsaaSamples);
-	_postProcessingShader->setInt("screenWidth", Window::ScreenWidth);
-	_postProcessingShader->setInt("screenHeight", Window::ScreenHeight);
-	
-	//bind texture
-	if(!RenderSettings::IsEnabled(RenderSettings::Deferred)) {
-		glActiveTexture(GL_TEXTURE0);
-		_multiSampledSceneColorBuffer->bind(GL_TEXTURE_2D_MULTISAMPLE); //bind multisampled screen texture
-	} else {
-		glActiveTexture(GL_TEXTURE1);
-		_sceneColorBuffer->bind(GL_TEXTURE_2D); //bind screen texture
-	}
+	//set uniforms for FXAA
+	_postProcessingShader->setVec2("inverseScreenTextureSize", glm::vec2(1.0f / (float)Window::ScreenWidth, 1.0f / (float)Window::ScreenHeight));
+	_postProcessingShader->setFloat("fxaaSpanMax", RenderSettings::FxaaSpanMax);
+	_postProcessingShader->setFloat("fxaaReduceMin", RenderSettings::FxaaReduceMin);
+	_postProcessingShader->setFloat("fxaaReduceMul", RenderSettings::FxaaReduceMul);
 
-	glActiveTexture(GL_TEXTURE2);
+	//bind texture
+	glActiveTexture(GL_TEXTURE0);
+	_sceneColorBuffer->bind(GL_TEXTURE_2D); //bind screen texture
+
+	glActiveTexture(GL_TEXTURE1);
 	_blurColorBuffers[!horizontal]->bind(GL_TEXTURE_2D); //bind blurred bloom texture
 
 	//render texture to the screen and tone map and gamma correct
@@ -1418,27 +1389,9 @@ void Renderer::_generateNoiseTexture() {
 }
 
 void Renderer::_blitGDepthToHDR() {
+	//blit the depth buffer of the gBuffer into the depth buffer of the hdr fbo
 	_gBuffer->bind(GL_READ_FRAMEBUFFER);
-	_multisampledHdrFBO->bind(GL_DRAW_FRAMEBUFFER);
+	_hdrFBO->bind(GL_DRAW_FRAMEBUFFER);
 
 	glBlitFramebuffer(0, 0, Window::ScreenWidth, Window::ScreenHeight, 0, 0, Window::ScreenWidth, Window::ScreenHeight, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
-}
-
-void Renderer::_blitHDRtoBloomFBO() {
-	//blit from the multisampled framebuffer we rendered to into the non-multisampled framebuffer, so that we don't have to render the entire scene again
-	_multisampledHdrFBO->bind(GL_READ_FRAMEBUFFER);
-	_bloomFBO->bind(GL_DRAW_FRAMEBUFFER);
-
-	glReadBuffer(GL_COLOR_ATTACHMENT0); //read from color attachment 0 (multisample scene texture)
-	glDrawBuffer(GL_COLOR_ATTACHMENT0); //draw to color attachment 0
-
-	//the resulting texture is stored in _bloomBrightColorBuffer
-	glBlitFramebuffer(0, 0, Window::ScreenWidth, Window::ScreenHeight, 0, 0, Window::ScreenWidth, Window::ScreenHeight, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-
-	//blit the screen texture to get a non multisampled one
-	glReadBuffer(GL_COLOR_ATTACHMENT1); //read from color attachment 1 (bright color multisample texture)
-	glDrawBuffer(GL_COLOR_ATTACHMENT1); //draw to color attachment 1
-
-	//the resulting texture is stored in _bloomBrightColorBuffer
-	glBlitFramebuffer(0, 0, Window::ScreenWidth, Window::ScreenHeight, 0, 0, Window::ScreenWidth, Window::ScreenHeight, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 }

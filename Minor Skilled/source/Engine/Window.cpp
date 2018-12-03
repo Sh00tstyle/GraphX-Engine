@@ -3,7 +3,6 @@
 #include <iostream>
 
 #include "../Utility/Input.h"
-#include "../Utility/RenderSettings.h"
 
 unsigned int Window::ScreenWidth = 1280;
 unsigned int Window::ScreenHeight = 720;
@@ -12,7 +11,7 @@ Window::Window(unsigned int width, unsigned int height, std::string name) {
 	ScreenWidth = width;
 	ScreenHeight = height;
 
-	_initializeGLFW(RenderSettings::MsaaSamples);
+	_initializeGLFW();
 	_initializeWindow(name);
 	_initializeGLAD();
 
@@ -39,14 +38,14 @@ void Window::pollEvents() {
 	glfwPollEvents();
 }
 
-void Window::_initializeGLFW(int msaa) {
+void Window::_initializeGLFW() {
 	int success = glfwInit();
 
 	//OpenGL version 4.6.0
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
 
-	glfwWindowHint(GLFW_SAMPLES, msaa); //set amount of multisamples (if MSAA is enabled)
+	glfwWindowHint(GLFW_SAMPLES, 4); //set amount of 4 multisamples (if MSAA is enabled)
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 	std::cout << "GLFW Initialization Status: " + std::to_string(success) << std::endl;

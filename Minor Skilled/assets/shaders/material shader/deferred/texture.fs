@@ -51,14 +51,13 @@ layout (location = 1) out vec4 gNormalReflect;
 layout (location = 2) out vec4 gAlbedoSpec;
 layout (location = 3) out vec4 gEmissionShiny;
 
-vec3 GetSpecular();
-vec3 GetNormal();
+vec3 GetSpecular(vec2 texCoord);
+vec3 GetNormal(vec2 texCoord);
 float GetReflectionValue(vec2 texCoord);
 vec2 ParallaxMapping(vec3 viewDirection);
 
 void main() {
-    vec3 normal = GetNormal();
-    vec3 viewDirection = normalize(cameraPos - fs_in.fragPosWorld);
+    vec3 viewDirection = normalize(-fs_in.fragPosView); //camera pos is vec3(0.0f), since we are in view space
 
     //parallax mapping
     vec2 texCoord = ParallaxMapping(viewDirection);
@@ -68,22 +67,22 @@ void main() {
     gPositionRefract.rgb = fs_in.fragPosView;
     gPositionRefract.a = material.refractionFactor;
 
-    gNormalReflect.rgb = normal;
+    gNormalReflect.rgb = GetNormal(texCoord);
     gNormalReflect.a = GetReflectionValue(texCoord);
 
     gAlbedoSpec.rgb = texture(material.diffuse, texCoord).rgb;
-    gAlbedoSpec.a = GetSpecular().r;
+    gAlbedoSpec.a = GetSpecular(texCoord).r;
 
     gEmissionShiny.rgb = texture(material.emission, texCoord).rgb;
     gEmissionShiny.a = material.shininess / 255.0f;
 }
 
-vec3 GetSpecular() {
+vec3 GetSpecular(vec2 texCoord) {
     //take the specular contribution from the specular map, otherwise use vec3(0.2f)
     vec3 specular;
 
     if(material.hasSpecular) {
-        specular = texture(material.specular, fs_in.texCoord).rgb;
+        specular = texture(material.specular, texCoord).rgb;
     } else {
         specular = vec3(0.2f);
     }
@@ -91,12 +90,12 @@ vec3 GetSpecular() {
     return specular;
 }
 
-vec3 GetNormal() {
+vec3 GetNormal(vec2 texCoord) {
     //take the normal from the normal map if there is one, otherwise use frag normal
     vec3 normal;
 
     if(material.hasNormal) {
-        normal = texture(material.normal, fs_in.texCoord).rgb; //range [0, 1]
+        normal = texture(material.normal, texCoord).rgb; //range [0, 1]
         normal = normalize(normal * 2.0f - 1.0f); //bring to range [-1, 1]
         normal = normalize(fs_in.TBN * normal); //transform normal from tangent to view space 
     } else {
@@ -133,7 +132,7 @@ vec2 ParallaxMapping(vec3 viewDirection) {
     //get initial values
     vec2 currentTexCoords = fs_in.texCoord;
     float currentDepthMapValue = texture(material.height, currentTexCoords).r;
-      
+    
     while(currentLayerDepth < currentDepthMapValue) { //basically raycasting
         //shift texture coordinates along direction of P
         currentTexCoords -= deltaTexCoords;

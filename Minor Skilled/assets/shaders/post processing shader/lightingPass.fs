@@ -79,7 +79,7 @@ vec3 CalculatePointLight(Light light, vec3 albedo, float spec, float shininess, 
 vec3 CalculateSpotLight(Light light, vec3 albedo, float spec, float shininess, vec3 normal, vec3 fragPos, vec3 viewDirection, vec2 texCoord, float shadow);
 
 float CalculateShadow(vec3 normal, vec3 fragPos, vec4 lightSpaceFragPos);
-float CalculateCubemapShadow(vec3 fragPos, int index);
+float CalculateCubemapShadow(vec3 normal, vec3 fragPos, int index);
 
 vec4 CalculateBrightColor(vec3 color);
 
@@ -113,7 +113,7 @@ void main() {
     float shadow = CalculateShadow(worldNormal, worldFragPos, lightSpaceFragPos);
 
     for(int i = 0; i < usedCubeShadows; i++) {
-        shadow += CalculateCubemapShadow(worldFragPos, i);
+        shadow += CalculateCubemapShadow(worldNormal, worldFragPos, i);
     }
 
     if(shadow > 1.0f) shadow = 1.0f;
@@ -160,7 +160,7 @@ void main() {
     fragColor = vec4(result, 1.0f);
 }
 
-vec3 GetReflection(vec3 fragPos, vec3 normal,  float refractionFactor) {
+vec3 GetReflection(vec3 fragPos, vec3 normal, float refractionFactor) {
     vec3 I = normalize(fragPos - cameraPos);
     vec3 R;
 
@@ -291,7 +291,7 @@ float CalculateShadow(vec3 normal, vec3 fragPos, vec4 lightSpaceFragPos) {
     return shadow;
 }
 
-float CalculateCubemapShadow(vec3 fragPos, int index) {
+float CalculateCubemapShadow(vec3 normal, vec3 fragPos, int index) {
     if(!useShadows) return 0.0f; //no shadows
 
     vec3 lightPos = pointLightPositions[index];
@@ -302,11 +302,15 @@ float CalculateCubemapShadow(vec3 fragPos, int index) {
     //now get current linear depth as the length between the fragment and light position
     float currentDepth = length(fragToLight);
 
+    //calculate bias based on depth map resolution and slope
+    vec3 lightDirection = normalize(lightPos - fragPos);
+    float bias = max(0.1f * (1.0f - dot(normal, lightDirection)), 0.1f);
+
+    //test for shadows and apply PCF
     float shadow = 0.0f;
-    float bias = 0.4f;
     int samples = 20;
     float viewDistance = length(cameraPos - fragPos);
-    float diskRadius = (1.0f + (viewDistance / farPlane)) / farPlane;
+    float diskRadius = (1.0f + (viewDistance / farPlane)) / 22.0f;
 
     for(int i = 0; i < samples; i++) {
         float closestDepth = texture(shadowCubemaps[index], fragToLight + gridSamplingDisk[i] * diskRadius).r;

@@ -50,10 +50,8 @@ class Renderer {
 		std::vector<Texture*> _shadowCubeMaps;
 		std::vector<Texture*> _environmentMapFaces;
 		Texture* _environmentMap;
-		Texture* _multiSampledSceneColorBuffer;
-		Texture* _multiSampledBrightColorBuffer;
 		Texture* _sceneColorBuffer;
-		Texture* _bloomBrightColorBuffer;
+		Texture* _brightColorBuffer;
 		Texture* _blurColorBuffers[2];
 
 		Texture* _ssaoNoiseTexture;
@@ -80,7 +78,7 @@ class Renderer {
 		std::vector<Framebuffer*> _shadowCubeFBOs;
 		std::vector<Framebuffer*> _environmentFBOs;
 		Framebuffer* _environmentCubeFBO;
-		Framebuffer* _multisampledHdrFBO;
+		Framebuffer* _hdrFBO;
 		Framebuffer* _bloomFBO;
 		Framebuffer* _bloomBlurFBOs[2];
 		Framebuffer* _ssaoFBO;
@@ -89,7 +87,7 @@ class Renderer {
 		Renderbuffer* _gRBO;
 
 		Renderbuffer* _environmentRBO;
-		Renderbuffer* _multisampledHdrRBO;
+		Renderbuffer* _hdrRBO;
 
 		//kernels
 		std::vector<glm::vec3> _ssaoKernel;
@@ -107,8 +105,8 @@ class Renderer {
 		void _initShadowFBO();
 		void _initShadowCubeFBOs();
 		void _initEnvironmentCubeFBO();
-		void _initMultisampledHdrFBO();
-		void _initBloomFBOs();
+		void _initHdrFBO();
+		void _initBlurFBOs();
 		void _initSSAOFBOs();
 		
 		//render functions
@@ -134,7 +132,6 @@ class Renderer {
 		void _generateNoiseTexture();
 
 		void _blitGDepthToHDR();
-		void _blitHDRtoBloomFBO();
 };
 
 #endif

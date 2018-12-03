@@ -14,7 +14,7 @@ Shader* TextureMaterial::_ForwardShader = nullptr;
 Shader* TextureMaterial::_DeferredShader = nullptr;
 
 TextureMaterial::TextureMaterial(Texture* diffuseMap, BlendMode blendMode) :Material(MaterialType::Textures, blendMode, true), _diffuseMap(diffuseMap), _specularMap(nullptr),
-_normalMap(nullptr), _emissionMap(nullptr), _heightMap(nullptr), _shininess(32.0f), _refractionFactor(0.0f), _heightScale(1.0f) {
+_normalMap(nullptr), _emissionMap(nullptr), _heightMap(nullptr), _shininess(32.0f), _refractionFactor(0.0f), _heightScale(0.0f) {
 	_initShader();
 }
 

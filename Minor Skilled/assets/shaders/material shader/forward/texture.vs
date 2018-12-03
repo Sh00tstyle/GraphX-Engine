@@ -14,7 +14,8 @@ layout (std140) uniform matricesBlock {
 uniform mat4 modelMatrix;
 
 out VS_OUT {
-    vec3 fragPos;
+    vec3 fragPosWorld;
+    vec3 fragPosView;
     vec3 fragNormal;
     vec2 texCoord;
 
@@ -26,7 +27,8 @@ out VS_OUT {
 void main() {
     mat3 normalMatrix = transpose(inverse(mat3(modelMatrix))); //fix normals in non uniform scaling
 
-    vs_out.fragPos = vec3(modelMatrix * vec4(aVertex, 1.0f));
+    vs_out.fragPosWorld = vec3(modelMatrix * vec4(aVertex, 1.0f));
+    vs_out.fragPosView = vec3(viewMatrix * modelMatrix * vec4(aVertex, 1.0f));
     vs_out.fragNormal = normalMatrix * aNormal;
     vs_out.texCoord = aUV;
 

@@ -28,32 +28,68 @@ void Input::ProcessInput() {
 
 	//shadows
 	if(GetKeyDown(Key::KEY1)) {
-		if(RenderSettings::IsEnabled(RenderSettings::Shadows)) RenderSettings::Disable(RenderSettings::Shadows);
-		else RenderSettings::Enable(RenderSettings::Shadows);
+		if(RenderSettings::IsEnabled(RenderSettings::Shadows)) {
+			RenderSettings::Disable(RenderSettings::Shadows);
+			std::cout << "Disabled Shadows" << std::endl;
+		} else {
+			RenderSettings::Enable(RenderSettings::Shadows);
+			std::cout << "Enabled Shadows" << std::endl;
+		}
 	}
 
 	//bloom
 	if(GetKeyDown(Key::KEY2)) {
-		if(RenderSettings::IsEnabled(RenderSettings::Bloom)) RenderSettings::Disable(RenderSettings::Bloom);
-		else RenderSettings::Enable(RenderSettings::Bloom);
+		if(RenderSettings::IsEnabled(RenderSettings::Bloom)) {
+			RenderSettings::Disable(RenderSettings::Bloom);
+			std::cout << "Disabled Bloom" << std::endl;
+		} else {
+			RenderSettings::Enable(RenderSettings::Bloom);
+			std::cout << "Enabled Bloom" << std::endl;
+		}
 	}
 
 	//deferred
 	if(GetKeyDown(Key::KEY3)) {
-		if(RenderSettings::IsEnabled(RenderSettings::Deferred)) RenderSettings::Disable(RenderSettings::Deferred);
-		else RenderSettings::Enable(RenderSettings::Deferred);
+		if(RenderSettings::IsEnabled(RenderSettings::Deferred)) {
+			RenderSettings::Disable(RenderSettings::Deferred);
+			std::cout << "Disabled Deferred" << std::endl;
+		} else {
+			RenderSettings::Enable(RenderSettings::Deferred);
+			std::cout << "Enabled Deferred" << std::endl;
+		}
 	}
 
 	//ssao
 	if(GetKeyDown(Key::KEY4)) {
-		if(RenderSettings::IsEnabled(RenderSettings::SSAO)) RenderSettings::Disable(RenderSettings::SSAO);
-		else RenderSettings::Enable(RenderSettings::SSAO);
+		if(RenderSettings::IsEnabled(RenderSettings::SSAO)) {
+			RenderSettings::Disable(RenderSettings::SSAO);
+			std::cout << "Disabled SSAO" << std::endl;
+		} else {
+			RenderSettings::Enable(RenderSettings::SSAO);
+			std::cout << "Enabled SSAO" << std::endl;
+		}
 	}
 	
 	//environment mapping
 	if(GetKeyDown(Key::KEY5)) {
-		if(RenderSettings::IsEnabled(RenderSettings::EnvironmentMapping)) RenderSettings::Disable(RenderSettings::EnvironmentMapping);
-		else RenderSettings::Enable(RenderSettings::EnvironmentMapping);
+		if(RenderSettings::IsEnabled(RenderSettings::EnvironmentMapping)) {
+			RenderSettings::Disable(RenderSettings::EnvironmentMapping);
+			std::cout << "Disabled Environment Mapping" << std::endl;
+		} else {
+			RenderSettings::Enable(RenderSettings::EnvironmentMapping);
+			std::cout << "Enabled Environment Mapping" << std::endl;
+		}
+	}
+
+	//fxaa
+	if(GetKeyDown(Key::KEY6)) {
+		if(RenderSettings::IsEnabled(RenderSettings::FXAA)) {
+			RenderSettings::Disable(RenderSettings::FXAA);
+			std::cout << "Disabled FXAA" << std::endl;
+		} else {
+			RenderSettings::Enable(RenderSettings::FXAA);
+			std::cout << "Enabled FXAA" << std::endl;
+		}
 	}
 }
 
