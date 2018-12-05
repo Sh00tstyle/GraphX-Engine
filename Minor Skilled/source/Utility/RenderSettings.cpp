@@ -26,6 +26,10 @@ float RenderSettings::CubeFarPlane = 50.0f;
 const unsigned int RenderSettings::EnvironmentHeight = 256;
 const unsigned int RenderSettings::EnvironmentWidth = 256;
 
+//irradiance cubemap configurations
+const unsigned int RenderSettings::IrradianceHeight = 32;
+const unsigned int RenderSettings::IrradianceWidth = 32;
+
 //SSAO configurations
 unsigned int RenderSettings::SsaoKernelSize = 64;
 float RenderSettings::SsaoRadius = 0.3f;

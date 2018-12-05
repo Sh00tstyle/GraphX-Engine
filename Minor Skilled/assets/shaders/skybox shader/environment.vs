@@ -5,8 +5,8 @@ layout (location = 1) in vec3 aNormal;
 layout (location = 2) in vec2 aUV;
 
 layout (std140) uniform matricesBlock {
-    mat4 viewMatrix; //should not be used here
-    mat4 projectionMatrix; //should not be used here
+    mat4 viewMatrix;
+    mat4 projectionMatrix;
     mat4 lightSpaceMatrix; 
 };
 

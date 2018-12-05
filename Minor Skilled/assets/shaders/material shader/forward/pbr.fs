@@ -1,6 +1,6 @@
 #version 460 core
 
-const float PI = 3.14159265359;
+const float PI = 3.14159265359f;
 
 //light types
 const int DIRECTIONAL = 0;
@@ -63,11 +63,15 @@ layout(std430) buffer lightsBlock {
 
 uniform Material material;
 
+//IBL
+uniform samplerCube irradianceMap;
+
 layout (location = 0) out vec4 fragColor;
 layout (location = 1) out vec4 brightColor;
 
 //PBR equations
 vec3 FresnelSchlick(vec3 H, vec3 V, vec3 F0);
+vec3 FresnelSchlickRoughness(vec3 N, vec3 V, vec3 F0, float roughness);
 float DistributionGGX(vec3 N, vec3 H, float roughness);
 float GeometrySchlickGGX(float NdotV, float roughness);
 float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness);
@@ -116,7 +120,14 @@ void main() {
     }
 
     //ambient lighting, is going to be replaced with environment lighting from IBL
-    vec3 ambient = vec3(0.03) * albedo * ao;
+    vec3 kS = FresnelSchlickRoughness(N, V, F0, roughness);
+    vec3 kD = 1.0f - kS;
+    kD *= 1.0f - metallic;
+
+    vec3 irradiance = texture(irradianceMap, N).rgb;
+    vec3 diffuse = irradiance * albedo;
+    vec3 ambient = kD * diffuse * ao;
+
     vec3 color = ambient + Lo;
 
     fragColor = vec4(color, 1.0f);
@@ -129,6 +140,13 @@ vec3 FresnelSchlick(vec3 H, vec3 V, vec3 F0) { //fresnel equation
     float HdotV = max(dot(H, V), 0.0f); //angle between halfway vector and view direction
 
     return max(F0 + (1.0f - F0) * pow(1.0f - HdotV, 5.0f), 0.0f);
+}
+
+vec3 FresnelSchlickRoughness(vec3 N, vec3 V, vec3 F0, float roughness) { //fresnel equation (including roughness)
+    //ratio between specular and diffuse reflection (or in other words: reflection and refraction)
+    float NdotV = max(dot(N, V), 0.0f); //angle between halfway vector and view direction
+
+    return F0 + (max(vec3(1.0f - roughness), F0) - F0) * pow(1.0f - NdotV, 5.0f);
 }
 
 float DistributionGGX(vec3 N, vec3 H, float roughness) { //normal distribution function

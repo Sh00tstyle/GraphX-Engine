@@ -93,11 +93,11 @@ void DemoScene::_initializeScene() {
 	Texture* brickNormal = Texture::LoadTexture(Filepath::TexturePath + "bricks2_normal.jpg", TextureFilter::Repeat);
 	Texture* heightTexture = Texture::LoadTexture(Filepath::TexturePath + "bricks2_disp.jpg", TextureFilter::Repeat);
 
-	Texture* albedo = Texture::LoadTexture(Filepath::TexturePath + "pbr/rusted_iron/albedo.png", TextureFilter::Repeat, true); //load albedo textures in linear space
-	Texture* normal = Texture::LoadTexture(Filepath::TexturePath + "pbr/rusted_iron/normal.png", TextureFilter::Repeat);
-	Texture* metallic = Texture::LoadTexture(Filepath::TexturePath + "pbr/rusted_iron/metallic.png", TextureFilter::Repeat);
-	Texture* roughness = Texture::LoadTexture(Filepath::TexturePath + "pbr/rusted_iron/roughness.png", TextureFilter::Repeat);
-	Texture* ao = Texture::LoadTexture(Filepath::TexturePath + "pbr/rusted_iron/ao.png", TextureFilter::Repeat);
+	Texture* albedo = Texture::LoadTexture(Filepath::TexturePath + "pbr/plastic/albedo.png", TextureFilter::Repeat, true); //load albedo textures in linear space
+	Texture* normal = Texture::LoadTexture(Filepath::TexturePath + "pbr/plastic/normal.png", TextureFilter::Repeat);
+	Texture* metallic = Texture::LoadTexture(Filepath::TexturePath + "pbr/plastic/metallic.png", TextureFilter::Repeat);
+	Texture* roughness = Texture::LoadTexture(Filepath::TexturePath + "pbr/plastic/roughness.png", TextureFilter::Repeat);
+	Texture* ao = Texture::LoadTexture(Filepath::TexturePath + "pbr/plastic/ao.png", TextureFilter::Repeat);
 
 	//load skybox
 	std::vector<std::string> cubemapFaces{

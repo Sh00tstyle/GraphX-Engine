@@ -63,7 +63,11 @@ void PBRMaterial::setAoMap(Texture * aoMap) {
 }
 
 void PBRMaterial::drawSimple(Shader * shader) {
-	//TODO
+	//set environment shader properties
+	shader->setBool("useTexture", true);
+
+	glActiveTexture(GL_TEXTURE0);
+	_albedoMap->bind(GL_TEXTURE_2D);
 }
 
 void PBRMaterial::drawForward(glm::mat4 & modelMatrix) {
@@ -133,6 +137,8 @@ void PBRMaterial::_initShader() {
 		_ForwardShader->setInt("material.metallic", 2);
 		_ForwardShader->setInt("material.roughness", 3);
 		_ForwardShader->setInt("material.ao", 4);
+
+		_ForwardShader->setInt("irradianceMap", 6);
 
 		_ForwardShader->setUniformBlockBinding("matricesBlock", 0); //set uniform block "matrices" to binding point 0
 		_ForwardShader->setUniformBlockBinding("dataBlock", 1); //set uniform block "data" to binding point 1

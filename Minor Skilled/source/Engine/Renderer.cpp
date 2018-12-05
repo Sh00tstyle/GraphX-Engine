@@ -120,7 +120,8 @@ Renderer::Renderer() {
 
 	_initShadowFBO();
 	_initShadowCubeFBOs();
-	_initEnvironmentCubeFBO();
+	_initEnvironmentFBO();
+	_initIrradianceFBO();
 	_initHdrFBO();
 
 	//setup post processing
@@ -137,7 +138,7 @@ Renderer::~Renderer() {
 	delete _shadowShader;
 	delete _shadowCubeShader;
 	delete _environmentShader;
-	delete _faceToCubeShader;
+	delete _irradianceShader;
 	delete _skyboxShader;
 	delete _ssaoShader;
 	delete _ssaoBlurShader;
@@ -156,11 +157,8 @@ Renderer::~Renderer() {
 		delete _shadowCubeMaps[i];
 	}
 
-	for(unsigned int i = 0; i < _environmentMapFaces.size(); i++) {
-		delete _environmentMapFaces[i];
-	}
-
 	delete _environmentMap;
+	delete _irradianceMap;
 	delete _sceneColorBuffer;
 	delete _brightColorBuffer;
 	delete _blurColorBuffers[1];
@@ -191,11 +189,8 @@ Renderer::~Renderer() {
 		delete _shadowCubeFBOs[i];
 	}
 
-	for(unsigned int i = 0; i < _environmentFBOs.size(); i++) {
-		delete _environmentFBOs[i];
-	}
-
-	delete _environmentCubeFBO;
+	delete _environmentFBO;
+	delete _irradianceFBO;
 	delete _hdrFBO;
 	delete _bloomFBO;
 	delete _bloomBlurFBOs[0]; 
@@ -207,6 +202,7 @@ Renderer::~Renderer() {
 	delete _gRBO;
 
 	delete _environmentRBO;
+	delete _irradianceRBO;
 	delete _hdrRBO;
 }
 
@@ -285,6 +281,9 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 	//render low quality environment map
 	if(RenderSettings::IsEnabled(RenderSettings::EnvironmentMapping)) _renderEnvironmentMap(renderComponents, skybox, cameraPos, pointLightCount);
 
+	//render low quality convolution irradiance map
+	_renderIrradianceMap(skybox);
+
 	//render scene
 	if(RenderSettings::IsEnabled(RenderSettings::Deferred)) {
 		//render the geometry of the scene (deferred shading)
@@ -361,14 +360,11 @@ void Renderer::_initShaders() {
 
 	_environmentShader->setShaderStorageBlockBinding("lightsBlock", 2);
 
-	//initialize face to cubemap shader
-	_faceToCubeShader = new Shader(Filepath::ShaderPath + "skybox shader/faceToCube.vs", Filepath::ShaderPath + "skybox shader/faceToCube.fs");
+	//initialize irradiance convolution shader
+	_irradianceShader = new Shader(Filepath::ShaderPath + "skybox shader/irradiance.vs", Filepath::ShaderPath + "skybox shader/irradiance.fs");
 
-	_faceToCubeShader->use();
-
-	for(unsigned int i = 0; i < 6; i++) {
-		_faceToCubeShader->setInt("cubemapFaces[" + std::to_string(i) + "]", i);
-	}
+	_irradianceShader->use();
+	_irradianceShader->setInt("environmentMap", 0);
 
 	//initialize skybox shader
 	_skyboxShader = new Shader(Filepath::ShaderPath + "skybox shader/skybox.vs", Filepath::ShaderPath + "skybox shader/skybox.fs");
@@ -601,45 +597,14 @@ void Renderer::_initShadowCubeFBOs() {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void Renderer::_initEnvironmentCubeFBO() {
-	//create renderbuffer to be used by all faces
-	_environmentRBO = new Renderbuffer();
-	_environmentRBO->bind();
-	_environmentRBO->init(GL_DEPTH_COMPONENT, RenderSettings::EnvironmentWidth, RenderSettings::EnvironmentHeight);
-	glBindRenderbuffer(GL_RENDERBUFFER, 0);
-
-	//setup framebuffer for each cubemap face
-	for(unsigned int i = 0; i < 6; i++) {
-		//create texture color buffer for the face
-		_environmentMapFaces.push_back(new Texture());
-		_environmentMapFaces[i]->bind(GL_TEXTURE_2D);
-		_environmentMapFaces[i]->init(GL_TEXTURE_2D, GL_RGBA, RenderSettings::EnvironmentWidth, RenderSettings::EnvironmentHeight, GL_RGBA, GL_FLOAT);
-
-		//set texture filter options
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-		//create framebuffer for the face and attach the texture and the renderbuffer
-		_environmentFBOs.push_back(new Framebuffer());
-		_environmentFBOs[i]->bind(GL_FRAMEBUFFER);
-		_environmentFBOs[i]->attachTexture(GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _environmentMapFaces[i]);
-		_environmentFBOs[i]->attachRenderbuffer(GL_DEPTH_ATTACHMENT, _environmentRBO);
-
-		//check for framebuffer completion
-		if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-			std::cout << "ERROR: Environment cubemap face framebuffer " + std::to_string(i) + " is incomplete." << std::endl;
-		}
-	}
-
+void Renderer::_initEnvironmentFBO() {
 	//create low quality cubemap of the scene environment
 	_environmentMap = new Texture();
 	_environmentMap->bind(GL_TEXTURE_CUBE_MAP);
 
 	//init all cubemap faces
 	for(unsigned int i = 0; i < 6; i++) {
-		_environmentMap->init(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, GL_RGBA, RenderSettings::EnvironmentWidth, RenderSettings::EnvironmentHeight, GL_RGBA, GL_FLOAT);
+		_environmentMap->init(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, GL_RGB16F, RenderSettings::EnvironmentWidth, RenderSettings::EnvironmentHeight, GL_RGB, GL_FLOAT); //hdr
 	}
 
 	//set texture filter options
@@ -649,22 +614,48 @@ void Renderer::_initEnvironmentCubeFBO() {
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
-	//create framebuffer to convert cube face into cubemap
-	_environmentCubeFBO = new Framebuffer();
-	_environmentCubeFBO->bind(GL_FRAMEBUFFER);
+	//create renderbuffer
+	_environmentRBO = new Renderbuffer();
+	_environmentRBO->bind();
+	_environmentRBO->init(GL_DEPTH_COMPONENT, RenderSettings::EnvironmentWidth, RenderSettings::EnvironmentHeight);
+	glBindRenderbuffer(GL_RENDERBUFFER, 0);
 
-	//attach cubemap layers to framebuffer
+	//create framebuffer and only attach the renderbuffer as we attach each cubemap face seperately when we render the cubemap
+	_environmentFBO = new Framebuffer();
+	_environmentFBO->bind(GL_FRAMEBUFFER);
+	_environmentFBO->attachRenderbuffer(GL_DEPTH_ATTACHMENT, _environmentRBO);
+
+	//bind back to default framebuffer
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void Renderer::_initIrradianceFBO() {
+	//create low quality cubemap for environment irradiance
+	_irradianceMap = new Texture();
+	_irradianceMap->bind(GL_TEXTURE_CUBE_MAP);
+
+	//init all cubemap faces
 	for(unsigned int i = 0; i < 6; i++) {
-		_environmentCubeFBO->attachTexture(GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, _environmentMap);
+		_irradianceMap->init(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, GL_RGB16F, RenderSettings::IrradianceWidth, RenderSettings::IrradianceHeight, GL_RGB, GL_FLOAT); //hdr
 	}
 
-	unsigned int attachments[6] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3, GL_COLOR_ATTACHMENT4, GL_COLOR_ATTACHMENT5};
-	glDrawBuffers(6, attachments);
+	//set texture filter options
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-	//check for framebuffer completion
-	if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-		std::cout << "ERROR: Environment cubemap framebuffer is incomplete." << std::endl;
-	}
+	//create renderbuffer
+	_irradianceRBO = new Renderbuffer();
+	_irradianceRBO->bind();
+	_irradianceRBO->init(GL_DEPTH_COMPONENT, RenderSettings::IrradianceWidth, RenderSettings::IrradianceHeight);
+	glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+	//create framebuffer and only attach the renderbuffer as we attach each cubemap face seperately when we render the cubemap
+	_irradianceFBO = new Framebuffer();
+	_irradianceFBO->bind(GL_FRAMEBUFFER);
+	_irradianceFBO->attachRenderbuffer(GL_DEPTH_COMPONENT, _irradianceRBO);
 
 	//bind back to default framebuffer
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -861,7 +852,8 @@ void Renderer::_renderShadowMaps(std::vector<std::pair<RenderComponent*, glm::ma
 
 void Renderer::_renderEnvironmentMap(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, Texture* skybox, glm::vec3& cameraPos, unsigned int pointLightCount) {
 	//create depth cubemap shadow matrices
-	glm::vec3 renderPos = _getClosestReflection(renderComponents, cameraPos);
+	//glm::vec3 renderPos = _getClosestReflection(renderComponents, cameraPos);
+	glm::vec3 renderPos = glm::vec3(-2.5f, 0.5, -1.5f);
 	glm::mat4 environmentProjection = glm::perspective(glm::radians(90.0f), (float)RenderSettings::EnvironmentWidth / (float)RenderSettings::EnvironmentHeight, RenderSettings::CubeNearPlane, RenderSettings::CubeFarPlane);
 	std::vector<glm::mat4> environmentViews;
 
@@ -873,8 +865,9 @@ void Renderer::_renderEnvironmentMap(std::vector<std::pair<RenderComponent*, glm
 	environmentViews.push_back(glm::lookAt(renderPos, renderPos + glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f))); //front
 	environmentViews.push_back(glm::lookAt(renderPos, renderPos + glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f))); //back
 
-	//use shader and set viewport
+	//set viewport and bind to cubemap framebuffer
 	glViewport(0, 0, RenderSettings::EnvironmentWidth, RenderSettings::EnvironmentHeight);
+	_environmentFBO->bind(GL_FRAMEBUFFER);
 
 	//forward render the scene objects without any special effects for each face
 	glm::mat4 modelMatrix;
@@ -882,8 +875,8 @@ void Renderer::_renderEnvironmentMap(std::vector<std::pair<RenderComponent*, glm
 	Model* model;
 
 	for(unsigned int i = 0; i < 6; i++) {
-		//bind framebuffer for the face
-		_environmentFBOs[i]->bind(GL_FRAMEBUFFER);
+		//attach respective face to render to to the framebuffer
+		_environmentFBO->attachTexture(GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, _environmentMap);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		//setup shader matrix
@@ -913,22 +906,54 @@ void Renderer::_renderEnvironmentMap(std::vector<std::pair<RenderComponent*, glm
 		_renderSkybox(environmentViews[i], environmentProjection, skybox);
 	}
 
-	//render cubemap faces into cubemap using MRT
-	_environmentCubeFBO->bind(GL_FRAMEBUFFER);
-	glClear(GL_COLOR_BUFFER_BIT);
+	//reset viewport
+	glViewport(0, 0, Window::ScreenWidth, Window::ScreenHeight);
+}
 
-	//bind textures
-	_faceToCubeShader->use();
+void Renderer::_renderIrradianceMap(Texture* skybox) {
+	//glm::vec3 renderPos = _getClosestReflection(renderComponents, cameraPos);
+	glm::vec3 renderPos = glm::vec3(-2.5f, 0.5, -1.5f);
+	glm::mat4 irradianceProjection = glm::perspective(glm::radians(90.0f), (float)RenderSettings::EnvironmentWidth / (float)RenderSettings::EnvironmentHeight, RenderSettings::CubeNearPlane, RenderSettings::CubeFarPlane);
+	std::vector<glm::mat4> irradianceViews;
+
+	//view matrices for each cubemap face
+	irradianceViews.push_back(glm::lookAt(renderPos, renderPos + glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f))); //right
+	irradianceViews.push_back(glm::lookAt(renderPos, renderPos + glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f))); //left
+	irradianceViews.push_back(glm::lookAt(renderPos, renderPos + glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f))); //top
+	irradianceViews.push_back(glm::lookAt(renderPos, renderPos + glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f))); //bottom
+	irradianceViews.push_back(glm::lookAt(renderPos, renderPos + glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f))); //front
+	irradianceViews.push_back(glm::lookAt(renderPos, renderPos + glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f))); //back
+
+	//render convoluted irradiance cubemap based on the environment map
+	glViewport(0, 0, RenderSettings::IrradianceWidth, RenderSettings::IrradianceHeight);
+	_irradianceFBO->bind(GL_FRAMEBUFFER);
+
+	//set shader uniforms
+	glm::mat4 modelMatrix = glm::mat4(1.0f);
+	modelMatrix = glm::translate(modelMatrix, renderPos);
+
+	_irradianceShader->use();
+	_irradianceShader->setMat4("modelMatrix", modelMatrix);
+	_irradianceShader->setMat4("projectionMatrix", irradianceProjection);
 
 	for(unsigned int i = 0; i < 6; i++) {
-		glActiveTexture(GL_TEXTURE0 + i);
-		_environmentMapFaces[i]->bind(GL_TEXTURE_2D);
-	}
+		//attach respective face to render to to the framebuffer
+		_irradianceFBO->attachTexture(GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, _irradianceMap);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	//render screen quad with MRT
-	_screenQuadVAO->bind();
-	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-	glBindVertexArray(0);
+		//set view matrix for the face
+		_irradianceShader->setMat4("viewMatrix", irradianceViews[i]);
+
+		//attach environment cubemap
+		glActiveTexture(GL_TEXTURE0);
+		if(RenderSettings::IsEnabled(RenderSettings::EnvironmentMapping)) _environmentMap->bind(GL_TEXTURE_CUBE_MAP);
+		else skybox->bind(GL_TEXTURE_CUBE_MAP);
+
+		//render cube
+		_skyboxVAO->bind();
+		glDrawArrays(GL_TRIANGLES, 0, 36);
+		glBindVertexArray(0);
+	}
 
 	//reset viewport
 	glViewport(0, 0, Window::ScreenWidth, Window::ScreenHeight);
@@ -1065,6 +1090,10 @@ void Renderer::_renderScene(std::vector<std::pair<RenderComponent*, glm::mat4>>&
 		_hdrFBO->bind(GL_FRAMEBUFFER);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	}
+
+	//bind irradiance cubemap
+	glActiveTexture(GL_TEXTURE6);
+	_irradianceMap->bind(GL_TEXTURE_CUBE_MAP);
 
 	//bind environment cubemap
 	glActiveTexture(GL_TEXTURE7);

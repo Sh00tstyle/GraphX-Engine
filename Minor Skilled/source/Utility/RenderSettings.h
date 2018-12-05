@@ -25,6 +25,9 @@ class RenderSettings {
 		static const unsigned int EnvironmentWidth;
 		static const unsigned int EnvironmentHeight;
 
+		static const unsigned int IrradianceWidth;
+		static const unsigned int IrradianceHeight;
+
 		static unsigned int SsaoKernelSize;
 		static float SsaoRadius;
 		static float SsaoBias;
