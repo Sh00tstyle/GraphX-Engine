@@ -7,7 +7,6 @@ class Filepath {
 	public:
 		static const std::string ShaderPath;
 		static const std::string ModelPath;
-		static const std::string MaterialPath;
 		static const std::string TexturePath;
 		static const std::string SkyboxPath;
 

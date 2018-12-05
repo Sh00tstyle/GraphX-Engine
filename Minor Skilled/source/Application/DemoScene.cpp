@@ -20,6 +20,7 @@
 
 #include "../Materials/ColorMaterial.h"
 #include "../Materials/TextureMaterial.h"
+#include "../Materials/PBRMaterial.h"
 
 #include "../Utility/Filepath.h"
 #include "../Utility/LightType.h"
@@ -44,6 +45,7 @@ void DemoScene::_initializeScene() {
 	Node* cube = new Node(glm::vec3(2.0f, 0.3f, 1.0f), "cube");
 	Node* glass = new Node(glm::vec3(3.0f, 0.3f, 3.0f), "glass");
 	Node* bricks = new Node(glm::vec3(-2.5f, 0.5f, 2.5f), "bricks");
+	Node* pbrSphere = new Node(glm::vec3(-2.5f, 0.5, -1.5f), "pbrSphere");
 
 	//adjust transforms
 	Transform* transform = cyborg->getTransform();
@@ -70,6 +72,9 @@ void DemoScene::_initializeScene() {
 	transform->rotate(45.0f, glm::vec3(1.0f, 0.0f, 0.0f));
 	transform->rotate(45.0f, glm::vec3(0.0f, 0.0f, 1.0f));
 
+	transform = pbrSphere->getTransform();
+	transform->scale(glm::vec3(0.2f));
+
 	//load models
 	Model* cyborgModel = Model::LoadModel(Filepath::ModelPath + "cyborg/cyborg.obj");
 	Model* planeModel = Model::LoadModel(Filepath::ModelPath + "plane.obj");
@@ -83,10 +88,28 @@ void DemoScene::_initializeScene() {
 	Texture* cyborgEmission = Texture::LoadTexture(Filepath::ModelPath + "cyborg/cyborg_emission.png", TextureFilter::Repeat, true); //load emission textures in linear space
 
 	Texture* reflectionMap = Texture::LoadTexture(Filepath::TexturePath + "reflection.png");
-	Texture* blendTexture = Texture::LoadTexture(Filepath::TexturePath + "window.png", TextureFilter::Repeat, true);
-	Texture* brickTexture = Texture::LoadTexture(Filepath::TexturePath + "bricks2.jpg", TextureFilter::Repeat, true);
+	Texture* blendTexture = Texture::LoadTexture(Filepath::TexturePath + "window.png", TextureFilter::Repeat, true); //load diffuse textures in linear space
+	Texture* brickTexture = Texture::LoadTexture(Filepath::TexturePath + "bricks2.jpg", TextureFilter::Repeat, true); //load diffuse textures in linear space
 	Texture* brickNormal = Texture::LoadTexture(Filepath::TexturePath + "bricks2_normal.jpg", TextureFilter::Repeat);
 	Texture* heightTexture = Texture::LoadTexture(Filepath::TexturePath + "bricks2_disp.jpg", TextureFilter::Repeat);
+
+	Texture* albedo = Texture::LoadTexture(Filepath::TexturePath + "pbr/rusted_iron/albedo.png", TextureFilter::Repeat, true); //load albedo textures in linear space
+	Texture* normal = Texture::LoadTexture(Filepath::TexturePath + "pbr/rusted_iron/normal.png", TextureFilter::Repeat);
+	Texture* metallic = Texture::LoadTexture(Filepath::TexturePath + "pbr/rusted_iron/metallic.png", TextureFilter::Repeat);
+	Texture* roughness = Texture::LoadTexture(Filepath::TexturePath + "pbr/rusted_iron/roughness.png", TextureFilter::Repeat);
+	Texture* ao = Texture::LoadTexture(Filepath::TexturePath + "pbr/rusted_iron/ao.png", TextureFilter::Repeat);
+
+	//load skybox
+	std::vector<std::string> cubemapFaces{
+		"ocean/right.jpg",
+		"ocean/left.jpg",
+		"ocean/top.jpg",
+		"ocean/bottom.jpg",
+		"ocean/front.jpg",
+		"ocean/back.jpg",
+	};
+
+	Texture* skybox = Texture::LoadCubemap(cubemapFaces, true); //load skyboxes in linear space
 
 	//create materials
 	TextureMaterial* textureMaterial = new TextureMaterial(cyborgDiffuse, cyborgSpecular, cyborgNormal, cyborgEmission);
@@ -103,17 +126,7 @@ void DemoScene::_initializeScene() {
 	ColorMaterial* colorMaterial = new ColorMaterial(glm::vec3(0.1f), glm::vec3(0.5f), glm::vec3(0.3f), 32.0f);
 	ColorMaterial* sphereMaterial = new ColorMaterial(glm::vec3(1.5f, 1.5f, 0.0f), glm::vec3(1.5f, 1.5f, 0.0f), glm::vec3(1.5f, 1.5f, 0.0f));
 
-	//load skybox
-	std::vector<std::string> cubemapFaces{
-		"ocean/right.jpg",
-		"ocean/left.jpg",
-		"ocean/top.jpg",
-		"ocean/bottom.jpg",
-		"ocean/front.jpg",
-		"ocean/back.jpg",
-	};
-
-	Texture* skybox = Texture::LoadCubemap(cubemapFaces, true); //load skyboxed in linear space
+	PBRMaterial* pbrMaterial = new PBRMaterial(albedo, normal, metallic, roughness, ao, BlendMode::Opaque);
 
 	//create components for each node and fill with data
 	RenderComponent* cyborgRenderComponent = new RenderComponent(cyborgModel, textureMaterial);
@@ -123,11 +136,13 @@ void DemoScene::_initializeScene() {
 	RenderComponent* cubeRenderComponent = new RenderComponent(cubeModel, colorMaterial);
 	RenderComponent* glassRenderComponent = new RenderComponent(planeModel, blendMaterial);
 	RenderComponent* brickRenderComponent = new RenderComponent(planeModel, heightMaterial);
+	RenderComponent* pbrRenderComponent = new RenderComponent(sphereModel, pbrMaterial);
 
 	CameraComponent* cameraComponent = new CameraComponent(glm::perspective(glm::radians(45.0f), (float)Window::ScreenWidth / (float)Window::ScreenHeight, 0.1f, 100.0f), 45.0f, 5.0f, 25.0f);
 	LightComponent* spotLightComponent = new LightComponent(LightType::Spot);
 	spotLightComponent->lightAmbient = glm::vec3(0.1f);
 	spotLightComponent->lightDiffuse = glm::vec3(0.5f, 0.0f, 0.0f);
+	//spotLightComponent->lightDiffuse = glm::vec3(1.0f);
 	spotLightComponent->lightSpecular = glm::vec3(0.8f);
 	spotLightComponent->constantAttenuation = 1.0f;
 	spotLightComponent->linearAttenuation = 0.09f;
@@ -138,6 +153,7 @@ void DemoScene::_initializeScene() {
 	LightComponent* pointLightComponent = new LightComponent(LightType::Point);
 	pointLightComponent->lightAmbient = glm::vec3(0.1f);
 	pointLightComponent->lightDiffuse = glm::vec3(0.5f, 0.5f, 0.0f);
+	//pointLightComponent->lightDiffuse = glm::vec3(1.0f);
 	pointLightComponent->lightSpecular = glm::vec3(0.8f);
 	pointLightComponent->constantAttenuation = 1.0f;
 	pointLightComponent->linearAttenuation = 0.09f;
@@ -161,6 +177,7 @@ void DemoScene::_initializeScene() {
 	cube->addComponent(cubeRenderComponent);
 	glass->addComponent(glassRenderComponent);
 	bricks->addComponent(brickRenderComponent);
+	pbrSphere->addComponent(pbrRenderComponent);
 
 	//add nodes to the world
 	_world->addChild(mainCamera);
@@ -172,6 +189,7 @@ void DemoScene::_initializeScene() {
 	_world->addChild(cube);
 	_world->addChild(glass);
 	_world->addChild(bricks);
+	_world->addChild(pbrSphere);
 
 	//set main camera, (main) directional light and skybox
 	_setMainCamera(mainCamera);

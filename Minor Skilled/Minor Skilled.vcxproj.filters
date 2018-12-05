@@ -120,6 +120,9 @@
     <ClCompile Include="source\Utility\RenderSettings.cpp">
       <Filter>source\Utility</Filter>
     </ClCompile>
+    <ClCompile Include="source\Materials\PBRMaterial.cpp">
+      <Filter>source\Materials</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="source\Engine\Shader.h">
@@ -232,6 +235,9 @@
     </ClInclude>
     <ClInclude Include="source\Utility\MaterialType.h">
       <Filter>source\Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Materials\PBRMaterial.h">
+      <Filter>source\Materials</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

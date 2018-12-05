@@ -42,6 +42,7 @@
     <ClCompile Include="source\Engine\Window.cpp" />
     <ClCompile Include="source\Engine\World.cpp" />
     <ClCompile Include="source\Materials\ColorMaterial.cpp" />
+    <ClCompile Include="source\Materials\PBRMaterial.cpp" />
     <ClCompile Include="source\Materials\TextureMaterial.cpp" />
     <ClCompile Include="source\Utility\Filepath.cpp" />
     <ClCompile Include="source\Utility\Input.cpp" />
@@ -74,6 +75,7 @@
     <ClInclude Include="source\Engine\Window.h" />
     <ClInclude Include="source\Engine\World.h" />
     <ClInclude Include="source\Materials\ColorMaterial.h" />
+    <ClInclude Include="source\Materials\PBRMaterial.h" />
     <ClInclude Include="source\Materials\TextureMaterial.h" />
     <ClInclude Include="source\Utility\BlendMode.h" />
     <ClInclude Include="source\Utility\ComponentType.h" />

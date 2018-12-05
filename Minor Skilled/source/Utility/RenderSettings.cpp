@@ -9,7 +9,7 @@ const unsigned char RenderSettings::EnvironmentMapping = 1 << 4;
 const unsigned char RenderSettings::FXAA = 1 << 5;
 
 //active render modes
-std::bitset<8> RenderSettings::Options = RenderSettings::Deferred | RenderSettings::Bloom | RenderSettings::Shadows | 
+std::bitset<8> RenderSettings::Options = /*RenderSettings::Deferred |*/ RenderSettings::Bloom | RenderSettings::Shadows | 
                                          RenderSettings::SSAO | RenderSettings::EnvironmentMapping | RenderSettings::FXAA; //everything enabled
 
 //shadow configurations

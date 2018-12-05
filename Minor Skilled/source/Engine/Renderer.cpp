@@ -262,7 +262,7 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 		lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 1.0f, 7.5f);
 		lightView = glm::lookAt(directionalLightPos, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 		lightSpaceMatrix = lightProjection * lightView;
-	} else {
+	} else if(useShadows) {
 		useShadows = false;
 
 		std::cout << "WARNING: No directional light assigned. Unable to render shadowmap." << std::endl;
