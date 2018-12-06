@@ -2,9 +2,12 @@
 #define RENDERER_H
 
 #include <vector>
+#include <map>
 #include <bitset>
 
 #include <glm\glm.hpp>
+
+#include "../Engine/IBLMaps.h"
 
 class Node;
 class Shader;
@@ -22,11 +25,16 @@ class Renderer {
 		~Renderer();
 
 		void render(std::vector<Node*>& renderables, std::vector<Node*>& lights, Node* mainCamera, Node* directionalLight, Texture* skybox);
+		void renderEnvironmentMaps(std::vector<Node*>& renderables, Node* directionalLight, Texture* skybox);
 
 	private:
 		//vertex data
 		static const std::vector<float> _SkyboxVertices;
 		static const std::vector<float> _ScreenQuadVertices;
+
+		//environment map data
+		std::map<RenderComponent*, Texture*> _environmentMaps;
+		std::map<RenderComponent*, IBLMaps> _iblMaps;
 
 		//shaders
 		Shader* _lightingShader;
@@ -41,15 +49,23 @@ class Renderer {
 		Shader* _postProcessingShader;
 
 		//texture buffers
-		Texture* _gPositionRefract;
-		Texture* _gNormalReflect;
+		Texture* _gPosition;
+		Texture* _gNormal;
 		Texture* _gAlbedoSpec;
 		Texture* _gEmissionShiny;
+		Texture* _gEnvironment;
+
+		/*
+		PBR gBuffer Textures:
+		gAlbedoMetallic
+		gNormalRoughness
+		gEmissionAO
+		gIrradianceBrdfR
+		gPrefilteredBrdfG
+		*/
 
 		Texture* _shadowMap;
 		std::vector<Texture*> _shadowCubeMaps;
-		Texture* _environmentMap;
-		Texture* _irradianceMap;
 		Texture* _sceneColorBuffer;
 		Texture* _brightColorBuffer;
 		Texture* _blurColorBuffers[2];
@@ -77,7 +93,6 @@ class Renderer {
 		Framebuffer* _shadowFBO;
 		std::vector<Framebuffer*> _shadowCubeFBOs;
 		Framebuffer* _environmentFBO;
-		Framebuffer* _irradianceFBO;
 		Framebuffer* _hdrFBO;
 		Framebuffer* _bloomFBO;
 		Framebuffer* _bloomBlurFBOs[2];
@@ -87,7 +102,6 @@ class Renderer {
 		Renderbuffer* _gRBO;
 
 		Renderbuffer* _environmentRBO;
-		Renderbuffer* _irradianceRBO;
 		Renderbuffer* _hdrRBO;
 
 		//kernels
@@ -106,27 +120,25 @@ class Renderer {
 		void _initShadowFBO();
 		void _initShadowCubeFBOs();
 		void _initEnvironmentFBO();
-		void _initIrradianceFBO();
 		void _initHdrFBO();
 		void _initBlurFBOs();
 		void _initSSAOFBOs();
 		
 		//render functions
 		void _renderShadowMaps(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, std::vector<glm::vec3>& pointLights, glm::mat4& lightSpaceMatrix);
-		void _renderEnvironmentMap(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, Texture* skybox, glm::vec3& cameraPos, unsigned int pointLightCount);
-		void _renderIrradianceMap(Texture* skybox);
+		Texture* _renderEnvironmentMap(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, glm::mat4& environmentProjection, glm::vec3& renderPos, Texture* skybox, LightComponent* dirLight);
+		Texture* _renderIrradianceMap(Texture* environmentMap, glm::mat4& environmentProjection, glm::vec3& renderPos);
 		void _renderGeometry(std::vector<std::pair<RenderComponent*, glm::mat4>>& solidRenderComponents);
 		void _renderSSAO();
 		void _renderSSAOBlur();
 		void _renderLighting(Texture* skybox, unsigned int pointLightCount);
-		void _renderScene(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, Texture* skybox, unsigned int pointLightCount, bool useShadows, bool bindFBO);
+		void _renderScene(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, unsigned int pointLightCount, bool useShadows, bool bindFBO);
 		void _renderSkybox(glm::mat4& viewMatrix, glm::mat4& projectionMatrix, Texture* skybox);
 		void _renderPostProcessingQuad();
 
 		//helper functions
 		void _getSortedRenderComponents(std::vector<Node*>& renderables, glm::vec3& cameraPos, std::vector<std::pair<RenderComponent*, glm::mat4>>& solidRenderables, std::vector<std::pair<RenderComponent*, glm::mat4>>& blendRenderables);
 		std::vector<glm::vec3> _getClosestPointLights(glm::vec3 cameraPos, std::vector<std::pair<LightComponent*, glm::vec3>>& lightComponents);
-		glm::vec3 _getClosestReflection(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, glm::vec3& cameraPos);
 
 		void _fillUniformBuffers(glm::mat4& viewMatrix, glm::mat4& projectionMatrix, glm::mat4& lightSpaceMatrix, glm::vec3& cameraPos, glm::vec3& directionalLightPos, bool useShadows, std::vector<glm::vec3>& pointLightPositions);
 		void _fillShaderStorageBuffers(std::vector<std::pair<LightComponent*, glm::vec3>>& lightComponents);

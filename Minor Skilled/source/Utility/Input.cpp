@@ -70,19 +70,8 @@ void Input::ProcessInput() {
 		}
 	}
 	
-	//environment mapping
-	if(GetKeyDown(Key::KEY5)) {
-		if(RenderSettings::IsEnabled(RenderSettings::EnvironmentMapping)) {
-			RenderSettings::Disable(RenderSettings::EnvironmentMapping);
-			std::cout << "Disabled Environment Mapping" << std::endl;
-		} else {
-			RenderSettings::Enable(RenderSettings::EnvironmentMapping);
-			std::cout << "Enabled Environment Mapping" << std::endl;
-		}
-	}
-
 	//fxaa
-	if(GetKeyDown(Key::KEY6)) {
+	if(GetKeyDown(Key::KEY5)) {
 		if(RenderSettings::IsEnabled(RenderSettings::FXAA)) {
 			RenderSettings::Disable(RenderSettings::FXAA);
 			std::cout << "Disabled FXAA" << std::endl;

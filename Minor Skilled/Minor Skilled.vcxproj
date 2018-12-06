@@ -44,6 +44,7 @@
     <ClCompile Include="source\Materials\ColorMaterial.cpp" />
     <ClCompile Include="source\Materials\PBRMaterial.cpp" />
     <ClCompile Include="source\Materials\TextureMaterial.cpp" />
+    <ClCompile Include="source\Utility\Converter.cpp" />
     <ClCompile Include="source\Utility\Filepath.cpp" />
     <ClCompile Include="source\Utility\Input.cpp" />
     <ClCompile Include="source\Utility\Math.cpp" />
@@ -58,6 +59,7 @@
     <ClInclude Include="source\Engine\Component.h" />
     <ClInclude Include="source\Engine\Framebuffer.h" />
     <ClInclude Include="source\Engine\GLLight.h" />
+    <ClInclude Include="source\Engine\IBLMaps.h" />
     <ClInclude Include="source\Engine\Material.h" />
     <ClInclude Include="source\Engine\Mesh.h" />
     <ClInclude Include="source\Engine\Model.h" />
@@ -79,6 +81,7 @@
     <ClInclude Include="source\Materials\TextureMaterial.h" />
     <ClInclude Include="source\Utility\BlendMode.h" />
     <ClInclude Include="source\Utility\ComponentType.h" />
+    <ClInclude Include="source\Utility\Converter.h" />
     <ClInclude Include="source\Utility\Filepath.h" />
     <ClInclude Include="source\Utility\Input.h" />
     <ClInclude Include="source\Utility\Key.h" />

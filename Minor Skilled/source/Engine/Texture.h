@@ -9,6 +9,11 @@
 
 #include "../Utility/TextureFilter.h"
 
+class Shader;
+class VertexArray;
+class Buffer;
+class Framebuffer;
+
 class Texture {
 	public:
 		Texture();
@@ -23,6 +28,7 @@ class Texture {
 
 		static Texture* LoadTexture(std::string path, TextureFilter filter = TextureFilter::Repeat, bool sRGB = false);
 		static Texture* LoadCubemap(std::vector<std::string>& faces, bool sRGB = false);
+		static Texture* LoadHDR(std::string path);
 
 	private:
 		unsigned int _id;

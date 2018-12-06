@@ -21,7 +21,8 @@ struct Material {
 in VS_OUT {
     vec3 fragPosWorld;
     vec3 fragPosView;
-    vec3 fragNormal;
+    vec3 fragNormalView;
+    vec3 fragNormalWorld;
     vec2 texCoord;
 
     mat3 TBN;
@@ -45,36 +46,40 @@ layout (std140) uniform dataBlock {
 };
 
 uniform Material material;
+uniform samplerCube environmentMap;
 
-layout (location = 0) out vec4 gPositionRefract;
-layout (location = 1) out vec4 gNormalReflect;
+layout (location = 0) out vec3 gPosition;
+layout (location = 1) out vec3 gNormal;
 layout (location = 2) out vec4 gAlbedoSpec;
 layout (location = 3) out vec4 gEmissionShiny;
+layout (location = 4) out vec3 gEnvironment;
 
 vec3 GetSpecular(vec2 texCoord);
 vec3 GetNormal(vec2 texCoord);
-float GetReflectionValue(vec2 texCoord);
+vec3 GetReflection(vec3 normal, vec2 texCoord);
 vec2 ParallaxMapping(vec3 viewDirection);
 
 void main() {
-    vec3 viewDirection = normalize(-fs_in.fragPosView); //camera pos is vec3(0.0f), since we are in view space
+    vec3 viewDirection = normalize(fs_in.fragPosView); //camera pos is vec3(0.0f), since we are in view space
 
     //parallax mapping
     vec2 texCoord = ParallaxMapping(viewDirection);
     if(material.hasHeight && (texCoord.x > 1.0f || texCoord.y > 1.0f || texCoord.x < 0.0f || texCoord.y < 0.0f)) discard; //cutoff edges to avoid artifacts when using parallax mapping
 
-    //store the data in the gBuffer
-    gPositionRefract.rgb = fs_in.fragPosView;
-    gPositionRefract.a = material.refractionFactor;
+    vec3 normal = GetNormal(texCoord);
 
-    gNormalReflect.rgb = GetNormal(texCoord);
-    gNormalReflect.a = GetReflectionValue(texCoord);
+    //store the data in the gBuffer
+    gPosition.rgb = fs_in.fragPosView;
+
+    gNormal.rgb = normal;
 
     gAlbedoSpec.rgb = texture(material.diffuse, texCoord).rgb;
     gAlbedoSpec.a = GetSpecular(texCoord).r;
 
     gEmissionShiny.rgb = texture(material.emission, texCoord).rgb;
     gEmissionShiny.a = material.shininess / 255.0f;
+
+    gEnvironment.rgb = GetReflection(fs_in.fragNormalWorld, texCoord);
 }
 
 vec3 GetSpecular(vec2 texCoord) {
@@ -99,17 +104,34 @@ vec3 GetNormal(vec2 texCoord) {
         normal = normalize(normal * 2.0f - 1.0f); //bring to range [-1, 1]
         normal = normalize(fs_in.TBN * normal); //transform normal from tangent to view space 
     } else {
-        normal = normalize(fs_in.fragNormal); //view space
+        normal = normalize(fs_in.fragNormalView); //view space
     }
 
     return normal;
 }
 
-float GetReflectionValue(vec2 texCoord) {
-    //return the reflection amount of this fragment
-    if(!material.hasReflection) return 0.0f;
+vec3 GetReflection(vec3 normal, vec2 texCoord) {
+    if(!material.hasReflection) return vec3(0.0f);
 
-    return texture(material.reflection, texCoord).r;
+    float reflectionAmount = texture(material.reflection, texCoord).r;
+
+    if(reflectionAmount <= 0.01f) return vec3(0.0f);
+
+    vec3 I = normalize(fs_in.fragPosWorld - cameraPos);
+    vec3 R;
+
+    if(material.refractionFactor > 0.0f) {
+        //use refraction if the factor is not 0
+        float ratio = 1.0f / material.refractionFactor;
+
+        R = refract(I, normalize(normal), ratio);
+    } else {
+        //use reflection
+        R = reflect(I, normalize(normal));
+    }
+
+    //sample from dynamic environment map
+    return texture(environmentMap, R).rgb;
 }
 
 vec2 ParallaxMapping(vec3 viewDirection) {

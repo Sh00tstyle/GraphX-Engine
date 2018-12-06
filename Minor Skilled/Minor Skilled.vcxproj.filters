@@ -123,6 +123,9 @@
     <ClCompile Include="source\Materials\PBRMaterial.cpp">
       <Filter>source\Materials</Filter>
     </ClCompile>
+    <ClCompile Include="source\Utility\Converter.cpp">
+      <Filter>source\Utility</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="source\Engine\Shader.h">
@@ -238,6 +241,12 @@
     </ClInclude>
     <ClInclude Include="source\Materials\PBRMaterial.h">
       <Filter>source\Materials</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Engine\IBLMaps.h">
+      <Filter>source\Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Utility\Converter.h">
+      <Filter>source\Utility</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

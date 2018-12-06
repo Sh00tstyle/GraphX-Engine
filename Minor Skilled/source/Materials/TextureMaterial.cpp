@@ -291,6 +291,9 @@ void TextureMaterial::_initShader() {
 		_DeferredShader->setInt("material.reflection", 4);
 		_DeferredShader->setInt("material.height", 5);
 
+		_DeferredShader->setInt("environmentMap", 6);
+
 		_DeferredShader->setUniformBlockBinding("matricesBlock", 0); //set uniform block "matrices" to binding point 0
+		_DeferredShader->setUniformBlockBinding("dataBlock", 1); //set uniform block "data" to binding point 1
 	}
 }

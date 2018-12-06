@@ -22,6 +22,7 @@
 #include "../Materials/TextureMaterial.h"
 #include "../Materials/PBRMaterial.h"
 
+#include "../Utility/Converter.h"
 #include "../Utility/Filepath.h"
 #include "../Utility/LightType.h"
 #include "../Utility/BlendMode.h"
@@ -100,6 +101,7 @@ void DemoScene::_initializeScene() {
 	Texture* ao = Texture::LoadTexture(Filepath::TexturePath + "pbr/plastic/ao.png", TextureFilter::Repeat);
 
 	//load skybox
+	/**
 	std::vector<std::string> cubemapFaces{
 		"ocean/right.jpg",
 		"ocean/left.jpg",
@@ -110,6 +112,10 @@ void DemoScene::_initializeScene() {
 	};
 
 	Texture* skybox = Texture::LoadCubemap(cubemapFaces, true); //load skyboxes in linear space
+	/**/
+
+	Texture* skybox = Converter::EquirectangularToCubemap(Texture::LoadHDR(Filepath::SkyboxPath + "Milkyway/Milkyway_Small.hdr")); //low res
+	//Texture* skybox = Converter::EquirectangularToCubemap(Texture::LoadHDR(Filepath::SkyboxPath + "Milkyway/Milkyway_BG.jpg")); //high res
 
 	//create materials
 	TextureMaterial* textureMaterial = new TextureMaterial(cyborgDiffuse, cyborgSpecular, cyborgNormal, cyborgEmission);

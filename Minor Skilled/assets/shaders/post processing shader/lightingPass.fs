@@ -59,10 +59,11 @@ layout(std430) buffer lightsBlock {
 
 uniform bool useSSAO;
 
-uniform sampler2D gPositionRefract;
-uniform sampler2D gNormalReflect;
+uniform sampler2D gPosition;
+uniform sampler2D gNormal;
 uniform sampler2D gAlbedoSpec;
 uniform sampler2D gEmissionShiny;
+uniform sampler2D gEnvironment;
 
 uniform sampler2D ssao;
 uniform samplerCube environmentMap;
@@ -71,8 +72,6 @@ uniform samplerCube shadowCubemaps[5];
 
 layout (location = 0) out vec4 fragColor;
 layout (location = 1) out vec4 brightColor;
-
-vec3 GetReflection(vec3 fragPos, vec3 normal, float refractionFactor);
 
 vec3 CalculateDirectionalLight(Light light, vec3 albedo, float spec, float shininess, vec3 normal, vec3 viewDirection, vec2 texCoord, float shadow);
 vec3 CalculatePointLight(Light light, vec3 albedo, float spec, float shininess, vec3 normal, vec3 fragPos, vec3 viewDirection, vec2 texCoord, float shadow);
@@ -85,24 +84,21 @@ vec4 CalculateBrightColor(vec3 color);
 
 void main() {
     //sample data from the gBuffer textures
-    vec3 fragPos = texture(gPositionRefract, texCoord).rgb;
-    vec3 normal = texture(gNormalReflect, texCoord).rgb;
+    vec3 fragPos = texture(gPosition, texCoord).rgb;
+    vec3 normal = texture(gNormal, texCoord).rgb;
     vec3 albedo = texture(gAlbedoSpec, texCoord).rgb;
+    vec3 environment = texture(gEnvironment, texCoord).rgb;
     float specular = texture(gAlbedoSpec, texCoord).a;
     float shininess = texture(gEmissionShiny, texCoord).a * 255.0f;
-    float reflection = texture(gNormalReflect, texCoord).a;
-    float refractionFactor = texture(gPositionRefract, texCoord).a;
 
     //transform to world pos
     vec3 worldFragPos = vec3(inverse(viewMatrix) * vec4(fragPos, 1.0f));
     vec3 worldNormal = vec3(inverse(viewMatrix) * vec4(normal, 0.0f));
 
     //reflection
-    if(reflection > 0.0f) {
+    if(length(environment) > 0.0f) {
         //only output the reflection and skip everything else if there is reflection
-        vec3 color = GetReflection(worldFragPos, worldNormal, refractionFactor);
-
-        fragColor = vec4(color, 1.0f);
+        fragColor = vec4(environment, 1.0f);
         brightColor = vec4(vec3(0.0f), 1.0f);
         return;
     }
@@ -158,24 +154,6 @@ void main() {
 
     //output normal frag color with AO
     fragColor = vec4(result, 1.0f);
-}
-
-vec3 GetReflection(vec3 fragPos, vec3 normal, float refractionFactor) {
-    vec3 I = normalize(fragPos - cameraPos);
-    vec3 R;
-
-    if(refractionFactor > 0.0f) {
-        //use refraction if the factor is not 0
-        float ratio = 1.0f / refractionFactor;
-
-        R = refract(I, normalize(normal), ratio);
-    } else {
-        //use reflection
-        R = reflect(I, normalize(normal));
-    }
-
-    //return cubemap sample color
-    return texture(environmentMap, R).rgb;
 }
 
 vec3 CalculateDirectionalLight(Light light, vec3 albedo, float spec, float shininess, vec3 normal, vec3 viewDirection, vec2 texCoord, float shadow) {

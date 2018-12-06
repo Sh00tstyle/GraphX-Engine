@@ -42,6 +42,8 @@ void Scene::initialize() {
 	_directionalLight = nullptr;
 
 	_initializeScene();
+
+	_initializeEnvironmentMaps();
 	
 	std::cout << "---Engine initialized---" << std::endl;
 }
@@ -106,4 +108,12 @@ void Scene::_update() {
 
 void Scene::_render() {
 	_renderer->render(_renderables, _lights, _mainCamera, _directionalLight, _skybox);
+}
+
+void Scene::_initializeEnvironmentMaps() {
+	//update the scene graph first to get the correct model matrices and data
+	_update();
+
+	//render the environment maps before the renderloop starts
+	_renderer->renderEnvironmentMaps(_renderables, _directionalLight, _skybox);
 }

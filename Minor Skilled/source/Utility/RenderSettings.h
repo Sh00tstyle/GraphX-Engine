@@ -10,7 +10,6 @@ class RenderSettings {
 		static const unsigned char Bloom;
 		static const unsigned char Deferred;
 		static const unsigned char SSAO;
-		static const unsigned char EnvironmentMapping;
 		static const unsigned char FXAA;
 
 		static std::bitset<8> Options;
@@ -21,6 +20,9 @@ class RenderSettings {
 		static const unsigned int ShadowHeight;
 		static float CubeNearPlane;
 		static float CubeFarPlane;
+
+		static const unsigned int ConversionWidth;
+		static const unsigned int ConversionHeight;
 
 		static const unsigned int EnvironmentWidth;
 		static const unsigned int EnvironmentHeight;

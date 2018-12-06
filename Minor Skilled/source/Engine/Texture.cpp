@@ -93,9 +93,7 @@ Texture * Texture::LoadTexture(std::string path, TextureFilter filter, bool sRGB
 
 Texture * Texture::LoadCubemap(std::vector<std::string>& faces, bool sRGB) {
 	Texture* texture = new Texture();
-
-	glGenTextures(1, &texture->_id);
-	glBindTexture(GL_TEXTURE_CUBE_MAP, texture->_id);
+	texture->bind(GL_TEXTURE_CUBE_MAP);
 
 	GLenum internalFormat = sRGB ? GL_SRGB : GL_RGB;
 	int width, height, nrChannels;
@@ -121,6 +119,31 @@ Texture * Texture::LoadCubemap(std::vector<std::string>& faces, bool sRGB) {
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
 	return texture;
+}
+
+Texture* Texture::LoadHDR(std::string path) {
+	stbi_set_flip_vertically_on_load(true);
+	int width, height, nrComponents;
+	float *data = stbi_loadf(path.c_str(), &width, &height, &nrComponents, 0);
+	unsigned int hdrTexture;
+
+	if(data) {
+		Texture* texture = new Texture();
+		texture->bind(GL_TEXTURE_2D);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_FLOAT, data); //load hdr (floating point)
+
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+		stbi_image_free(data);
+
+		return texture;
+	} else {
+		return nullptr;
+		std::cout << "Failed to load HDR image." << std::endl;
+	}
 }
 
 void Texture::_generate() {
