@@ -77,12 +77,16 @@ void DemoScene::_initializeScene() {
 	transform->scale(glm::vec3(0.2f));
 
 	//load models
+	std::cout << "Loading models..." << std::endl;
+
 	Model* cyborgModel = Model::LoadModel(Filepath::ModelPath + "cyborg/cyborg.obj");
 	Model* planeModel = Model::LoadModel(Filepath::ModelPath + "plane.obj");
 	Model* sphereModel = Model::LoadModel(Filepath::ModelPath + "sphere_smooth.obj");
 	Model* cubeModel = Model::LoadModel(Filepath::ModelPath + "cube_smooth.obj");
 
 	//load textures
+	std::cout << "Loading textures..." << std::endl;
+
 	Texture* cyborgDiffuse = Texture::LoadTexture(Filepath::ModelPath + "cyborg/cyborg_diffuse.png", TextureFilter::Repeat, true); //load diffuse textures in linear space
 	Texture* cyborgSpecular = Texture::LoadTexture(Filepath::ModelPath + "cyborg/cyborg_specular.png");
 	Texture* cyborgNormal = Texture::LoadTexture(Filepath::ModelPath + "cyborg/cyborg_normal.png");
@@ -94,13 +98,15 @@ void DemoScene::_initializeScene() {
 	Texture* brickNormal = Texture::LoadTexture(Filepath::TexturePath + "bricks2_normal.jpg", TextureFilter::Repeat);
 	Texture* heightTexture = Texture::LoadTexture(Filepath::TexturePath + "bricks2_disp.jpg", TextureFilter::Repeat);
 
-	Texture* albedo = Texture::LoadTexture(Filepath::TexturePath + "pbr/plastic/albedo.png", TextureFilter::Repeat, true); //load albedo textures in linear space
-	Texture* normal = Texture::LoadTexture(Filepath::TexturePath + "pbr/plastic/normal.png", TextureFilter::Repeat);
-	Texture* metallic = Texture::LoadTexture(Filepath::TexturePath + "pbr/plastic/metallic.png", TextureFilter::Repeat);
-	Texture* roughness = Texture::LoadTexture(Filepath::TexturePath + "pbr/plastic/roughness.png", TextureFilter::Repeat);
-	Texture* ao = Texture::LoadTexture(Filepath::TexturePath + "pbr/plastic/ao.png", TextureFilter::Repeat);
+	Texture* albedo = Texture::LoadTexture(Filepath::TexturePath + "pbr/gold/albedo.png", TextureFilter::Repeat, true); //load albedo textures in linear space
+	Texture* normal = Texture::LoadTexture(Filepath::TexturePath + "pbr/gold/normal.png", TextureFilter::Repeat);
+	Texture* metallic = Texture::LoadTexture(Filepath::TexturePath + "pbr/gold/metallic.png", TextureFilter::Repeat);
+	Texture* roughness = Texture::LoadTexture(Filepath::TexturePath + "pbr/gold/roughness.png", TextureFilter::Repeat);
+	Texture* ao = Texture::LoadTexture(Filepath::TexturePath + "pbr/gold/ao.png", TextureFilter::Repeat);
 
 	//load skybox
+	std::cout << "Loading skybox..." << std::endl;
+
 	/**
 	std::vector<std::string> cubemapFaces{
 		"ocean/right.jpg",

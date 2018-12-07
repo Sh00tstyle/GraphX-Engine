@@ -21,14 +21,19 @@ class RenderSettings {
 		static float CubeNearPlane;
 		static float CubeFarPlane;
 
-		static const unsigned int ConversionWidth;
-		static const unsigned int ConversionHeight;
+		static const unsigned int SkyboxWidth;
+		static const unsigned int SkyboxHeight;
 
 		static const unsigned int EnvironmentWidth;
 		static const unsigned int EnvironmentHeight;
 
 		static const unsigned int IrradianceWidth;
 		static const unsigned int IrradianceHeight;
+
+		static const unsigned int PrefilterWidth;
+		static const unsigned int PrefilterHeight;
+
+		static const unsigned int MaxMipLevels;
 
 		static unsigned int SsaoKernelSize;
 		static float SsaoRadius;

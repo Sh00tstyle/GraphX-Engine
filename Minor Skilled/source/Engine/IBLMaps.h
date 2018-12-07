@@ -8,7 +8,6 @@ struct IBLMaps {
 		Texture* environmentMap;
 		Texture* irradianceMap;
 		Texture* prefilterMap;
-		Texture* brdfLUT;
 };
 
 #endif

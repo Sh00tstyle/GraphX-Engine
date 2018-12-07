@@ -69,6 +69,7 @@
     <ClInclude Include="source\Engine\Scene.h" />
     <ClInclude Include="source\Engine\Shader.h" />
     <ClInclude Include="source\Engine\stb_image.h" />
+    <ClInclude Include="source\Engine\stb_image_write.h" />
     <ClInclude Include="source\Engine\Texture.h" />
     <ClInclude Include="source\Engine\Transform.h" />
     <ClInclude Include="source\Engine\Vertex.h" />

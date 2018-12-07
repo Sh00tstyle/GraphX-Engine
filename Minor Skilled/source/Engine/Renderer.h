@@ -35,6 +35,7 @@ class Renderer {
 		//environment map data
 		std::map<RenderComponent*, Texture*> _environmentMaps;
 		std::map<RenderComponent*, IBLMaps> _iblMaps;
+		Texture* _brdfLUT;
 
 		//shaders
 		Shader* _lightingShader;
@@ -42,6 +43,8 @@ class Renderer {
 		Shader* _shadowCubeShader;
 		Shader* _environmentShader;
 		Shader* _irradianceShader;
+		Shader* _prefilterShader;
+		Shader* _brdfShader;
 		Shader* _skyboxShader;
 		Shader* _ssaoShader;
 		Shader* _ssaoBlurShader;
@@ -124,10 +127,14 @@ class Renderer {
 		void _initBlurFBOs();
 		void _initSSAOFBOs();
 		
+		//environment render functions
+		Texture* _renderEnvironmentMap(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, glm::mat4& environmentProjection, glm::vec3& renderPos, Texture* skybox, LightComponent* dirLight);
+		Texture* _renderIrradianceMap(Texture* environmentMap, glm::mat4& irradianceProjection);
+		Texture* _renderPrefilterMap(Texture* environmentMap, glm::mat4& prefilterProjection);
+		void _renderBrdfLUT();
+
 		//render functions
 		void _renderShadowMaps(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, std::vector<glm::vec3>& pointLights, glm::mat4& lightSpaceMatrix);
-		Texture* _renderEnvironmentMap(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, glm::mat4& environmentProjection, glm::vec3& renderPos, Texture* skybox, LightComponent* dirLight);
-		Texture* _renderIrradianceMap(Texture* environmentMap, glm::mat4& environmentProjection, glm::vec3& renderPos);
 		void _renderGeometry(std::vector<std::pair<RenderComponent*, glm::mat4>>& solidRenderComponents);
 		void _renderSSAO();
 		void _renderSSAOBlur();

@@ -121,6 +121,9 @@ void PBRMaterial::drawForward(glm::mat4 & modelMatrix) {
 		glBindTexture(GL_TEXTURE_2D, 0);
 		std::cout << "ERROR: AO map in PBR shader is missing" << std::endl;
 	}
+
+	//set properties
+	_ForwardShader->setFloat("maxReflectionLod", (float)(RenderSettings::MaxMipLevels - 1));
 }
 
 void PBRMaterial::drawDeferred(glm::mat4 & modelMatrix) {
@@ -139,6 +142,8 @@ void PBRMaterial::_initShader() {
 		_ForwardShader->setInt("material.ao", 4);
 
 		_ForwardShader->setInt("irradianceMap", 6);
+		_ForwardShader->setInt("prefilterMap", 7);
+		_ForwardShader->setInt("brdfLUT", 8);
 
 		_ForwardShader->setUniformBlockBinding("matricesBlock", 0); //set uniform block "matrices" to binding point 0
 		_ForwardShader->setUniformBlockBinding("dataBlock", 1); //set uniform block "data" to binding point 1

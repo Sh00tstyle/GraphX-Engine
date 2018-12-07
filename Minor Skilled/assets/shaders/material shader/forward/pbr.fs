@@ -65,6 +65,9 @@ uniform Material material;
 
 //IBL
 uniform samplerCube irradianceMap;
+uniform samplerCube prefilterMap;
+uniform sampler2D brdfLUT;
+uniform float maxReflectionLod;
 
 layout (location = 0) out vec4 fragColor;
 layout (location = 1) out vec4 brightColor;
@@ -93,8 +96,10 @@ void main() {
     float roughness = texture(material.roughness, fs_in.texCoord).r;
     float ao = texture(material.ao, fs_in.texCoord).r;
 
+    //input lighting data
     vec3 V = normalize(cameraPos - fs_in.fragPosWorld); //view direction
     vec3 N = GetNormal(fs_in.texCoord); //normal
+    vec3 R = reflect(-V, N);
 
     //reflectance at normal incidence (directly looking at the surface)
     vec3 F0 = vec3(0.04f);
@@ -119,14 +124,24 @@ void main() {
         }
     }
 
-    //ambient lighting, is going to be replaced with environment lighting from IBL
-    vec3 kS = FresnelSchlickRoughness(N, V, F0, roughness);
+    //ambient lighting
+    vec3 F = FresnelSchlickRoughness(N, V, F0, roughness);
+
+    vec3 kS = F;
     vec3 kD = 1.0f - kS;
     kD *= 1.0f - metallic;
 
+    //sample from the irradiance map for the diffuse
     vec3 irradiance = texture(irradianceMap, N).rgb;
     vec3 diffuse = irradiance * albedo;
-    vec3 ambient = kD * diffuse * ao;
+
+    //sample from the prefilter map and the BRDF lut and combine the results
+    vec3 prefilteredColor = textureLod(prefilterMap, R, roughness * maxReflectionLod).rgb;
+    vec2 brdf = texture(brdfLUT, vec2(max(dot(N, V), 0.0f), roughness)).rg;
+    vec3 specular = prefilteredColor * (F * brdf.x + brdf.y);
+
+    //apply IBL to the ambient color
+    vec3 ambient = (kD * diffuse + specular) * ao;
 
     vec3 color = ambient + Lo;
 

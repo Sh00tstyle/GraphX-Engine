@@ -37,48 +37,48 @@
 #include "../Utility/RenderSettings.h"
 
 const std::vector<float> Renderer::_SkyboxVertices = {
-	//vertices          
-	-1.0f,  1.0f, -1.0f,
-	-1.0f, -1.0f, -1.0f,
-	1.0f, -1.0f, -1.0f,
-	1.0f, -1.0f, -1.0f,
-	1.0f,  1.0f, -1.0f,
-	-1.0f,  1.0f, -1.0f,
-
-	-1.0f, -1.0f,  1.0f,
-	-1.0f, -1.0f, -1.0f,
-	-1.0f,  1.0f, -1.0f,
-	-1.0f,  1.0f, -1.0f,
-	-1.0f,  1.0f,  1.0f,
-	-1.0f, -1.0f,  1.0f,
-
-	1.0f, -1.0f, -1.0f,
-	1.0f, -1.0f,  1.0f,
-	1.0f,  1.0f,  1.0f,
-	1.0f,  1.0f,  1.0f,
-	1.0f,  1.0f, -1.0f,
-	1.0f, -1.0f, -1.0f,
-
-	-1.0f, -1.0f,  1.0f,
-	-1.0f,  1.0f,  1.0f,
-	1.0f,  1.0f,  1.0f,
-	1.0f,  1.0f,  1.0f,
-	1.0f, -1.0f,  1.0f,
-	-1.0f, -1.0f,  1.0f,
-
-	-1.0f,  1.0f, -1.0f,
-	1.0f,  1.0f, -1.0f,
-	1.0f,  1.0f,  1.0f,
-	1.0f,  1.0f,  1.0f,
-	-1.0f,  1.0f,  1.0f,
-	-1.0f,  1.0f, -1.0f,
-
-	-1.0f, -1.0f, -1.0f,
-	-1.0f, -1.0f,  1.0f,
-	1.0f, -1.0f, -1.0f,
-	1.0f, -1.0f, -1.0f,
-	-1.0f, -1.0f,  1.0f,
-	1.0f, -1.0f,  1.0f
+	// back face
+	-1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 0.0f, // bottom-left
+	1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 1.0f, 1.0f, // top-right
+	1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 1.0f, 0.0f, // bottom-right         
+	1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 1.0f, 1.0f, // top-right
+	-1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 0.0f, // bottom-left
+	-1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 1.0f, // top-left
+	// front face
+	-1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f, 0.0f, // bottom-left
+	1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f, 0.0f, // bottom-right
+	1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f, 1.0f, // top-right
+	1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f, 1.0f, // top-right
+	-1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f, 1.0f, // top-left
+	-1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f, 0.0f, // bottom-left
+	// left face
+	-1.0f,  1.0f,  1.0f, -1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-right
+	-1.0f,  1.0f, -1.0f, -1.0f,  0.0f,  0.0f, 1.0f, 1.0f, // top-left
+	-1.0f, -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // bottom-left
+	-1.0f, -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // bottom-left
+	-1.0f, -1.0f,  1.0f, -1.0f,  0.0f,  0.0f, 0.0f, 0.0f, // bottom-right
+	-1.0f,  1.0f,  1.0f, -1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-right
+	// right face
+	1.0f,  1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-left
+	1.0f, -1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // bottom-right
+	1.0f,  1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 1.0f, // top-right         
+	1.0f, -1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // bottom-right
+	1.0f,  1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-left
+	1.0f, -1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 0.0f, 0.0f, // bottom-left     
+	// bottom face
+	-1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f, 0.0f, 1.0f, // top-right
+	1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f, 1.0f, 1.0f, // top-left
+	1.0f, -1.0f,  1.0f,  0.0f, -1.0f,  0.0f, 1.0f, 0.0f, // bottom-left
+	1.0f, -1.0f,  1.0f,  0.0f, -1.0f,  0.0f, 1.0f, 0.0f, // bottom-left
+	-1.0f, -1.0f,  1.0f,  0.0f, -1.0f,  0.0f, 0.0f, 0.0f, // bottom-right
+	-1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f, 0.0f, 1.0f, // top-right
+	// top face
+	-1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 1.0f, // top-left
+	1.0f,  1.0f , 1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 0.0f, // bottom-right
+	1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 1.0f, // top-right     
+	1.0f,  1.0f,  1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 0.0f, // bottom-right
+	-1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 1.0f, // top-left
+	-1.0f,  1.0f,  1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 0.0f  // bottom-left 
 };
 
 const std::vector<float> Renderer::_ScreenQuadVertices = {
@@ -141,8 +141,9 @@ Renderer::~Renderer() {
 		delete it->second.environmentMap;
 		delete it->second.irradianceMap;
 		delete it->second.prefilterMap;
-		delete it->second.brdfLUT;
 	}
+
+	delete _brdfLUT;
 
 	//delete shaders
 	delete _lightingShader;
@@ -150,6 +151,8 @@ Renderer::~Renderer() {
 	delete _shadowCubeShader;
 	delete _environmentShader;
 	delete _irradianceShader;
+	delete _prefilterShader;
+	delete _brdfShader;
 	delete _skyboxShader;
 	delete _ssaoShader;
 	delete _ssaoBlurShader;
@@ -310,7 +313,7 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 	}
 
 	//render skybox
-	_renderSkybox(viewMatrix, projectionMatrix, skybox);
+	_renderSkybox(viewMatrix, projectionMatrix, _iblMaps.begin()->second.prefilterMap);
 
 	//render blend objects (forward shading)
 	glEnable(GL_BLEND);
@@ -340,6 +343,8 @@ void Renderer::renderEnvironmentMaps(std::vector<Node*>& renderables, Node* dire
 	else directionalLightComponent = nullptr;
 
 	//render all environment maps for all texture materials with reflection map
+	std::cout << "Rendering environment maps..." << std::endl;
+
 	glm::mat4 environmentProjection = glm::perspective(glm::radians(90.0f), (float)RenderSettings::EnvironmentWidth / (float)RenderSettings::EnvironmentHeight, RenderSettings::CubeNearPlane, RenderSettings::CubeFarPlane);
 	
 	glm::vec3 renderPos;
@@ -381,21 +386,21 @@ void Renderer::renderEnvironmentMaps(std::vector<Node*>& renderables, Node* dire
 		}
 	}
 
-	//rescale renderbuffer to irradiance dimensions
-	glViewport(0, 0, RenderSettings::IrradianceWidth, RenderSettings::IrradianceHeight);
-	_environmentRBO->bind();
-	_environmentRBO->init(GL_DEPTH_COMPONENT, RenderSettings::IrradianceWidth, RenderSettings::IrradianceHeight);
-	glBindRenderbuffer(GL_RENDERBUFFER, 0);
+	//render all IBL maps for all pbr materials
+	std::cout << "Rendering IBL maps..." << std::endl;
 
-	//render all irradiance maps for all pbr materials
-	environmentProjection = glm::perspective(glm::radians(90.0f), (float)RenderSettings::IrradianceWidth / (float)RenderSettings::IrradianceHeight, RenderSettings::CubeNearPlane, RenderSettings::CubeFarPlane);
+	environmentProjection = glm::perspective(glm::radians(90.0f), 1.0f, RenderSettings::CubeNearPlane, RenderSettings::CubeFarPlane);
 
 	for(std::map<RenderComponent*, IBLMaps>::iterator it = _iblMaps.begin(); it != _iblMaps.end(); it++) {
 		IBLMaps* maps = &it->second;
 		renderPos = it->first->getOwner()->getTransform()->getWorldPosition();
 
-		maps->irradianceMap = _renderIrradianceMap(maps->environmentMap, environmentProjection, renderPos); //add irradiance map to the correct component in the map
+		maps->irradianceMap = _renderIrradianceMap(maps->environmentMap, environmentProjection); //add irradiance map
+		maps->prefilterMap = _renderPrefilterMap(maps->environmentMap, environmentProjection); //add prefilter map 
 	}
+
+	//render BRDF lookup texture
+	_renderBrdfLUT();
 
 	//reset viewport and bind back to default framebuffer
 	glViewport(0, 0, Window::ScreenWidth, Window::ScreenHeight);
@@ -415,10 +420,10 @@ void Renderer::_initShaders() {
 	_lightingShader->setInt("ssao", 5);
 
 	_lightingShader->setInt("environmentMap", 7);
-	_lightingShader->setInt("shadowMap", 8);
+	_lightingShader->setInt("shadowMap", 9);
 
 	for(unsigned int i = 0; i < RenderSettings::MaxCubeShadows; i++) {
-		_lightingShader->setInt("shadowCubemaps[" + std::to_string(i) + "]", 9 + i);
+		_lightingShader->setInt("shadowCubemaps[" + std::to_string(i) + "]", 10 + i);
 	}
 
 	_lightingShader->setUniformBlockBinding("matricesBlock", 0); //set uniform block "matrices" to binding point 0
@@ -438,11 +443,20 @@ void Renderer::_initShaders() {
 	_environmentShader->use();
 	_environmentShader->setInt("diffuseMap", 0);
 
-	//initialize irradiance convolution shader
+	//initialize irradiance shader
 	_irradianceShader = new Shader(Filepath::ShaderPath + "skybox shader/irradiance.vs", Filepath::ShaderPath + "skybox shader/irradiance.fs");
 
 	_irradianceShader->use();
 	_irradianceShader->setInt("environmentMap", 0);
+
+	//initialize prefilter shader
+	_prefilterShader = new Shader(Filepath::ShaderPath + "skybox shader/prefilter.vs", Filepath::ShaderPath + "skybox shader/prefilter.fs");
+
+	_prefilterShader->use();
+	_prefilterShader->setInt("environmentMap", 0);
+
+	//initialize brdf shader
+	_brdfShader = new Shader(Filepath::ShaderPath + "skybox shader/brdf.vs", Filepath::ShaderPath + "skybox shader/brdf.fs");
 
 	//initialize skybox shader
 	_skyboxShader = new Shader(Filepath::ShaderPath + "skybox shader/skybox.vs", Filepath::ShaderPath + "skybox shader/skybox.fs");
@@ -490,7 +504,11 @@ void Renderer::_initSkyboxVAO() {
 	_skyboxVBO->bufferData(GL_ARRAY_BUFFER, &_SkyboxVertices[0], _SkyboxVertices.size() * sizeof(float));
 
 	glEnableVertexAttribArray(0); //vertex
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(1); //normal
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+	glEnableVertexAttribArray(2); //uv
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
 }
 
 void Renderer::_initScreenQuadVAO() {
@@ -813,6 +831,242 @@ void Renderer::_initSSAOFBOs() {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
+Texture* Renderer::_renderEnvironmentMap(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, glm::mat4& environmentProjection, glm::vec3& renderPos, Texture* skybox, LightComponent* dirLight) {
+	//create environment cubemap
+	Texture* environmentMap = new Texture();
+	environmentMap->bind(GL_TEXTURE_CUBE_MAP);
+
+	//init all cubemap faces
+	for(unsigned int i = 0; i < 6; i++) {
+		environmentMap->init(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, GL_RGB16F, RenderSettings::EnvironmentWidth, RenderSettings::EnvironmentHeight, GL_RGB, GL_FLOAT); //hdr
+	}
+
+	//set texture filter options
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); //enable pre-filter mipmap sampling to avoid artifacts
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+	//generatre mipmaps
+	glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+
+	//view matrices for each cubemap face
+	std::vector<glm::mat4> environmentViews;
+	environmentViews.push_back(glm::lookAt(renderPos, renderPos + glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f))); //right
+	environmentViews.push_back(glm::lookAt(renderPos, renderPos + glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f))); //left
+	environmentViews.push_back(glm::lookAt(renderPos, renderPos + glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f))); //top
+	environmentViews.push_back(glm::lookAt(renderPos, renderPos + glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f))); //bottom
+	environmentViews.push_back(glm::lookAt(renderPos, renderPos + glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f))); //front
+	environmentViews.push_back(glm::lookAt(renderPos, renderPos + glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f))); //back
+
+	//forward render the scene objects without any special effects for each face
+	glm::mat4 modelMatrix;
+	Material* material;
+	Model* model;
+
+	for(unsigned int i = 0; i < 6; i++) {
+		//attach respective face to render to to the framebuffer
+		_environmentFBO->attachTexture(GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, environmentMap);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		//setup shader matrix
+		_environmentShader->use();
+		_environmentShader->setVec3("renderPos", renderPos);
+
+		_environmentShader->setBool("useLight", dirLight != nullptr);
+
+		if(dirLight != nullptr) {
+			_environmentShader->setVec3("lightDirection", dirLight->lightDirection);
+			_environmentShader->setVec3("lightAmbient", dirLight->lightAmbient);
+			_environmentShader->setVec3("lightDiffuse", dirLight->lightDiffuse);
+		}
+
+		_environmentShader->setMat4("viewMatrix", environmentViews[i]);
+		_environmentShader->setMat4("projectionMatrix", environmentProjection);
+
+		//bind shadow map
+		glActiveTexture(GL_TEXTURE1);
+		_shadowMap->bind(GL_TEXTURE_2D);
+
+		//render each scene object
+		for(unsigned int i = 0; i < renderComponents.size(); i++) {
+			modelMatrix = renderComponents[i].second;
+			material = renderComponents[i].first->material;
+			model = renderComponents[i].first->model;
+
+			_environmentShader->setMat4("modelMatrix", modelMatrix);
+
+			material->drawSimple(_environmentShader);
+			model->draw();
+		}
+
+		//render skybox
+		_renderSkybox(environmentViews[i], environmentProjection, skybox);
+	}
+
+	return environmentMap;
+}
+
+Texture* Renderer::_renderIrradianceMap(Texture* environmentMap, glm::mat4& irradianceProjection) {
+	//create environment cubemap
+	Texture* irradianceMap = new Texture();
+	irradianceMap->bind(GL_TEXTURE_CUBE_MAP);
+
+	//init all cubemap faces
+	for(unsigned int i = 0; i < 6; i++) {
+		irradianceMap->init(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, GL_RGB16F, RenderSettings::IrradianceWidth, RenderSettings::IrradianceHeight, GL_RGB, GL_FLOAT); //hdr
+	}
+
+	//set texture filter options
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+	//view matrices for each cubemap face
+	std::vector<glm::mat4> irradianceViews;
+	irradianceViews.push_back(glm::lookAt(glm::vec3(0.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f))); //right
+	irradianceViews.push_back(glm::lookAt(glm::vec3(0.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f))); //left
+	irradianceViews.push_back(glm::lookAt(glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f))); //top
+	irradianceViews.push_back(glm::lookAt(glm::vec3(0.0f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f))); //bottom
+	irradianceViews.push_back(glm::lookAt(glm::vec3(0.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f))); //front
+	irradianceViews.push_back(glm::lookAt(glm::vec3(0.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f))); //back
+
+	//rescale renderbuffer to irradiance dimensions
+	glViewport(0, 0, RenderSettings::IrradianceWidth, RenderSettings::IrradianceHeight);
+	_environmentRBO->bind();
+	_environmentRBO->init(GL_DEPTH_COMPONENT, RenderSettings::IrradianceWidth, RenderSettings::IrradianceHeight);
+	glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+	//set shader uniforms
+	_irradianceShader->use();
+	_irradianceShader->setMat4("projectionMatrix", irradianceProjection);
+
+	//attach environment cubemap
+	glActiveTexture(GL_TEXTURE0);
+	environmentMap->bind(GL_TEXTURE_CUBE_MAP);
+
+	//render each cubemap face
+	for(unsigned int i = 0; i < 6; i++) {
+		//attach respective face to render to to the framebuffer
+		_environmentFBO->attachTexture(GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, irradianceMap);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		//set view matrix for the face
+		_irradianceShader->setMat4("viewMatrix", irradianceViews[i]);
+
+		//render cube
+		_skyboxVAO->bind();
+		glDrawArrays(GL_TRIANGLES, 0, 36);
+		glBindVertexArray(0);
+	}
+
+	return irradianceMap;
+}
+
+Texture* Renderer::_renderPrefilterMap(Texture* environmentMap, glm::mat4& prefilterProjection) {
+	//create environment cubemap
+	Texture* prefilterMap = new Texture();
+	prefilterMap->bind(GL_TEXTURE_CUBE_MAP);
+
+	//init all cubemap faces
+	for(unsigned int i = 0; i < 6; i++) {
+		prefilterMap->init(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, GL_RGB16F, RenderSettings::PrefilterWidth, RenderSettings::PrefilterHeight, GL_RGB, GL_FLOAT); //hdr
+	}
+
+	//set texture filter options
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); //set minifcation filter to mip_linear 
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+	//generate mipmaps
+	glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+
+	//view matrices for each cubemap face
+	std::vector<glm::mat4> prefilterViews;
+	prefilterViews.push_back(glm::lookAt(glm::vec3(0.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f))); //right
+	prefilterViews.push_back(glm::lookAt(glm::vec3(0.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f))); //left
+	prefilterViews.push_back(glm::lookAt(glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f))); //top
+	prefilterViews.push_back(glm::lookAt(glm::vec3(0.0f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f))); //bottom
+	prefilterViews.push_back(glm::lookAt(glm::vec3(0.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f))); //front
+	prefilterViews.push_back(glm::lookAt(glm::vec3(0.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f))); //back
+
+	//set shader uniforms
+	_prefilterShader->use();
+	_prefilterShader->setMat4("projectionMatrix", prefilterProjection);
+
+	_prefilterShader->setFloat("resolution", (float)RenderSettings::EnvironmentHeight);
+
+	//attach environment cubemap
+	glActiveTexture(GL_TEXTURE0);
+	environmentMap->bind(GL_TEXTURE_CUBE_MAP);
+
+	//render each mipmap level
+	for(unsigned int mip = 0; mip < RenderSettings::MaxMipLevels; mip++) {
+		//rescale renderbuffer to prefilter mipmap dimensions
+		unsigned int mipWidth = RenderSettings::PrefilterWidth * std::pow(0.5f, mip);
+		unsigned int mipHeight = RenderSettings::PrefilterHeight * std::pow(0.5f, mip);
+
+		glViewport(0, 0, mipWidth, mipHeight);
+		_environmentRBO->bind();
+		_environmentRBO->init(GL_DEPTH_COMPONENT, mipWidth, mipHeight);
+		glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+		//render each cubemap face
+		float roughness = (float)mip / (float)(RenderSettings::MaxMipLevels - 1);
+		_prefilterShader->setFloat("roughness", roughness);
+
+		for(unsigned int i = 0; i < 6; i++) {
+			//attach respective face to render to to the framebuffer
+			_environmentFBO->attachTexture(GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, prefilterMap, mip);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+			//set view matrix for the face
+			_prefilterShader->setMat4("viewMatrix", prefilterViews[i]);
+
+			//render cube
+			_skyboxVAO->bind();
+			glDrawArrays(GL_TRIANGLES, 0, 36);
+			glBindVertexArray(0);
+		}
+	}
+
+	return prefilterMap;
+}
+
+void Renderer::_renderBrdfLUT() {
+	//create 2 channel lookup texture (LUT)
+	_brdfLUT = new Texture();
+	_brdfLUT->bind(GL_TEXTURE_2D);
+	_brdfLUT->init(GL_TEXTURE_2D, GL_RG16F, RenderSettings::EnvironmentWidth, RenderSettings::EnvironmentHeight, GL_RG, GL_FLOAT); //2 channel hdr
+
+	//set texture filter options (clamp to edge to avoid edge sampling artifacts)
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	//rescale renderbuffer to LUT texture dimensions
+	glViewport(0, 0, RenderSettings::EnvironmentWidth, RenderSettings::EnvironmentHeight);
+	_environmentRBO->bind();
+	_environmentRBO->init(GL_DEPTH_COMPONENT, RenderSettings::EnvironmentWidth, RenderSettings::EnvironmentHeight);
+	glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+	//attach BRDF texture to framebuffer
+	_environmentFBO->attachTexture(GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _brdfLUT);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	//render quad
+	_brdfShader->use();
+	_screenQuadVAO->bind();
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	glBindVertexArray(0);
+}
+
 void Renderer::_renderShadowMaps(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, std::vector<glm::vec3>& pointLights, glm::mat4& lightSpaceMatrix) {
 	//adjust viewport and bind to shadow framebuffer
 	glViewport(0, 0, RenderSettings::ShadowWidth, RenderSettings::ShadowHeight);
@@ -886,135 +1140,6 @@ void Renderer::_renderShadowMaps(std::vector<std::pair<RenderComponent*, glm::ma
 
 	//reset viewport
 	glViewport(0, 0, Window::ScreenWidth, Window::ScreenHeight);
-}
-
-Texture* Renderer::_renderEnvironmentMap(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, glm::mat4& environmentProjection, glm::vec3& renderPos, Texture* skybox, LightComponent* dirLight) {
-	//create environment cubemap
-	Texture* environmentMap = new Texture();
-	environmentMap->bind(GL_TEXTURE_CUBE_MAP);
-
-	//init all cubemap faces
-	for(unsigned int i = 0; i < 6; i++) {
-		environmentMap->init(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, GL_RGB16F, RenderSettings::EnvironmentWidth, RenderSettings::EnvironmentHeight, GL_RGB, GL_FLOAT); //hdr
-	}
-
-	//set texture filter options
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-
-	//view matrices for each cubemap face
-	std::vector<glm::mat4> environmentViews;
-	environmentViews.push_back(glm::lookAt(renderPos, renderPos + glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f))); //right
-	environmentViews.push_back(glm::lookAt(renderPos, renderPos + glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f))); //left
-	environmentViews.push_back(glm::lookAt(renderPos, renderPos + glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f))); //top
-	environmentViews.push_back(glm::lookAt(renderPos, renderPos + glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f))); //bottom
-	environmentViews.push_back(glm::lookAt(renderPos, renderPos + glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f))); //front
-	environmentViews.push_back(glm::lookAt(renderPos, renderPos + glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f))); //back
-
-	//forward render the scene objects without any special effects for each face
-	glm::mat4 modelMatrix;
-	Material* material;
-	Model* model;
-
-	for(unsigned int i = 0; i < 6; i++) {
-		//attach respective face to render to to the framebuffer
-		_environmentFBO->attachTexture(GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, environmentMap);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-		//setup shader matrix
-		_environmentShader->use();
-		_environmentShader->setVec3("renderPos", renderPos);
-
-		_environmentShader->setBool("useLight", dirLight != nullptr);
-
-		if(dirLight != nullptr) {
-			_environmentShader->setVec3("lightDirection", dirLight->lightDirection);
-			_environmentShader->setVec3("lightAmbient", dirLight->lightAmbient);
-			_environmentShader->setVec3("lightDiffuse", dirLight->lightDiffuse);
-		}
-
-		_environmentShader->setMat4("viewMatrix", environmentViews[i]);
-		_environmentShader->setMat4("projectionMatrix", environmentProjection);
-
-		//bind shadow map
-		glActiveTexture(GL_TEXTURE1);
-		_shadowMap->bind(GL_TEXTURE_2D);
-
-		//render each scene object
-		for(unsigned int i = 0; i < renderComponents.size(); i++) {
-			modelMatrix = renderComponents[i].second;
-			material = renderComponents[i].first->material;
-			model = renderComponents[i].first->model;
-
-			_environmentShader->setMat4("modelMatrix", modelMatrix);
-
-			material->drawSimple(_environmentShader);
-			model->draw();
-		}
-
-		//render skybox
-		_renderSkybox(environmentViews[i], environmentProjection, skybox);
-	}
-
-	return environmentMap;
-}
-
-Texture* Renderer::_renderIrradianceMap(Texture* environmentMap, glm::mat4& environmentProjection, glm::vec3& renderPos) {
-	//create environment cubemap
-	Texture* irradianceMap = new Texture();
-	irradianceMap->bind(GL_TEXTURE_CUBE_MAP);
-
-	//init all cubemap faces
-	for(unsigned int i = 0; i < 6; i++) {
-		irradianceMap->init(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, GL_RGB16F, RenderSettings::IrradianceWidth, RenderSettings::IrradianceHeight, GL_RGB, GL_FLOAT); //hdr
-	}
-
-	//set texture filter options
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-
-	//view matrices for each cubemap face
-	std::vector<glm::mat4> irradianceViews;
-	irradianceViews.push_back(glm::lookAt(renderPos, renderPos + glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f))); //right
-	irradianceViews.push_back(glm::lookAt(renderPos, renderPos + glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f))); //left
-	irradianceViews.push_back(glm::lookAt(renderPos, renderPos + glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f))); //top
-	irradianceViews.push_back(glm::lookAt(renderPos, renderPos + glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f))); //bottom
-	irradianceViews.push_back(glm::lookAt(renderPos, renderPos + glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f))); //front
-	irradianceViews.push_back(glm::lookAt(renderPos, renderPos + glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f))); //back
-
-	//set shader uniforms
-	glm::mat4 modelMatrix = glm::mat4(1.0f);
-	modelMatrix = glm::translate(modelMatrix, renderPos);
-
-	_irradianceShader->use();
-	_irradianceShader->setMat4("modelMatrix", modelMatrix);
-	_irradianceShader->setMat4("projectionMatrix", environmentProjection);
-
-	for(unsigned int i = 0; i < 6; i++) {
-		//attach respective face to render to to the framebuffer
-		_environmentFBO->attachTexture(GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, irradianceMap);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-		//set view matrix for the face
-		_irradianceShader->setMat4("viewMatrix", irradianceViews[i]);
-
-		//attach environment cubemap
-		glActiveTexture(GL_TEXTURE0);
-		environmentMap->bind(GL_TEXTURE_CUBE_MAP);
-
-		//render cube
-		_skyboxVAO->bind();
-		glDrawArrays(GL_TRIANGLES, 0, 36);
-		glBindVertexArray(0);
-	}
-
-	return irradianceMap;
 }
 
 void Renderer::_renderGeometry(std::vector<std::pair<RenderComponent*, glm::mat4>>& solidRenderComponents) {
@@ -1132,12 +1257,12 @@ void Renderer::_renderLighting(Texture* skybox, unsigned int pointLightCount) {
 	_ssaoBlurColorBuffer->bind(GL_TEXTURE_2D);
 
 	//bind shadow map
-	glActiveTexture(GL_TEXTURE8);
+	glActiveTexture(GL_TEXTURE9);
 	_shadowMap->bind(GL_TEXTURE_2D);
 
 	//bind shadow cubemap
 	for(unsigned int i = 0; i < pointLightCount; i++) {
-		glActiveTexture(GL_TEXTURE9 + i);
+		glActiveTexture(GL_TEXTURE10 + i);
 		_shadowCubeMaps[i]->bind(GL_TEXTURE_CUBE_MAP);
 	}
 
@@ -1156,11 +1281,11 @@ void Renderer::_renderScene(std::vector<std::pair<RenderComponent*, glm::mat4>>&
 
 	//bind shadow maps
 	if(useShadows) {
-		glActiveTexture(GL_TEXTURE8);
+		glActiveTexture(GL_TEXTURE9);
 		_shadowMap->bind(GL_TEXTURE_2D);
 
 		for(unsigned int i = 0; i < pointLightCount; i++) {
-			glActiveTexture(GL_TEXTURE9 + i);
+			glActiveTexture(GL_TEXTURE10 + i);
 			_shadowCubeMaps[i]->bind(GL_TEXTURE_CUBE_MAP);
 		}
 	}
@@ -1176,10 +1301,16 @@ void Renderer::_renderScene(std::vector<std::pair<RenderComponent*, glm::mat4>>&
 		material = renderComponents[i].first->material;
 		model = renderComponents[i].first->model;
 
-		//bind irradiance cubemap
+		//bind irradiance cubemap, prefilter cubemap and brdfLUT
 		if(_iblMaps.count(renderComponent)) {
 			glActiveTexture(GL_TEXTURE6);
 			_iblMaps[renderComponent].irradianceMap->bind(GL_TEXTURE_CUBE_MAP);
+
+			glActiveTexture(GL_TEXTURE7);
+			_iblMaps[renderComponent].prefilterMap->bind(GL_TEXTURE_CUBE_MAP);
+
+			glActiveTexture(GL_TEXTURE8);
+			_brdfLUT->bind(GL_TEXTURE_2D);
 		}
 
 		//bind environment cubemap

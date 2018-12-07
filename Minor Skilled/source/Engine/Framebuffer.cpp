@@ -19,8 +19,8 @@ void Framebuffer::bind(GLenum target) {
 	glBindFramebuffer(target, _id);
 }
 
-void Framebuffer::attachTexture(GLenum attachment, GLenum textureTarget, Texture* texture) {
-	glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, textureTarget, texture->getID(), 0);
+void Framebuffer::attachTexture(GLenum attachment, GLenum textureTarget, Texture* texture, GLint mipmapLevel) {
+	glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, textureTarget, texture->getID(), mipmapLevel);
 }
 
 void Framebuffer::attachCubemap(GLenum attachment, Texture* cubemap) {

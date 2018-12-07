@@ -248,6 +248,9 @@
     <ClInclude Include="source\Utility\Converter.h">
       <Filter>source\Utility</Filter>
     </ClInclude>
+    <ClInclude Include="source\Engine\stb_image_write.h">
+      <Filter>source\Engine</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="assets\shaders\material shader\color.fs">

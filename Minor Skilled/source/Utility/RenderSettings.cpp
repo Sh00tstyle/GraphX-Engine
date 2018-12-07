@@ -8,7 +8,7 @@ const unsigned char RenderSettings::SSAO = 1 << 3;
 const unsigned char RenderSettings::FXAA = 1 << 4;
 
 //active render modes
-std::bitset<8> RenderSettings::Options = RenderSettings::Deferred | RenderSettings::Bloom | RenderSettings::Shadows | 
+std::bitset<8> RenderSettings::Options = /*RenderSettings::Deferred | */RenderSettings::Bloom | RenderSettings::Shadows | 
                                          RenderSettings::SSAO | RenderSettings::FXAA; //everything enabled
 
 //shadow configurations
@@ -22,8 +22,8 @@ float RenderSettings::CubeNearPlane = 0.5f;
 float RenderSettings::CubeFarPlane = 50.0f;
 
 //equirectangular to cubemap configurations
-const unsigned int RenderSettings::ConversionHeight = 512;
-const unsigned int RenderSettings::ConversionWidth = 512;
+const unsigned int RenderSettings::SkyboxHeight = 512;
+const unsigned int RenderSettings::SkyboxWidth = 512;
 
 //enviroment cubemap configurations
 const unsigned int RenderSettings::EnvironmentHeight = 256;
@@ -32,6 +32,12 @@ const unsigned int RenderSettings::EnvironmentWidth = 256;
 //irradiance cubemap configurations
 const unsigned int RenderSettings::IrradianceHeight = 32;
 const unsigned int RenderSettings::IrradianceWidth = 32;
+
+//prefilter cubemap configurations
+const unsigned int RenderSettings::PrefilterHeight = 128;
+const unsigned int RenderSettings::PrefilterWidth = 128;
+
+const unsigned int RenderSettings::MaxMipLevels = 5;
 
 //SSAO configurations
 unsigned int RenderSettings::SsaoKernelSize = 64;
