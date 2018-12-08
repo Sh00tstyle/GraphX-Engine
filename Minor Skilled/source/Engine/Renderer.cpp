@@ -1135,8 +1135,8 @@ Texture* Renderer::_renderPrefilterMap(Texture* environmentMap, glm::mat4& prefi
 	//render each mipmap level
 	for(unsigned int mip = 0; mip < RenderSettings::MaxMipLevels; mip++) {
 		//rescale renderbuffer to prefilter mipmap dimensions
-		unsigned int mipWidth = RenderSettings::PrefilterWidth * std::pow(0.5f, mip);
-		unsigned int mipHeight = RenderSettings::PrefilterHeight * std::pow(0.5f, mip);
+		unsigned int mipWidth = (unsigned int)(RenderSettings::PrefilterWidth * std::pow(0.5f, mip));
+		unsigned int mipHeight = (unsigned int)(RenderSettings::PrefilterHeight * std::pow(0.5f, mip));
 
 		glViewport(0, 0, mipWidth, mipHeight);
 		_environmentRBO->bind();
