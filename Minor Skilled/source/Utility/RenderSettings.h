@@ -9,8 +9,9 @@ class RenderSettings {
 		static const unsigned char Shadows;
 		static const unsigned char Bloom;
 		static const unsigned char Deferred;
-		static const unsigned char SSAO;
 		static const unsigned char FXAA;
+		static const unsigned char SSAO;
+		static const unsigned char PBR;
 
 		static std::bitset<8> Options;
 

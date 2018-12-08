@@ -39,6 +39,7 @@ class Renderer {
 
 		//shaders
 		Shader* _lightingShader;
+		Shader* _lightingShaderPbr;
 		Shader* _shadowShader;
 		Shader* _shadowCubeShader;
 		Shader* _environmentShader;
@@ -58,14 +59,12 @@ class Renderer {
 		Texture* _gEmissionShiny;
 		Texture* _gEnvironment;
 
-		/*
-		PBR gBuffer Textures:
-		gAlbedoMetallic
-		gNormalRoughness
-		gEmissionAO
-		gIrradianceBrdfR
-		gPrefilteredBrdfG
-		*/
+		Texture* _gPositionMetallic;
+		Texture* _gNormalRoughness;
+		Texture* _gAlbedo;
+		Texture* _gIrradiance;
+		Texture* _gPrefilter;
+		Texture* _gEmissionAO;
 
 		Texture* _shadowMap;
 		std::vector<Texture*> _shadowCubeMaps;
@@ -92,6 +91,7 @@ class Renderer {
 
 		//FBOs, RBOs
 		Framebuffer* _gBuffer;
+		Framebuffer* _gBufferPbr;
 
 		Framebuffer* _shadowFBO;
 		std::vector<Framebuffer*> _shadowCubeFBOs;
@@ -103,6 +103,7 @@ class Renderer {
 		Framebuffer* _ssaoBlurFBO;
 
 		Renderbuffer* _gRBO;
+		Renderbuffer* _gPbrRBO;
 
 		Renderbuffer* _environmentRBO;
 		Renderbuffer* _hdrRBO;
@@ -120,6 +121,7 @@ class Renderer {
 		void _initShaderStorageBuffers();
 
 		void _initGBuffer();
+		void _initGBufferPbr();
 		void _initShadowFBO();
 		void _initShadowCubeFBOs();
 		void _initEnvironmentFBO();
@@ -128,17 +130,17 @@ class Renderer {
 		void _initSSAOFBOs();
 		
 		//environment render functions
-		Texture* _renderEnvironmentMap(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, glm::mat4& environmentProjection, glm::vec3& renderPos, Texture* skybox, LightComponent* dirLight);
+		Texture* _renderEnvironmentMap(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, glm::mat4& environmentProjection, glm::vec3& renderPos, Texture* skybox, LightComponent* dirLight, bool pbr);
 		Texture* _renderIrradianceMap(Texture* environmentMap, glm::mat4& irradianceProjection);
 		Texture* _renderPrefilterMap(Texture* environmentMap, glm::mat4& prefilterProjection);
 		void _renderBrdfLUT();
 
 		//render functions
 		void _renderShadowMaps(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, std::vector<glm::vec3>& pointLights, glm::mat4& lightSpaceMatrix);
-		void _renderGeometry(std::vector<std::pair<RenderComponent*, glm::mat4>>& solidRenderComponents);
-		void _renderSSAO();
+		void _renderGeometry(std::vector<std::pair<RenderComponent*, glm::mat4>>& solidRenderComponents, bool pbr);
+		void _renderSSAO(bool pbr);
 		void _renderSSAOBlur();
-		void _renderLighting(Texture* skybox, unsigned int pointLightCount);
+		void _renderLighting(Texture* skybox, unsigned int pointLightCount, bool pbr);
 		void _renderScene(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, unsigned int pointLightCount, bool useShadows, bool bindFBO);
 		void _renderSkybox(glm::mat4& viewMatrix, glm::mat4& projectionMatrix, Texture* skybox);
 		void _renderPostProcessingQuad();
@@ -153,7 +155,9 @@ class Renderer {
 		void _generateSSAOKernel();
 		void _generateNoiseTexture();
 
-		void _blitGDepthToHDR();
+		void _blitGDepthToHDR(bool pbr);
+
+		void _updateDimensions();
 };
 
 #endif

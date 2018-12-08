@@ -1,5 +1,12 @@
 #version 460 core
 
+const float PI = 3.14159265359f;
+
+//light types
+const int DIRECTIONAL = 0;
+const int POINT = 1;
+const int SPOT = 2;
+
 //array of offset directions for sampling
 vec3 gridSamplingDisk[20] = vec3[] (
    vec3(1, 1,  1), vec3( 1, -1,  1), vec3(-1, -1,  1), vec3(-1, 1,  1), 
@@ -8,18 +15,6 @@ vec3 gridSamplingDisk[20] = vec3[] (
    vec3(1, 0,  1), vec3(-1,  0,  1), vec3( 1,  0, -1), vec3(-1, 0, -1),
    vec3(0, 1,  1), vec3( 0, -1,  1), vec3( 0, -1, -1), vec3( 0, 1, -1)
 );
-
-const float PI = 3.14159265359f;
-
-//light types
-const int DIRECTIONAL = 0;
-const int POINT = 1;
-const int SPOT = 2;
-
-//blend modes
-const int OPAQUE = 0;
-const int CUTOUT = 1;
-const int TRANSPARENT = 2;
 
 struct Light {
     vec4 position;
@@ -40,33 +35,13 @@ struct Light {
     vec2 padding;
 };
 
-struct Material {
-    sampler2D albedo;
-    sampler2D normal;
-    sampler2D metallic;
-    sampler2D roughness;
-    sampler2D ao;
-    sampler2D emission;
-    sampler2D height;
+in vec2 texCoord;
 
-    float refractionFactor;
-    float heightScale;
-
-    bool hasHeight;
-
-    int blendMode;
+layout (std140) uniform matricesBlock {
+    mat4 viewMatrix;
+    mat4 projectionMatrix;
+    mat4 lightSpaceMatrix;
 };
-
-in VS_OUT {
-    vec3 fragPosWorld;
-    vec3 fragPosView;
-    vec3 fragNormal;
-    vec2 texCoord;
-
-    mat3 TBN;
-
-    vec4 lightSpaceFragPos;
-} fs_in;
 
 layout (std140) uniform dataBlock {
     bool useShadows;
@@ -84,15 +59,17 @@ layout(std430) buffer lightsBlock {
     Light lights[];
 };
 
-uniform Material material;
+uniform bool useSSAO;
 
-//IBL
-uniform samplerCube irradianceMap;
-uniform samplerCube prefilterMap;
+uniform sampler2D gPositionMetallic;
+uniform sampler2D gNormalRoughness;
+uniform sampler2D gAlbedo;
+uniform sampler2D gIrradiance;
+uniform sampler2D gPrefilter;
+uniform sampler2D gEmissionAO;
+
+uniform sampler2D ssao;
 uniform sampler2D brdfLUT;
-uniform float maxReflectionLod;
-
-//shadows
 uniform sampler2D shadowMap;
 uniform samplerCube shadowCubemaps[5];
 
@@ -107,67 +84,45 @@ float GeometrySchlickGGX(float NdotV, float roughness);
 float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness);
 
 //shadow calculations
-float CalculateShadow(vec3 normal);
+float CalculateShadow(vec3 normal, vec3 fragPos, vec4 lightSpaceFragPos);
 float CalculateCubemapShadow(vec3 normal, vec3 fragPos, int index);
 
 //helper functions
-vec3 GetNormal(vec2 texCoord);
-vec2 ParallaxMapping();
 vec4 CalculateBrightColor(vec3 color);
 
 //lighting
 vec3 CalculateDirectionalLight(Light light, vec3 V, vec3 N, vec3 F0, vec3 albedo, float roughness, float metallic);
-vec3 CalculatePointLight(Light light, vec3 V, vec3 N, vec3 F0, vec3 albedo, float roughness, float metallic);
-vec3 CalculateSpotLight(Light light, vec3 V, vec3 N, vec3 F0, vec3 albedo, float roughness, float metallic);
+vec3 CalculatePointLight(Light light, vec3 fragPos, vec3 V, vec3 N, vec3 F0, vec3 albedo, float roughness, float metallic);
+vec3 CalculateSpotLight(Light light, vec3 fragPos, vec3 V, vec3 N, vec3 F0, vec3 albedo, float roughness, float metallic);
 
 void main() {
     //PBR lighting shader, using value names which are used in the equations for better understanding
 
-    //parallax mapping
-    vec2 texCoord = ParallaxMapping();
-    if(material.hasHeight && (texCoord.x > 1.0f || texCoord.y > 1.0f || texCoord.x < 0.0f || texCoord.y < 0.0f)) discard; //cutoff edges to avoid artifacts when using parallax mapping
+    //sample data from the gBuffer textures
+    vec3 fragPos = texture(gPositionMetallic, texCoord).rgb;
+    vec3 normal = texture(gNormalRoughness, texCoord).rgb;
+    vec3 albedo = texture(gAlbedo, texCoord).rgb;
+    float metallic = texture(gPositionMetallic, texCoord).a;
+    float roughness = texture(gNormalRoughness, texCoord).a;
+    float ao = texture(gEmissionAO, texCoord).a + texture(ssao, texCoord).r; //add material AO and SSAO
 
-    //get values
-    vec3 albedo = texture(material.albedo, texCoord).rgb; //texture should be loaded in linear space
-    float metallic = texture(material.metallic, texCoord).r;
-    float roughness = texture(material.roughness, texCoord).r;
-    float ao = texture(material.ao, texCoord).r;
+    if(ao > 1.0f) ao = 1.0f;
+
+    //transform to world pos
+    vec3 worldFragPos = vec3(inverse(viewMatrix) * vec4(fragPos, 1.0f));
+    vec3 worldNormal = vec3(inverse(viewMatrix) * vec4(normal, 0.0f));
 
     //input lighting data
-    vec3 V = normalize(cameraPos - fs_in.fragPosWorld); //view direction
-    vec3 N = GetNormal(texCoord); //normal
-    vec3 R; //reflection/refraction
-
-    if(material.refractionFactor > 0.0f) { //not sure if this is viable in PBR
-        //refraction
-        float ratio = 1.0f / material.refractionFactor;
-        R = refract(-V, N, ratio);
-    } else {
-        //reflection
-        R = reflect(-V, N);
-    }
-
-    //blend modes
-    float alpha = 1.0f; //default (opaque)
-
-    switch(material.blendMode) {
-        case CUTOUT:
-            //discard fragment with alpha below or equal to 0.1f
-            alpha = texture(material.albedo, texCoord).a;
-            if(alpha <= 0.1f) discard;
-            break;
-
-        case TRANSPARENT:
-            //sample alpha so it can be applied to the frag color
-            alpha = texture(material.albedo, texCoord).a;
-            break;
-    }
+    vec3 N = worldNormal;
+    vec3 V = normalize(cameraPos - worldFragPos); //view direction
 
     //shadows
-    float shadow = CalculateShadow(N);
+    vec4 lightSpaceFragPos = lightSpaceMatrix * vec4(worldFragPos, 1.0f);
+
+    float shadow = CalculateShadow(worldNormal, worldFragPos, lightSpaceFragPos);
 
     for(int i = 0; i < usedCubeShadows; i++) {
-        shadow += CalculateCubemapShadow(N, fs_in.fragPosWorld, i);
+        shadow += CalculateCubemapShadow(N, worldFragPos, i);
     }
 
     if(shadow > 1.0f) shadow = 1.0f;
@@ -187,11 +142,11 @@ void main() {
                 break;
 
             case POINT:
-                Lo += CalculatePointLight(lights[i], V, N, F0, albedo, roughness, metallic);
+                Lo += CalculatePointLight(lights[i], worldFragPos, V, N, F0, albedo, roughness, metallic);
                 break;
 
             case SPOT:
-                Lo += CalculateSpotLight(lights[i], V, N, F0, albedo, roughness, metallic);
+                Lo += CalculateSpotLight(lights[i], worldFragPos, V, N, F0, albedo, roughness, metallic);
                 break;
         }
     }
@@ -204,11 +159,11 @@ void main() {
     kD *= 1.0f - metallic;
 
     //sample from the irradiance map for the diffuse
-    vec3 irradiance = texture(irradianceMap, N).rgb;
+    vec3 irradiance = texture(gIrradiance, texCoord).rgb;
     vec3 diffuse = irradiance * albedo;
 
     //sample from the prefilter map and the BRDF lut and combine the results
-    vec3 prefilteredColor = textureLod(prefilterMap, R, roughness * maxReflectionLod).rgb;
+    vec3 prefilteredColor = texture(gPrefilter, texCoord).rgb;
     vec2 brdf = texture(brdfLUT, vec2(max(dot(N, V), 0.0f), roughness)).rg;
     vec3 specular = prefilteredColor * (F * brdf.x + brdf.y);
 
@@ -218,10 +173,10 @@ void main() {
     vec3 color = ambient + Lo * shadow; //add results and apply shadow
 
     //emission
-    vec3 emission = texture(material.emission, texCoord).rgb; //if there is no emission map, nothing will be added
+    vec3 emission = texture(gEmissionAO, texCoord).rgb; //if there is no emission map, nothing will be added
     color += emission;
 
-    fragColor = vec4(color, alpha);
+    fragColor = vec4(color, 1.0f);
     brightColor = CalculateBrightColor(color);
 }
 
@@ -276,11 +231,11 @@ float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness) { //geometry functi
 }
 
 //shadow calculations
-float CalculateShadow(vec3 normal) {
+float CalculateShadow(vec3 normal, vec3 fragPos, vec4 lightSpaceFragPos) {
     if(!useShadows) return 0.0f; //no shadows
 
     //perform perspective divide
-    vec3 projectedCoords = fs_in.lightSpaceFragPos.xyz / fs_in.lightSpaceFragPos.w;
+    vec3 projectedCoords = lightSpaceFragPos.xyz / lightSpaceFragPos.w;
 
     //transform to [0,1] range
     projectedCoords = projectedCoords * 0.5f + 0.5f;
@@ -292,7 +247,7 @@ float CalculateShadow(vec3 normal) {
     float currentDepth = projectedCoords.z;
 
     //calculate bias based on depth map resolution and slope
-    vec3 lightDirection = normalize(directionalLightPos - fs_in.fragPosWorld);
+    vec3 lightDirection = normalize(directionalLightPos - fragPos);
     float bias = max(0.15f * (1.0f - dot(normal, lightDirection)), 0.015f);
 
     //PCF
@@ -347,61 +302,6 @@ float CalculateCubemapShadow(vec3 normal, vec3 fragPos, int index) {
 }
 
 //helper functions
-vec3 GetNormal(vec2 texCoord) {
-    //take the normal from the normal map and transform it to world space
-    vec3 normal = texture(material.normal, texCoord).rgb; //range [0, 1]
-    normal = normalize(normal * 2.0f - 1.0f); //bring to range [-1, 1]
-    normal = normalize(fs_in.TBN * normal); //transform normal from tangent to world space
-
-    return normal;
-}
-
-vec2 ParallaxMapping() {
-    //use normal texCoords if there is no height map, otherwise apply parallax occulsion mapping
-    if(!material.hasHeight) return fs_in.texCoord; 
-
-    vec3 viewDirection = normalize(-fs_in.fragPosView);
-
-    //number of depth layers
-    const float minLayers = 8.0f;
-    const float maxLayers = 32.0f;
-    float layerAmount = mix(maxLayers, minLayers, abs(dot(vec3(0.0f, 0.0f, 1.0f), viewDirection)));
-
-    //calculate the size of each layer
-    float layerDepth = 1.0f / layerAmount;
-    //depth of current layer
-    float currentLayerDepth = 0.0f;
-    //the amount to shift the texture coordinates per layer (from vector P)
-    vec2 P = viewDirection.xy / viewDirection.z * material.heightScale; 
-    vec2 deltaTexCoords = P / layerAmount;
-  
-    //get initial values
-    vec2 currentTexCoords = fs_in.texCoord;
-    float currentDepthMapValue = texture(material.height, currentTexCoords).r;
-    
-    while(currentLayerDepth < currentDepthMapValue) { //basically raycasting
-        //shift texture coordinates along direction of P
-        currentTexCoords -= deltaTexCoords;
-        //get depthmap value at current texture coordinates
-        currentDepthMapValue = texture(material.height, currentTexCoords).r;  
-        //get depth of next layer
-        currentLayerDepth += layerDepth;  
-    }
-    
-    //get texture coordinates before collision (reverse operations)
-    vec2 prevTexCoords = currentTexCoords + deltaTexCoords;
-
-    //get depth after and before collision for linear interpolation
-    float afterDepth  = currentDepthMapValue - currentLayerDepth;
-    float beforeDepth = texture(material.height, prevTexCoords).r - currentLayerDepth + layerDepth;
- 
-    //interpolation of texture coordinates
-    float weight = afterDepth / (afterDepth - beforeDepth);
-    vec2 finalTexCoords = prevTexCoords * weight + currentTexCoords * (1.0f - weight);
-
-    return finalTexCoords;
-}
-
 vec4 CalculateBrightColor(vec3 color) {
     const vec3 threshold = vec3(0.2126f, 0.7152f, 0.0722f);
 
@@ -440,14 +340,14 @@ vec3 CalculateDirectionalLight(Light light, vec3 V, vec3 N, vec3 F0, vec3 albedo
     return (kD * albedo / PI + specular) * radiance * NdotL; //no need to multiply with kS, since it's already included in the BRDF
 }
 
-vec3 CalculatePointLight(Light light, vec3 V, vec3 N, vec3 F0, vec3 albedo, float roughness, float metallic) {
-    vec3 L = normalize(light.position.xyz - fs_in.fragPosWorld); //light direction
+vec3 CalculatePointLight(Light light, vec3 fragPos, vec3 V, vec3 N, vec3 F0, vec3 albedo, float roughness, float metallic) {
+    vec3 L = normalize(light.position.xyz - fragPos); //light direction
     vec3 H = normalize(V + L); //halfway vector
 
     float NdotL = max(dot(N, L), 0.0f); //angle between normal and light direction (used to scale the light)
 
     //per lights radiance
-    float lightDistance = length(light.position.xyz - fs_in.fragPosWorld); //distance between light and surface/fragment
+    float lightDistance = length(light.position.xyz - fragPos); //distance between light and surface/fragment
     float attenuation = 1.0f / (light.constant + light.linear * lightDistance + light.quadratic * (lightDistance * lightDistance));
     vec3 radiance = light.diffuse.rgb * attenuation; //lights radiance
 
@@ -469,14 +369,14 @@ vec3 CalculatePointLight(Light light, vec3 V, vec3 N, vec3 F0, vec3 albedo, floa
     return (kD * albedo / PI + specular) * radiance * NdotL; //no need to multiply with kS, since it's already included in the BRDF
 }
 
-vec3 CalculateSpotLight(Light light, vec3 V, vec3 N, vec3 F0, vec3 albedo, float roughness, float metallic) {
-    vec3 L = normalize(light.position.xyz - fs_in.fragPosWorld); //light direction
+vec3 CalculateSpotLight(Light light, vec3 fragPos, vec3 V, vec3 N, vec3 F0, vec3 albedo, float roughness, float metallic) {
+    vec3 L = normalize(light.position.xyz - fragPos); //light direction
     vec3 H = normalize(V + L); //halfway vector
 
     float NdotL = max(dot(N, L), 0.0f); //angle between normal and light direction (used to scale the light)
 
     //per lights radiance
-    float lightDistance = length(light.position.xyz - fs_in.fragPosWorld); //distance between light and surface/fragment
+    float lightDistance = length(light.position.xyz - fragPos); //distance between light and surface/fragment
     float attenuation = 1.0f / (light.constant + light.linear * lightDistance + light.quadratic * (lightDistance * lightDistance));
     vec3 radiance = light.diffuse.rgb * attenuation; //lights radiance
 

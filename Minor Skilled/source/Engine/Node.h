@@ -29,7 +29,7 @@ class Node {
 		virtual void addChild(Node* node);
 		virtual void removeChild(Node* node);
 		virtual void addComponent(Component* component);
-		virtual void update(glm::mat4& parentTransform, std::vector<Node*>& renderables, std::vector<Node*>& lights, std::vector<Node*>& cameras);
+		virtual void update(glm::mat4& parentTransform, std::vector<Node*>& renderables, std::vector<Node*>& lights);
 
 	protected:
 		std::string _name;

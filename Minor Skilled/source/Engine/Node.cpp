@@ -66,13 +66,12 @@ void Node::addComponent(Component * component) {
 	_componentMask |= component->getComponentType();
 }
 
-void Node::update(glm::mat4& parentTransform, std::vector<Node*>& renderables, std::vector<Node*>& lights, std::vector<Node*>& cameras) {
+void Node::update(glm::mat4& parentTransform, std::vector<Node*>& renderables, std::vector<Node*>& lights) {
 	_transform->decompose();
 
 	//fill collections
 	if(hasComponent(ComponentType::Render)) renderables.push_back(this);
 	if(hasComponent(ComponentType::Light)) lights.push_back(this);
-	if(hasComponent(ComponentType::Camera)) cameras.push_back(this);
 
 	//update components
 	Component* component;
@@ -88,7 +87,7 @@ void Node::update(glm::mat4& parentTransform, std::vector<Node*>& renderables, s
 
 	//update children
 	for(unsigned int i = 0; i < _children.size(); i++) {
-		_children[i]->update(_transform->worldTransform, renderables, lights, cameras);
+		_children[i]->update(_transform->worldTransform, renderables, lights);
 	}
 }
 

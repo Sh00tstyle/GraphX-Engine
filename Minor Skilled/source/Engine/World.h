@@ -14,7 +14,7 @@ class World {
 		Node* getChildAt(unsigned int index);
 		void addChild(Node* node);
 		void removeChild(Node* node);
-		void update(std::vector<Node*>& renderables, std::vector<Node*>& lights, std::vector<Node*>& cameras);
+		void update(std::vector<Node*>& renderables, std::vector<Node*>& lights);
 
 	private:
 		std::vector<Node*> _children;

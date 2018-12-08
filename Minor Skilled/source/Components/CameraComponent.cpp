@@ -7,20 +7,24 @@
 
 #include "../Engine/Node.h"
 #include "../Engine/Transform.h"
+#include "../Engine/Window.h"
 
 #include "../Components/LightComponent.h"
 
 #include "../Utility/Input.h"
 #include "../Utility/Time.h"
 
-CameraComponent::CameraComponent(glm::mat4 projectionMatrix, float fieldOfView, float movementSpeed, float rotationSpeed): Component(ComponentType::Camera),
-projectionMatrix(projectionMatrix), fieldOfView(fieldOfView), movementSpeed(movementSpeed), rotationSpeed(rotationSpeed), rotX(glm::mat4(1.0f)), rotY(glm::mat4(1.0f)) {
+CameraComponent::CameraComponent(glm::mat4 projectionMatrix, float fieldOfView, float nearPlane, float farPlane, float movementSpeed, float rotationSpeed): Component(ComponentType::Camera),
+projectionMatrix(projectionMatrix), fieldOfView(fieldOfView), _nearPlane(nearPlane), _farPlane(farPlane),  movementSpeed(movementSpeed), rotationSpeed(rotationSpeed), rotX(glm::mat4(1.0f)), rotY(glm::mat4(1.0f)) {
 }
 
 CameraComponent::~CameraComponent() {
 }
 
 void CameraComponent::update() {
+	//update projection matrix if needed
+	//_updateProjectionMatrix();
+
 	//mouse offset
 	glm::vec2 mouseOffset = Input::GetLastMousePos() - Input::GetCurrentMousePos();
 
@@ -68,4 +72,12 @@ void CameraComponent::update() {
 		glm::vec3 cameraForward = newTransform[2]; //second row represents the (local) forward vector
 		lightComponent->lightDirection = cameraForward;
 	}
+}
+
+void CameraComponent::_updateProjectionMatrix() {
+	if(!Window::DimensionsChanged) return;
+
+	projectionMatrix = glm::perspective(glm::radians(fieldOfView), (float)Window::ScreenWidth / (float)Window::ScreenHeight, _nearPlane, _farPlane);
+	
+	//Window::DimensionsChanged = false; //not needed, the renderer takes care of it since it needs to resize framebuffers and such as well
 }

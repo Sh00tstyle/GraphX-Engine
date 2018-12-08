@@ -4,12 +4,13 @@
 const unsigned char RenderSettings::Shadows = 1 << 0;
 const unsigned char RenderSettings::Bloom = 1 << 1;
 const unsigned char RenderSettings::Deferred = 1 << 2;
-const unsigned char RenderSettings::SSAO = 1 << 3;
-const unsigned char RenderSettings::FXAA = 1 << 4;
+const unsigned char RenderSettings::FXAA = 1 << 3;
+const unsigned char RenderSettings::SSAO = 1 << 4; //deferred only
+const unsigned char RenderSettings::PBR = 1 << 5; //deferred only
 
 //active render modes
-std::bitset<8> RenderSettings::Options = /*RenderSettings::Deferred | */RenderSettings::Bloom | RenderSettings::Shadows | 
-                                         RenderSettings::SSAO | RenderSettings::FXAA; //everything enabled
+std::bitset<8> RenderSettings::Options = /*RenderSettings::Deferred |*/ RenderSettings::Bloom | RenderSettings::Shadows | 
+                                         RenderSettings::SSAO | RenderSettings::FXAA | RenderSettings::PBR; //everything enabled
 
 //shadow configurations
 const unsigned int RenderSettings::MaxCubeShadows = 5; 
@@ -19,7 +20,7 @@ const unsigned int RenderSettings::ShadowHeight = 512;
 
 //cubemap render configurations
 float RenderSettings::CubeNearPlane = 0.5f;
-float RenderSettings::CubeFarPlane = 50.0f;
+float RenderSettings::CubeFarPlane = 75.0f;
 
 //equirectangular to cubemap configurations
 const unsigned int RenderSettings::SkyboxHeight = 512;

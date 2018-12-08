@@ -14,6 +14,8 @@ class Window {
 		static unsigned int ScreenWidth;
 		static unsigned int ScreenHeight;
 
+		static bool DimensionsChanged;
+
 		bool isOpen();
 		void close();
 		void swapBuffers();

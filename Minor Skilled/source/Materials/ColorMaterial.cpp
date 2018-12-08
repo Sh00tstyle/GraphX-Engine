@@ -12,7 +12,7 @@
 Shader* ColorMaterial::_ForwardShader = nullptr;
 Shader* ColorMaterial::_DeferredShader = nullptr;
 
-ColorMaterial::ColorMaterial():Material(MaterialType::Color, BlendMode::Opaque, true), _ambientColor(glm::vec3(0.0f)), _diffuseColor(glm::vec3(0.0f)), _specularColor(glm::vec3(0.0f)), _shininess(32.0f) {
+ColorMaterial::ColorMaterial(glm::vec3 diffuseColor):Material(MaterialType::Color, BlendMode::Opaque, true), _ambientColor(glm::vec3(0.0f)), _diffuseColor(diffuseColor), _specularColor(glm::vec3(0.0f)), _shininess(32.0f) {
 	_initShader();
 }
 
@@ -93,10 +93,10 @@ void ColorMaterial::_initShader() {
 		_ForwardShader = new Shader(Filepath::ShaderPath + "material shader/forward/color.vs", Filepath::ShaderPath + "material shader/forward/color.fs");
 
 		_ForwardShader->use();
-		_ForwardShader->setInt("shadowMap", 9); //assign to slot 9, so that it shares it with the other materials which have more textures
+		_ForwardShader->setInt("shadowMap", 10); //assign to slot 10, so that it shares it with the other materials which have more textures
 
 		for(unsigned int i = 0; i < RenderSettings::MaxCubeShadows; i++) {
-			_ForwardShader->setInt("shadowCubemaps[" + std::to_string(i) + "]", 10 + i);
+			_ForwardShader->setInt("shadowCubemaps[" + std::to_string(i) + "]", 11 + i);
 		}
 
 		_ForwardShader->setUniformBlockBinding("matricesBlock", 0); //set uniform block "matrices" to binding point 0

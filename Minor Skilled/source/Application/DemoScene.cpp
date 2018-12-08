@@ -124,12 +124,16 @@ void DemoScene::_initializeScene() {
 	//Texture* skybox = Converter::EquirectangularToCubemap(Texture::LoadHDR(Filepath::SkyboxPath + "Milkyway/Milkyway_BG.jpg")); //high res
 
 	//create materials
-	TextureMaterial* textureMaterial = new TextureMaterial(cyborgDiffuse, cyborgSpecular, cyborgNormal, cyborgEmission);
+	TextureMaterial* textureMaterial = new TextureMaterial(cyborgDiffuse, cyborgSpecular, cyborgNormal, BlendMode::Opaque);
+	textureMaterial->setEmissionMap(cyborgEmission);
+
 	TextureMaterial* reflectionMaterial = new TextureMaterial(reflectionMap, BlendMode::Opaque);
 	reflectionMaterial->setReflectionMap(reflectionMap);
 	//reflectionMaterial->setRefractionFactor(1.33f);
+
 	TextureMaterial* blendMaterial = new TextureMaterial(blendTexture, BlendMode::Opaque);
 	blendMaterial->setBlendMode(BlendMode::Transparent);
+
 	TextureMaterial* heightMaterial = new TextureMaterial(brickTexture, BlendMode::Opaque);
 	heightMaterial->setNormalMap(brickNormal);
 	heightMaterial->setHeightMap(heightTexture);
@@ -139,6 +143,7 @@ void DemoScene::_initializeScene() {
 	ColorMaterial* sphereMaterial = new ColorMaterial(glm::vec3(1.5f, 1.5f, 0.0f), glm::vec3(1.5f, 1.5f, 0.0f), glm::vec3(1.5f, 1.5f, 0.0f));
 
 	PBRMaterial* pbrMaterial = new PBRMaterial(albedo, normal, metallic, roughness, ao, BlendMode::Opaque);
+	//pbrMaterial->setRefractionFactor(1.33f);
 
 	//create components for each node and fill with data
 	RenderComponent* cyborgRenderComponent = new RenderComponent(cyborgModel, textureMaterial);
@@ -150,7 +155,7 @@ void DemoScene::_initializeScene() {
 	RenderComponent* brickRenderComponent = new RenderComponent(planeModel, heightMaterial);
 	RenderComponent* pbrRenderComponent = new RenderComponent(sphereModel, pbrMaterial);
 
-	CameraComponent* cameraComponent = new CameraComponent(glm::perspective(glm::radians(45.0f), (float)Window::ScreenWidth / (float)Window::ScreenHeight, 0.1f, 100.0f), 45.0f, 5.0f, 25.0f);
+	CameraComponent* cameraComponent = new CameraComponent(glm::perspective(glm::radians(45.0f), (float)Window::ScreenWidth / (float)Window::ScreenHeight, 0.1f, 100.0f), 45.0f, 0.1f, 100.0f, 5.0f, 25.0f);
 	LightComponent* spotLightComponent = new LightComponent(LightType::Spot);
 	spotLightComponent->lightAmbient = glm::vec3(0.1f);
 	spotLightComponent->lightDiffuse = glm::vec3(0.5f, 0.0f, 0.0f);
@@ -181,11 +186,12 @@ void DemoScene::_initializeScene() {
 	mainCamera->addComponent(cameraComponent);
 	mainCamera->addComponent(spotLightComponent);
 	directionalLight->addComponent(directionalLightComponent);
+	sphereLight->addComponent(sphereLightRenderComponent);
+	sphereLight->addComponent(pointLightComponent);
+
 	cyborg->addComponent(cyborgRenderComponent);
 	plane->addComponent(planeRenderComponent);
 	sphereReflect->addComponent(sphereRenderComponent);
-	sphereLight->addComponent(sphereLightRenderComponent);
-	sphereLight->addComponent(pointLightComponent);
 	cube->addComponent(cubeRenderComponent);
 	glass->addComponent(glassRenderComponent);
 	bricks->addComponent(brickRenderComponent);

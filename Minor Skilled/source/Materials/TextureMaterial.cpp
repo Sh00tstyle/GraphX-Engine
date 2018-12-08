@@ -18,8 +18,8 @@ _normalMap(nullptr), _emissionMap(nullptr), _heightMap(nullptr), _shininess(32.0
 	_initShader();
 }
 
-TextureMaterial::TextureMaterial(Texture * diffuseMap, Texture * specularMap, Texture * normalMap, Texture* emissionMap, Texture* reflectionMap, Texture* heightMap, float shininess, float refractionFactor, float heightScale, BlendMode blendMode, bool castsShadows) :
-	Material(MaterialType::Textures, blendMode, castsShadows),_diffuseMap(diffuseMap), _specularMap(specularMap), _normalMap(normalMap), _emissionMap(emissionMap), _reflectionMap(reflectionMap), _heightMap(heightMap), _shininess(shininess), _refractionFactor(0.0f), _heightScale(heightScale) {
+TextureMaterial::TextureMaterial(Texture * diffuseMap, Texture * specularMap, Texture * normalMap, BlendMode blendMode) :
+	Material(MaterialType::Textures, blendMode, true),_diffuseMap(diffuseMap), _specularMap(specularMap), _normalMap(normalMap), _emissionMap(nullptr), _reflectionMap(nullptr), _heightMap(nullptr), _shininess(32.0f), _refractionFactor(0.0f), _heightScale(0.0f) {
 	_initShader();
 }
 
@@ -268,10 +268,10 @@ void TextureMaterial::_initShader() {
 		_ForwardShader->setInt("material.height", 5);
 
 		_ForwardShader->setInt("environmentMap", 7);
-		_ForwardShader->setInt("shadowMap", 9); //assign to slot 9, so that it shares it with the other materials which have more textures
+		_ForwardShader->setInt("shadowMap", 10); //assign to slot 10, so that it shares it with the other materials which have more textures
 
 		for(unsigned int i = 0; i < RenderSettings::MaxCubeShadows; i++) {
-			_ForwardShader->setInt("shadowCubemaps[" + std::to_string(i) + "]", 10 + i);
+			_ForwardShader->setInt("shadowCubemaps[" + std::to_string(i) + "]", 11 + i);
 		}
 
 		_ForwardShader->setUniformBlockBinding("matricesBlock", 0); //set uniform block "matrices" to binding point 0
@@ -291,7 +291,7 @@ void TextureMaterial::_initShader() {
 		_DeferredShader->setInt("material.reflection", 4);
 		_DeferredShader->setInt("material.height", 5);
 
-		_DeferredShader->setInt("environmentMap", 6);
+		_DeferredShader->setInt("environmentMap", 7);
 
 		_DeferredShader->setUniformBlockBinding("matricesBlock", 0); //set uniform block "matrices" to binding point 0
 		_DeferredShader->setUniformBlockBinding("dataBlock", 1); //set uniform block "data" to binding point 1

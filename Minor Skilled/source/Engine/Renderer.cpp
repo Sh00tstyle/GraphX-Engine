@@ -117,6 +117,7 @@ Renderer::Renderer() {
 
 	//setup FBOs
 	_initGBuffer();
+	_initGBufferPbr();
 
 	_initShadowFBO();
 	_initShadowCubeFBOs();
@@ -147,6 +148,7 @@ Renderer::~Renderer() {
 
 	//delete shaders
 	delete _lightingShader;
+	delete _lightingShaderPbr;
 	delete _shadowShader;
 	delete _shadowCubeShader;
 	delete _environmentShader;
@@ -165,6 +167,13 @@ Renderer::~Renderer() {
 	delete _gAlbedoSpec;
 	delete _gEmissionShiny;
 	delete _gEnvironment;
+
+	delete _gPositionMetallic;
+	delete _gNormalRoughness;
+	delete _gAlbedo;
+	delete _gIrradiance;
+	delete _gPrefilter;
+	delete _gEmissionAO;
 
 	delete _shadowMap;
 
@@ -196,6 +205,7 @@ Renderer::~Renderer() {
 
 	//delete framebuffers
 	delete _gBuffer;
+	delete _gBufferPbr;
 	delete _shadowFBO;
 
 	for(unsigned int i = 0; i < _shadowCubeFBOs.size(); i++) {
@@ -212,12 +222,16 @@ Renderer::~Renderer() {
 
 	//delete renderbuffers
 	delete _gRBO;
+	delete _gPbrRBO;
 
 	delete _environmentRBO;
 	delete _hdrRBO;
 }
 
 void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& lights, Node* mainCamera, Node* directionalLight, Texture* skybox) {
+	//update dimensions if needed
+	_updateDimensions();
+
 	//render from main camera
 	if(mainCamera == nullptr) {
 		std::cout << "ERROR: There is no main camera assigned. Unable to render scene." << std::endl;
@@ -290,30 +304,32 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 	if(useShadows) _renderShadowMaps(renderComponents, pointLightPositions, lightSpaceMatrix);
 
 	//render scene
+	bool pbr = RenderSettings::IsEnabled(RenderSettings::PBR);
+
 	if(RenderSettings::IsEnabled(RenderSettings::Deferred)) {
 		//render the geometry of the scene (deferred shading)
-		_renderGeometry(solidRenderComponents);
+		_renderGeometry(solidRenderComponents, pbr);
 
 		if(RenderSettings::IsEnabled(RenderSettings::SSAO)) {
 			//render ssao texture (deferred shading)
-			_renderSSAO();
+			_renderSSAO(pbr);
 
 			//blur ssao texture (deferred shading)
 			_renderSSAOBlur();
 		}
 
 		//render lighting of the scene (deferred shading)
-		_renderLighting(skybox, pointLightCount);
+		_renderLighting(skybox, pointLightCount, pbr);
 
 		//blit gBuffer depth buffer into the hdr framebuffer depth buffer to enable forward rendering into the deferred scene
-		_blitGDepthToHDR();
+		_blitGDepthToHDR(pbr);
 	} else {
 		//render and light the scene (forward shading)
 		_renderScene(solidRenderComponents, pointLightCount, useShadows, true); //bind the hdr here and clear buffer bits
 	}
 
 	//render skybox
-	_renderSkybox(viewMatrix, projectionMatrix, _iblMaps.begin()->second.prefilterMap);
+	_renderSkybox(viewMatrix, projectionMatrix, skybox);
 
 	//render blend objects (forward shading)
 	glEnable(GL_BLEND);
@@ -373,7 +389,7 @@ void Renderer::renderEnvironmentMaps(std::vector<Node*>& renderables, Node* dire
 		renderPos = renderComponents[i].second[3]; //world position component of the model matrix
 
 		//render low quality environment map
-		environmentMap = _renderEnvironmentMap(renderComponents, environmentProjection, renderPos, skybox, directionalLightComponent);
+		environmentMap = _renderEnvironmentMap(renderComponents, environmentProjection, renderPos, skybox, directionalLightComponent, materialType == MaterialType::PBR);
 
 		if(materialType == MaterialType::Textures) {
 			//add environment map to the map for texture materials
@@ -417,19 +433,44 @@ void Renderer::_initShaders() {
 	_lightingShader->setInt("gAlbedoSpec", 2);
 	_lightingShader->setInt("gEmissionShiny", 3);
 	_lightingShader->setInt("gEnvironment", 4);
-	_lightingShader->setInt("ssao", 5);
 
-	_lightingShader->setInt("environmentMap", 7);
-	_lightingShader->setInt("shadowMap", 9);
+	_lightingShader->setInt("ssao", 6);
+
+	_lightingShader->setInt("shadowMap", 10);
 
 	for(unsigned int i = 0; i < RenderSettings::MaxCubeShadows; i++) {
-		_lightingShader->setInt("shadowCubemaps[" + std::to_string(i) + "]", 10 + i);
+		_lightingShader->setInt("shadowCubemaps[" + std::to_string(i) + "]", 11 + i);
 	}
 
 	_lightingShader->setUniformBlockBinding("matricesBlock", 0); //set uniform block "matrices" to binding point 0
 	_lightingShader->setUniformBlockBinding("dataBlock", 1); //set uniform block "data" to binding point 1
 
 	_lightingShader->setShaderStorageBlockBinding("lightsBlock", 2); //set shader storage block "lights" to binding point 2
+
+	//initialize lighting pass pbr shader
+	_lightingShaderPbr = new Shader(Filepath::ShaderPath + "post processing shader/screenQuad.vs", Filepath::ShaderPath + "post processing shader/lightingPassPbr.fs");
+
+	_lightingShaderPbr->use();
+	_lightingShaderPbr->setInt("gPositionMetallic", 0);
+	_lightingShaderPbr->setInt("gNormalRoughness", 1);
+	_lightingShaderPbr->setInt("gAlbedo", 2);
+	_lightingShaderPbr->setInt("gIrradiance", 3);
+	_lightingShaderPbr->setInt("gPrefilter", 4);
+	_lightingShaderPbr->setInt("gEmissionAO", 5);
+
+	_lightingShaderPbr->setInt("ssao", 6);
+	_lightingShaderPbr->setInt("brdfLUT", 7);
+
+	_lightingShaderPbr->setInt("shadowMap", 10);
+
+	for(unsigned int i = 0; i < RenderSettings::MaxCubeShadows; i++) {
+		_lightingShaderPbr->setInt("shadowCubemaps[" + std::to_string(i) + "]", 11 + i);
+	}
+
+	_lightingShaderPbr->setUniformBlockBinding("matricesBlock", 0); //set uniform block "matrices" to binding point 0
+	_lightingShaderPbr->setUniformBlockBinding("dataBlock", 1); //set uniform block "data" to binding point 1
+
+	_lightingShaderPbr->setShaderStorageBlockBinding("lightsBlock", 2); //set shader storage block "lights" to binding point 2
 
 	//initialize shadow shader
 	_shadowShader = new Shader(Filepath::ShaderPath + "shadow shader/shadow.vs", Filepath::ShaderPath + "shadow shader/shadow.fs");
@@ -570,18 +611,20 @@ void Renderer::_initGBuffer() {
 	//create the position color buffer
 	_gPosition = new Texture();
 	_gPosition->bind(GL_TEXTURE_2D);
-	_gPosition->init(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGBA, GL_FLOAT); //16-bit precision RGBA texture
+	_gPosition->init(GL_TEXTURE_2D, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT); //16-bit precision RGB texture
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); //ensure we don't accidentally oversample
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); //ensure we dont accidentally oversample
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
 	//create the normal color buffer
 	_gNormal = new Texture();
 	_gNormal->bind(GL_TEXTURE_2D);
-	_gNormal->init(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGBA, GL_FLOAT); //16-bit precision RGBA texture
+	_gNormal->init(GL_TEXTURE_2D, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT); //16-bit precision RGB texture
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); //ensure we dont accidentally oversample
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
 	//create the color + specular color buffer
 	_gAlbedoSpec = new Texture();
@@ -627,6 +670,83 @@ void Renderer::_initGBuffer() {
 	//check for completion
 	if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
 		std::cout << "ERROR: gBuffer framebuffer is incomplete." << std::endl;
+	}
+
+	//unbind
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void Renderer::_initGBufferPbr() {
+	//create the position + metallic color buffer
+	_gPositionMetallic = new Texture();
+	_gPositionMetallic->bind(GL_TEXTURE_2D);
+	_gPositionMetallic->init(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGBA, GL_FLOAT); //16-bit precision RGBA texture
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); //ensure we dont accidentally oversample
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+	//create the normal + roughness color buffer
+	_gNormalRoughness = new Texture();
+	_gNormalRoughness->bind(GL_TEXTURE_2D);
+	_gNormalRoughness->init(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGBA, GL_FLOAT); //16-bit precision RGBA texture
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); //ensure we dont accidentally oversample
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+	//create the albedo color buffer
+	_gAlbedo = new Texture();
+	_gAlbedo->bind(GL_TEXTURE_2D);
+	_gAlbedo->init(GL_TEXTURE_2D, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT); //16-bit precision RGB texture
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	//create the irradiance color buffer
+	_gIrradiance = new Texture();
+	_gIrradiance->bind(GL_TEXTURE_2D);
+	_gIrradiance->init(GL_TEXTURE_2D, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT); //16-bit precision RGB texture
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	//create the prefilter color buffer
+	_gPrefilter = new Texture();
+	_gPrefilter->bind(GL_TEXTURE_2D);
+	_gPrefilter->init(GL_TEXTURE_2D, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT); //16-bit precision RGB texture
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	//create the emission + ao color buffer
+	_gEmissionAO = new Texture();
+	_gEmissionAO->bind(GL_TEXTURE_2D);
+	_gEmissionAO->init(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGBA, GL_FLOAT); //16-bit precision RGBA texture
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	//create depth renderbuffer
+	_gPbrRBO = new Renderbuffer();
+	_gPbrRBO->bind();
+	_gPbrRBO->init(GL_DEPTH_COMPONENT, Window::ScreenWidth, Window::ScreenHeight);
+	glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+	//create the gBuffer framebuffer and attach its color buffers for the deferred shading geometry pass
+	_gBufferPbr = new Framebuffer();
+	_gBufferPbr->bind(GL_FRAMEBUFFER);
+	_gBufferPbr->attachTexture(GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _gPositionMetallic);
+	_gBufferPbr->attachTexture(GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, _gNormalRoughness);
+	_gBufferPbr->attachTexture(GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, _gAlbedo);
+	_gBufferPbr->attachTexture(GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D, _gIrradiance);
+	_gBufferPbr->attachTexture(GL_COLOR_ATTACHMENT4, GL_TEXTURE_2D, _gPrefilter);
+	_gBufferPbr->attachTexture(GL_COLOR_ATTACHMENT5, GL_TEXTURE_2D, _gEmissionAO);
+	_gBufferPbr->attachRenderbuffer(GL_DEPTH_ATTACHMENT, _gPbrRBO);
+
+	//tell OpenGL which attachments the gBuffer will use for rendering
+	unsigned int attachments[6] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3, GL_COLOR_ATTACHMENT4, GL_COLOR_ATTACHMENT6};
+	glDrawBuffers(6, attachments);
+
+	//check for completion
+	if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+		std::cout << "ERROR: gBufferPbr framebuffer is incomplete." << std::endl;
 	}
 
 	//unbind
@@ -831,7 +951,7 @@ void Renderer::_initSSAOFBOs() {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-Texture* Renderer::_renderEnvironmentMap(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, glm::mat4& environmentProjection, glm::vec3& renderPos, Texture* skybox, LightComponent* dirLight) {
+Texture* Renderer::_renderEnvironmentMap(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, glm::mat4& environmentProjection, glm::vec3& renderPos, Texture* skybox, LightComponent* dirLight, bool pbr) {
 	//create environment cubemap
 	Texture* environmentMap = new Texture();
 	environmentMap->bind(GL_TEXTURE_CUBE_MAP);
@@ -842,14 +962,21 @@ Texture* Renderer::_renderEnvironmentMap(std::vector<std::pair<RenderComponent*,
 	}
 
 	//set texture filter options
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); //enable pre-filter mipmap sampling to avoid artifacts
+	if(pbr) {
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); //enable pre-filter mipmap sampling to avoid artifacts
+
+		//generate mipmaps
+		glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+	} else {
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	}
+
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
-	//generatre mipmaps
-	glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
 
 	//view matrices for each cubemap face
 	std::vector<glm::mat4> environmentViews;
@@ -1142,24 +1269,42 @@ void Renderer::_renderShadowMaps(std::vector<std::pair<RenderComponent*, glm::ma
 	glViewport(0, 0, Window::ScreenWidth, Window::ScreenHeight);
 }
 
-void Renderer::_renderGeometry(std::vector<std::pair<RenderComponent*, glm::mat4>>& solidRenderComponents) {
+void Renderer::_renderGeometry(std::vector<std::pair<RenderComponent*, glm::mat4>>& solidRenderComponents, bool pbr) {
 	//bind to gBuffer framebuffer and render to buffer textures
-	_gBuffer->bind(GL_FRAMEBUFFER);
+	if(pbr) _gBufferPbr->bind(GL_FRAMEBUFFER);
+	else _gBuffer->bind(GL_FRAMEBUFFER);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	glm::mat4 modelMatrix;
+	MaterialType materialType;
+	RenderComponent* renderComponent;
 	Material* material;
+	glm::mat4 modelMatrix;
 	Model* model;
 
 	for(unsigned int i = 0; i < solidRenderComponents.size(); i++) {
+		renderComponent = solidRenderComponents[i].first;
+		material = renderComponent->material;
+		materialType = material->getMaterialType();
+
+		if(materialType == MaterialType::PBR && !pbr) continue; //skip pbr materials in non pbr mode
+		else if(materialType != MaterialType::PBR && pbr) continue; //skip non-pbr material in pbr mode
+
 		modelMatrix = solidRenderComponents[i].second;
-		material = solidRenderComponents[i].first->material;
-		model = solidRenderComponents[i].first->model;
+		model = renderComponent->model;
+
+		//bind irradiance and prefilter map
+		if(_iblMaps.count(renderComponent)) {
+			glActiveTexture(GL_TEXTURE7);
+			_iblMaps[renderComponent].irradianceMap->bind(GL_TEXTURE_CUBE_MAP);
+
+			glActiveTexture(GL_TEXTURE8);
+			_iblMaps[renderComponent].prefilterMap->bind(GL_TEXTURE_CUBE_MAP);
+		}
 
 		//bind environment map
-		if(_environmentMaps.count(solidRenderComponents[i].first)) {
-			glActiveTexture(GL_TEXTURE6);
-			_environmentMaps[solidRenderComponents[i].first]->bind(GL_TEXTURE_CUBE_MAP);
+		if(_environmentMaps.count(renderComponent)) {
+			glActiveTexture(GL_TEXTURE7);
+			_environmentMaps[renderComponent]->bind(GL_TEXTURE_CUBE_MAP);
 		}
 
 		material->drawDeferred(modelMatrix); //deferred
@@ -1167,7 +1312,7 @@ void Renderer::_renderGeometry(std::vector<std::pair<RenderComponent*, glm::mat4
 	}
 }
 
-void Renderer::_renderSSAO() {
+void Renderer::_renderSSAO(bool pbr) {
 	//bind to ssao framebuffer
 	_ssaoFBO->bind(GL_FRAMEBUFFER);
 	glClear(GL_COLOR_BUFFER_BIT);
@@ -1189,11 +1334,13 @@ void Renderer::_renderSSAO() {
 
 	//bind position color buffer
 	glActiveTexture(GL_TEXTURE0);
-	_gPosition->bind(GL_TEXTURE_2D);
+	if(pbr) _gPositionMetallic->bind(GL_TEXTURE_2D);
+	else _gPosition->bind(GL_TEXTURE_2D);
 
 	//bind normal color buffer
 	glActiveTexture(GL_TEXTURE1);
-	_gNormal->bind(GL_TEXTURE_2D);
+	if(pbr) _gNormalRoughness->bind(GL_TEXTURE_2D);
+	else _gNormal->bind(GL_TEXTURE_2D);
 
 	//bind noise texture
 	glActiveTexture(GL_TEXTURE2);
@@ -1222,47 +1369,82 @@ void Renderer::_renderSSAOBlur() {
 	glBindVertexArray(0);
 }
 
-void Renderer::_renderLighting(Texture* skybox, unsigned int pointLightCount) {
+void Renderer::_renderLighting(Texture* skybox, unsigned int pointLightCount, bool pbr) {
 	//bind to hdr framebuffer
 	_hdrFBO->bind(GL_FRAMEBUFFER);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	//use lighting shader and bind textures
-	_lightingShader->use();
+	if(pbr) {
+		//use lighting shader and bind textures
+		_lightingShaderPbr->use();
 
-	_lightingShader->setBool("useSSAO", RenderSettings::IsEnabled(RenderSettings::SSAO));
+		_lightingShaderPbr->setBool("useSSAO", RenderSettings::IsEnabled(RenderSettings::SSAO));
 
-	//bind position color buffer
-	glActiveTexture(GL_TEXTURE0);
-	_gPosition->bind(GL_TEXTURE_2D);
+		//bind position + metallic color buffer
+		glActiveTexture(GL_TEXTURE0);
+		_gPositionMetallic->bind(GL_TEXTURE_2D);
 
-	//bind normal color buffer
-	glActiveTexture(GL_TEXTURE1);
-	_gNormal->bind(GL_TEXTURE_2D);
+		//bind normal + roughness color buffer
+		glActiveTexture(GL_TEXTURE1);
+		_gNormalRoughness->bind(GL_TEXTURE_2D);
 
-	//bind albedo and specular color buffer
-	glActiveTexture(GL_TEXTURE2);
-	_gAlbedoSpec->bind(GL_TEXTURE_2D);
+		//bind albedo color buffer
+		glActiveTexture(GL_TEXTURE2);
+		_gAlbedo->bind(GL_TEXTURE_2D);
 
-	//bind emission and shininess color buffer
-	glActiveTexture(GL_TEXTURE3);
-	_gEmissionShiny->bind(GL_TEXTURE_2D);
+		//bind irradiance color buffer
+		glActiveTexture(GL_TEXTURE3);
+		_gIrradiance->bind(GL_TEXTURE_2D);
 
-	//bind environment color buffer
-	glActiveTexture(GL_TEXTURE4);
-	_gEnvironment->bind(GL_TEXTURE_2D);
+		//bind prefilter color buffer
+		glActiveTexture(GL_TEXTURE4);
+		_gPrefilter->bind(GL_TEXTURE_2D);
+
+		//bind emission + ao colo buffer
+		glActiveTexture(GL_TEXTURE5);
+		_gEmissionAO->bind(GL_TEXTURE_2D);
+
+		//bind brdf LUT
+		glActiveTexture(GL_TEXTURE7);
+		_brdfLUT->bind(GL_TEXTURE_2D);
+	} else {
+		//use lighting shader and bind textures
+		_lightingShader->use();
+
+		_lightingShader->setBool("useSSAO", RenderSettings::IsEnabled(RenderSettings::SSAO));
+
+		//bind position color buffer
+		glActiveTexture(GL_TEXTURE0);
+		_gPosition->bind(GL_TEXTURE_2D);
+
+		//bind normal color buffer
+		glActiveTexture(GL_TEXTURE1);
+		_gNormal->bind(GL_TEXTURE_2D);
+
+		//bind albedo and specular color buffer
+		glActiveTexture(GL_TEXTURE2);
+		_gAlbedoSpec->bind(GL_TEXTURE_2D);
+
+		//bind emission and shininess color buffer
+		glActiveTexture(GL_TEXTURE3);
+		_gEmissionShiny->bind(GL_TEXTURE_2D);
+
+		//bind environment color buffer
+		glActiveTexture(GL_TEXTURE4);
+		_gEnvironment->bind(GL_TEXTURE_2D);
+	}
 
 	//bind ssao texture
-	glActiveTexture(GL_TEXTURE5);
+	glActiveTexture(GL_TEXTURE6);
 	_ssaoBlurColorBuffer->bind(GL_TEXTURE_2D);
 
 	//bind shadow map
-	glActiveTexture(GL_TEXTURE9);
+	glActiveTexture(GL_TEXTURE10);
 	_shadowMap->bind(GL_TEXTURE_2D);
 
 	//bind shadow cubemap
 	for(unsigned int i = 0; i < pointLightCount; i++) {
-		glActiveTexture(GL_TEXTURE10 + i);
+		glActiveTexture(GL_TEXTURE11 + i);
 		_shadowCubeMaps[i]->bind(GL_TEXTURE_CUBE_MAP);
 	}
 
@@ -1281,35 +1463,43 @@ void Renderer::_renderScene(std::vector<std::pair<RenderComponent*, glm::mat4>>&
 
 	//bind shadow maps
 	if(useShadows) {
-		glActiveTexture(GL_TEXTURE9);
+		glActiveTexture(GL_TEXTURE10);
 		_shadowMap->bind(GL_TEXTURE_2D);
 
 		for(unsigned int i = 0; i < pointLightCount; i++) {
-			glActiveTexture(GL_TEXTURE10 + i);
+			glActiveTexture(GL_TEXTURE11 + i);
 			_shadowCubeMaps[i]->bind(GL_TEXTURE_CUBE_MAP);
 		}
 	}
 
-	glm::mat4 modelMatrix;
 	RenderComponent* renderComponent;
+	MaterialType materialType;
 	Material* material;
 	Model* model;
+	glm::mat4 modelMatrix;
+
+	bool deferredPBR = RenderSettings::IsEnabled(RenderSettings::PBR | RenderSettings::Deferred); //if pbr mode and deferred is active (true when rendering blen objects in deferred mode)
 
 	for(unsigned int i = 0; i < renderComponents.size(); i++) {
 		renderComponent = renderComponents[i].first;
+		material = renderComponent->material;
+		materialType = material->getMaterialType();
+
+		if(deferredPBR && materialType != MaterialType::PBR) continue; //dont render non-pbr blend objects
+
+		model = renderComponent->model;
 		modelMatrix = renderComponents[i].second;
-		material = renderComponents[i].first->material;
-		model = renderComponents[i].first->model;
+
 
 		//bind irradiance cubemap, prefilter cubemap and brdfLUT
 		if(_iblMaps.count(renderComponent)) {
-			glActiveTexture(GL_TEXTURE6);
+			glActiveTexture(GL_TEXTURE7);
 			_iblMaps[renderComponent].irradianceMap->bind(GL_TEXTURE_CUBE_MAP);
 
-			glActiveTexture(GL_TEXTURE7);
+			glActiveTexture(GL_TEXTURE8);
 			_iblMaps[renderComponent].prefilterMap->bind(GL_TEXTURE_CUBE_MAP);
 
-			glActiveTexture(GL_TEXTURE8);
+			glActiveTexture(GL_TEXTURE9);
 			_brdfLUT->bind(GL_TEXTURE_2D);
 		}
 
@@ -1578,10 +1768,57 @@ void Renderer::_generateNoiseTexture() {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 }
 
-void Renderer::_blitGDepthToHDR() {
+void Renderer::_blitGDepthToHDR(bool pbr) {
 	//blit the depth buffer of the gBuffer into the depth buffer of the hdr fbo
-	_gBuffer->bind(GL_READ_FRAMEBUFFER);
+	if(pbr) _gBufferPbr->bind(GL_READ_FRAMEBUFFER);
+	else _gBuffer->bind(GL_READ_FRAMEBUFFER);
 	_hdrFBO->bind(GL_DRAW_FRAMEBUFFER);
 
 	glBlitFramebuffer(0, 0, Window::ScreenWidth, Window::ScreenHeight, 0, 0, Window::ScreenWidth, Window::ScreenHeight, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+}
+
+void Renderer::_updateDimensions() {
+	if(!Window::DimensionsChanged) return;
+
+	//first free all ressources that depend on the screen dimensions to avoid memory leaks
+	delete _gBuffer;
+	delete _gBufferPbr;
+	delete _hdrFBO;
+	delete _bloomBlurFBOs[0];
+	delete _bloomBlurFBOs[1];
+	delete _ssaoFBO;
+	delete _ssaoBlurFBO;
+
+	delete _gRBO;
+	delete _gPbrRBO;
+	delete _hdrRBO;
+
+	delete _gPosition;
+	delete _gNormal;
+	delete _gAlbedoSpec;
+	delete _gEmissionShiny;
+	delete _gEnvironment;
+
+	delete _gPositionMetallic;
+	delete _gNormalRoughness;
+	delete _gAlbedo;
+	delete _gIrradiance;
+	delete _gPrefilter;
+	delete _gEmissionAO;
+
+	delete _sceneColorBuffer;
+	delete _brightColorBuffer;
+	delete _blurColorBuffers[0];
+	delete _blurColorBuffers[1];
+	delete _ssaoColorBuffer;
+	delete _ssaoBlurColorBuffer;
+
+	//then reallocate them with the correct new dimensions
+	_initGBuffer();
+	_initGBufferPbr();
+	_initHdrFBO();
+	_initBlurFBOs();
+	_initSSAOFBOs();
+
+	Window::DimensionsChanged = false; //reset
 }

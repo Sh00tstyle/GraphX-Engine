@@ -7,6 +7,8 @@
 unsigned int Window::ScreenWidth = 1280;
 unsigned int Window::ScreenHeight = 720;
 
+bool Window::DimensionsChanged = false;
+
 Window::Window(unsigned int width, unsigned int height, std::string name) {
 	ScreenWidth = width;
 	ScreenHeight = height;
@@ -81,8 +83,7 @@ void Window::_framebufferSizeCallback(GLFWwindow* window, int width, int height)
 	ScreenWidth = width;
 	ScreenHeight = height;
 
-	//TODO: update the projection matrix
-	std::cout << "WARNING: Screen dimensions have changed. Aspect ratio of the camera projection matrix has NOT been updated!" << std::endl;
+	DimensionsChanged = true; //let the camera know that the aspect ratio has potentially changed
 
 	glViewport(0, 0, width, height);
 }

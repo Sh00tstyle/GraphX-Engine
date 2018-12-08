@@ -38,7 +38,6 @@ class Scene {
 
 		std::vector<Node*> _renderables;
 		std::vector<Node*> _lights;
-		std::vector<Node*> _cameras; //needed in case we want to render from multiple cameras (not the case as of now)
 
 		void _initializeEnvironmentMaps();
 

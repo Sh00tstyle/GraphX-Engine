@@ -80,6 +80,17 @@ void Input::ProcessInput() {
 			std::cout << "Enabled FXAA" << std::endl;
 		}
 	}
+
+	//pbr
+	if(GetKeyDown(Key::KEY6)) {
+		if(RenderSettings::IsEnabled(RenderSettings::PBR)) {
+			RenderSettings::Disable(RenderSettings::PBR);
+			std::cout << "Disabled PBR" << std::endl;
+		} else {
+			RenderSettings::Enable(RenderSettings::PBR);
+			std::cout << "Enabled PBR" << std::endl;
+		}
+	}
 }
 
 void Input::ResetMousePos() {
