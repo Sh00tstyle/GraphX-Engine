@@ -1204,15 +1204,28 @@ void Renderer::_renderShadowMaps(std::vector<std::pair<RenderComponent*, glm::ma
 	_shadowShader->use();
 	_shadowShader->setMat4("lightSpaceMatrix", lightSpaceMatrix);
 
-	glm::mat4 modelMatrix;
+	RenderComponent* renderComponent;
 	Material* material;
+	MaterialType materialType;
 	Model* model;
+	glm::mat4 modelMatrix;
+
+	bool deferred = RenderSettings::IsEnabled(RenderSettings::Deferred);
+	bool pbr = RenderSettings::IsEnabled(RenderSettings::PBR);
 
 	//render all models' depth into the shadow map from the lights perspective
 	for(unsigned int i = 0; i < renderComponents.size(); i++) {
+		renderComponent = renderComponents[i].first;
+		material = renderComponent->material;
+		materialType = material->getMaterialType();
+
+		if(deferred) {
+			if(pbr && materialType != MaterialType::PBR) continue; //skip non-pbr materials in pbr mode in deferred mode
+			else if(!pbr && materialType == MaterialType::PBR) continue; //skip pbr material in non-pbr mode in deferred mode
+		}
+
 		modelMatrix = renderComponents[i].second;
-		material = renderComponents[i].first->material;
-		model = renderComponents[i].first->model;
+		model = renderComponent->model;
 
 		if(!material->getCastsShadows()) continue; //skip this model, if it should not cast shadows (e.g. like glass)
 
@@ -1254,9 +1267,17 @@ void Renderer::_renderShadowMaps(std::vector<std::pair<RenderComponent*, glm::ma
 
 		//render all models' depth into the shadow cubemap from the lights perspective
 		for(unsigned int i = 0; i < renderComponents.size(); i++) {
+			renderComponent = renderComponents[i].first;
+			material = renderComponent->material;
+			materialType = material->getMaterialType();
+
+			if(deferred) {
+				if(pbr && materialType != MaterialType::PBR) continue; //skip non-pbr materials in pbr mode in deferred mode
+				else if(!pbr && materialType == MaterialType::PBR) continue; //skip pbr material in non-pbr mode in deferred mode
+			}
+
 			modelMatrix = renderComponents[i].second;
-			material = renderComponents[i].first->material;
-			model = renderComponents[i].first->model;
+			model = renderComponent->model;
 
 			if(!material->getCastsShadows()) continue; //skip this model, if it should not cast shadows (e.g. like glass)
 

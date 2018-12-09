@@ -296,6 +296,8 @@ float CalculateCubemapShadow(vec3 normal, vec3 fragPos, int index) {
         if(currentDepth - bias > closestDepth) shadow += 1.0f;
     }
 
+    bias += length(lightDirection) / farPlane * 10.0f;
+
     shadow /= float(samples);
         
     return shadow;
