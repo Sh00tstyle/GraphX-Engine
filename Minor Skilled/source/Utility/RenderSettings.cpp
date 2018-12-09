@@ -19,12 +19,12 @@ std::bitset<8> RenderSettings::Options = RenderSettings::Deferred |
 //shadow configurations
 const unsigned int RenderSettings::MaxCubeShadows = 5; 
 
-const unsigned int RenderSettings::ShadowWidth = 512;
-const unsigned int RenderSettings::ShadowHeight = 512;
+const unsigned int RenderSettings::ShadowWidth = 1024;
+const unsigned int RenderSettings::ShadowHeight = 1024;
 
 //cubemap render configurations
 float RenderSettings::CubeNearPlane = 0.5f;
-float RenderSettings::CubeFarPlane = 50.0f;
+float RenderSettings::CubeFarPlane = 7.5f;
 
 //equirectangular to cubemap configurations
 const unsigned int RenderSettings::SkyboxHeight = 512;

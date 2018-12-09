@@ -757,7 +757,7 @@ void Renderer::_initShadowFBO() {
 	//create shadow texture
 	_shadowMap = new Texture();
 	_shadowMap->bind(GL_TEXTURE_2D);
-	_shadowMap->init(GL_TEXTURE_2D, GL_DEPTH_COMPONENT, RenderSettings::ShadowWidth, RenderSettings::ShadowHeight, GL_DEPTH_COMPONENT, GL_FLOAT); //we only need the depth component
+	_shadowMap->init(GL_TEXTURE_2D, GL_DEPTH_COMPONENT24, RenderSettings::ShadowWidth, RenderSettings::ShadowHeight, GL_DEPTH_COMPONENT, GL_FLOAT); //we only need the depth component
 
 	//set texture filter options
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -793,7 +793,7 @@ void Renderer::_initShadowCubeFBOs() {
 
 		//init all cubemap faces
 		for(unsigned int j = 0; j < 6; j++) {
-			_shadowCubeMaps[i]->init(GL_TEXTURE_CUBE_MAP_POSITIVE_X + j, GL_DEPTH_COMPONENT, RenderSettings::ShadowWidth, RenderSettings::ShadowHeight, GL_DEPTH_COMPONENT, GL_FLOAT); //we only need the depth component
+			_shadowCubeMaps[i]->init(GL_TEXTURE_CUBE_MAP_POSITIVE_X + j, GL_DEPTH_COMPONENT24, RenderSettings::ShadowWidth, RenderSettings::ShadowHeight, GL_DEPTH_COMPONENT, GL_FLOAT); //we only need the depth component
 		}
 
 		//set texture filter options

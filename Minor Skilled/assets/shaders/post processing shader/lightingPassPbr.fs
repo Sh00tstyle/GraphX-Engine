@@ -289,14 +289,15 @@ float CalculateCubemapShadow(vec3 normal, vec3 fragPos, int index) {
     float viewDistance = length(cameraPos - fragPos);
     float diskRadius = (1.0f + (viewDistance / farPlane)) / 22.0f;
 
+    float weight = 1.0f - (length(lightDirection) / farPlane * 0.001f);
+    bias *= weight;
+
     for(int i = 0; i < samples; i++) {
         float closestDepth = texture(shadowCubemaps[index], fragToLight + gridSamplingDisk[i] * diskRadius).r;
         closestDepth *= farPlane; //undo mapping [0, 1]
 
         if(currentDepth - bias > closestDepth) shadow += 1.0f;
     }
-
-    bias += length(lightDirection) / farPlane * 10.0f;
 
     shadow /= float(samples);
         
