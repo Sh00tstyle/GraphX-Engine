@@ -5,13 +5,15 @@
 #include <bitset>
 
 #define STB_IMAGE_IMPLEMENTATION //NOTE: has to be done once in the project BEFORE including std_image.h
-#include "../Engine/stb_image.h"
+#include "../Engine/stb_image/stb_image.h"
 
 #include "../Engine/Node.h"
 #include "../Engine/Window.h"
 #include "../Engine/World.h"
 #include "../Engine/Renderer.h"
 #include "../Engine/Texture.h"
+
+#include "../UI/OverlayUI.h"
 
 #include "../Components/LightComponent.h"
 
@@ -36,6 +38,7 @@ void Scene::initialize() {
 	_window = new Window(1280, 720, "GraphX Engine");
 	_world = new World(); //scene graph
 	_renderer = new Renderer();
+	_ui = new OverlayUI(_window);
 
 	_skybox = nullptr;
 	_mainCamera = nullptr;
@@ -106,7 +109,11 @@ void Scene::_update() {
 }
 
 void Scene::_render() {
+	//render the scene
 	_renderer->render(_renderables, _lights, _mainCamera, _directionalLight, _skybox);
+
+	//render the ui on top of it
+	_ui->render();
 }
 
 void Scene::_initializeEnvironmentMaps() {

@@ -40,6 +40,10 @@ void Window::pollEvents() {
 	glfwPollEvents();
 }
 
+GLFWwindow* Window::getGlfwWindow() {
+	return _glfwWindow;
+}
+
 void Window::_initializeGLFW() {
 	int success = glfwInit();
 

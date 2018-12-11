@@ -5,7 +5,7 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
-#include "../Engine/stb_image.h"
+#include "../Engine/stb_image/stb_image.h"
 
 #include "../Utility/Filepath.h"
 

@@ -9,6 +9,7 @@ class World;
 class Node;
 class Texture;
 class Renderer;
+class OverlayUI;
 
 class Scene {
 	public:
@@ -23,6 +24,7 @@ class Scene {
 		Window* _window;
 		World* _world;
 		Renderer* _renderer;
+		OverlayUI* _ui;
 
 		void _setSkybox(Texture* skybox);
 		void _setMainCamera(Node* mainCamera);

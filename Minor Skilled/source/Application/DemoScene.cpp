@@ -129,7 +129,7 @@ void DemoScene::_initializeScene() {
 
 	TextureMaterial* reflectionMaterial = new TextureMaterial(reflectionMap, BlendMode::Opaque);
 	reflectionMaterial->setReflectionMap(reflectionMap);
-	//reflectionMaterial->setRefractionFactor(1.33f);
+	reflectionMaterial->setRefractionFactor(1.52f);
 
 	TextureMaterial* blendMaterial = new TextureMaterial(blendTexture, BlendMode::Opaque);
 	blendMaterial->setBlendMode(BlendMode::Transparent);
@@ -143,7 +143,7 @@ void DemoScene::_initializeScene() {
 	ColorMaterial* sphereMaterial = new ColorMaterial(glm::vec3(1.5f, 1.5f, 0.0f), glm::vec3(1.5f, 1.5f, 0.0f), glm::vec3(1.5f, 1.5f, 0.0f));
 
 	PBRMaterial* pbrMaterial = new PBRMaterial(albedo, normal, metallic, roughness, ao, BlendMode::Opaque);
-	//pbrMaterial->setRefractionFactor(1.33f);
+	//pbrMaterial->setRefractionFactor(1.52f);
 
 	//create components for each node and fill with data
 	RenderComponent* cyborgRenderComponent = new RenderComponent(cyborgModel, textureMaterial);

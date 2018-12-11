@@ -31,6 +31,15 @@
     <Filter Include="shaders\post processing shader">
       <UniqueIdentifier>{d06180c2-66ce-47db-88a8-17b946dfab22}</UniqueIdentifier>
     </Filter>
+    <Filter Include="source\UI\imgui">
+      <UniqueIdentifier>{12d173fa-f460-46e1-b4b5-568a47d266c1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\Engine\stb_image">
+      <UniqueIdentifier>{73060ea5-0329-419b-8c95-3b9cfd4fd948}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\Engine\glad">
+      <UniqueIdentifier>{2827080c-fba1-42f3-9631-e23aa5f4e5a6}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\Engine\Shader.cpp">
@@ -38,9 +47,6 @@
     </ClCompile>
     <ClCompile Include="source\Application\main.cpp">
       <Filter>source\Application</Filter>
-    </ClCompile>
-    <ClCompile Include="source\Engine\glad.c">
-      <Filter>source\Engine</Filter>
     </ClCompile>
     <ClCompile Include="source\Engine\Scene.cpp">
       <Filter>source\Engine</Filter>
@@ -126,12 +132,33 @@
     <ClCompile Include="source\Utility\Converter.cpp">
       <Filter>source\Utility</Filter>
     </ClCompile>
+    <ClCompile Include="source\UI\OverlayUI.cpp">
+      <Filter>source\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="source\UI\imgui\imgui.cpp">
+      <Filter>source\UI\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="source\UI\imgui\imgui_demo.cpp">
+      <Filter>source\UI\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="source\UI\imgui\imgui_draw.cpp">
+      <Filter>source\UI\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="source\UI\imgui\imgui_impl_glfw.cpp">
+      <Filter>source\UI\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="source\UI\imgui\imgui_widgets.cpp">
+      <Filter>source\UI\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Engine\glad\glad.c">
+      <Filter>source\Engine\glad</Filter>
+    </ClCompile>
+    <ClCompile Include="source\UI\imgui\imgui_impl_opengl3.cpp">
+      <Filter>source\UI\imgui</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="source\Engine\Shader.h">
-      <Filter>source\Engine</Filter>
-    </ClInclude>
-    <ClInclude Include="source\Engine\stb_image.h">
       <Filter>source\Engine</Filter>
     </ClInclude>
     <ClInclude Include="source\Engine\Scene.h">
@@ -248,8 +275,38 @@
     <ClInclude Include="source\Utility\Converter.h">
       <Filter>source\Utility</Filter>
     </ClInclude>
-    <ClInclude Include="source\Engine\stb_image_write.h">
-      <Filter>source\Engine</Filter>
+    <ClInclude Include="source\UI\OverlayUI.h">
+      <Filter>source\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="source\UI\imgui\imconfig.h">
+      <Filter>source\UI\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="source\UI\imgui\imgui.h">
+      <Filter>source\UI\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="source\UI\imgui\imgui_impl_glfw.h">
+      <Filter>source\UI\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="source\UI\imgui\imgui_internal.h">
+      <Filter>source\UI\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="source\UI\imgui\imstb_rectpack.h">
+      <Filter>source\UI\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="source\UI\imgui\imstb_textedit.h">
+      <Filter>source\UI\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="source\UI\imgui\imstb_truetype.h">
+      <Filter>source\UI\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Engine\stb_image\stb_image.h">
+      <Filter>source\Engine\stb_image</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Engine\stb_image\stb_image_write.h">
+      <Filter>source\Engine\stb_image</Filter>
+    </ClInclude>
+    <ClInclude Include="source\UI\imgui\imgui_impl_opengl3.h">
+      <Filter>source\UI\imgui</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

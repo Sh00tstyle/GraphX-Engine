@@ -21,6 +21,8 @@ class Window {
 		void swapBuffers();
 		void pollEvents();
 
+		GLFWwindow* getGlfwWindow();
+
 	private:
 		GLFWwindow* _glfwWindow;
 
