@@ -15,6 +15,8 @@ class RenderSettings {
 
 		static std::bitset<8> Options;
 
+		static bool VSync;
+
 		//configurations
 		static const unsigned int MaxCubeShadows;
 		static const unsigned int ShadowWidth;

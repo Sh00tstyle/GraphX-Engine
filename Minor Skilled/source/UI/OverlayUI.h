@@ -16,10 +16,9 @@ class OverlayUI {
 
 		void _setupProfiler();
 		void _setupConsole();
+		void _setupSettings();
 		void _setupHierarchy();
 		void _setupInspector();
-		void _setupSettings();
-
 };
 
 #endif

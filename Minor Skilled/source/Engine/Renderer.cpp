@@ -104,6 +104,9 @@ Renderer::Renderer() {
 
 	//glEnable(GL_MULTISAMPLE); //enable MSAA (only works in forward rendering and on the default framebuffer)
 
+	if(RenderSettings::VSync) glfwSwapInterval(1);
+	else glfwSwapInterval(0);
+
 	//shaders
 	_initShaders();
 
@@ -119,6 +122,7 @@ Renderer::Renderer() {
 	_initGBuffer();
 	_initGBufferPbr();
 
+	_initConversionFBO();
 	_initShadowFBO();
 	_initShadowCubeFBOs();
 	_initEnvironmentFBO();
@@ -147,6 +151,7 @@ Renderer::~Renderer() {
 	delete _brdfLUT;
 
 	//delete shaders
+	delete _equiToCubeShader;
 	delete _lightingShader;
 	delete _lightingShaderPbr;
 	delete _shadowShader;
@@ -170,9 +175,9 @@ Renderer::~Renderer() {
 
 	delete _gPositionMetallic;
 	delete _gNormalRoughness;
-	delete _gAlbedo;
-	delete _gIrradiance;
-	delete _gPrefilter;
+	delete _gAlbedoF0r;
+	delete _gIrradianceF0g;
+	delete _gPrefilterF0b;
 	delete _gEmissionAO;
 
 	delete _shadowMap;
@@ -206,6 +211,8 @@ Renderer::~Renderer() {
 	//delete framebuffers
 	delete _gBuffer;
 	delete _gBufferPbr;
+
+	delete _conversionFBO;
 	delete _shadowFBO;
 
 	for(unsigned int i = 0; i < _shadowCubeFBOs.size(); i++) {
@@ -224,6 +231,7 @@ Renderer::~Renderer() {
 	delete _gRBO;
 	delete _gPbrRBO;
 
+	delete _conversionRBO;
 	delete _environmentRBO;
 	delete _hdrRBO;
 }
@@ -423,7 +431,73 @@ void Renderer::renderEnvironmentMaps(std::vector<Node*>& renderables, Node* dire
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
+Texture* Renderer::convertEquiToCube(Texture* skybox) {
+	std::cout << "Converting equirectangular texture to cubemap..." << std::endl;
+
+	//create new cubemap texture
+	Texture* cubemap = new Texture();
+	cubemap->bind(GL_TEXTURE_CUBE_MAP);
+
+	//init each cubemap face
+	for(unsigned int i = 0; i < 6; ++i) {
+		cubemap->init(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, GL_RGB16F, RenderSettings::SkyboxWidth, RenderSettings::SkyboxHeight, GL_RGB, GL_FLOAT, NULL);
+	}
+
+	cubemap->filter(GL_TEXTURE_CUBE_MAP, GL_LINEAR, GL_LINEAR, GL_CLAMP_TO_EDGE);
+
+	//setup projection and view matrices
+	glm::mat4 conversionProjection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
+	glm::mat4 conversionViews[] = {
+		glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
+		glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(-1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
+		glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f,  1.0f,  0.0f), glm::vec3(0.0f,  0.0f,  1.0f)),
+		glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f,  0.0f), glm::vec3(0.0f,  0.0f, -1.0f)),
+		glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f,  0.0f,  1.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
+		glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f,  0.0f, -1.0f), glm::vec3(0.0f, -1.0f,  0.0f))
+	};
+
+	//convert HDR equirectangular environment map to cubemap equivalent
+	_equiToCubeShader->use();
+	_equiToCubeShader->setMat4("projectionMatrix", conversionProjection);
+
+	//bind equirectangular input texture
+	glActiveTexture(GL_TEXTURE0);
+	skybox->bind(GL_TEXTURE_2D);
+
+	//set viewport and bind to conversion framebuffer
+	glViewport(0, 0, RenderSettings::SkyboxWidth, RenderSettings::SkyboxHeight);
+	_conversionFBO->bind(GL_FRAMEBUFFER);
+	_skyboxVAO->bind();
+
+	for(unsigned int i = 0; i < 6; ++i) {
+		//attach current face of the cubemap to the fbo
+		_conversionFBO->attachTexture(GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, cubemap);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		_equiToCubeShader->setMat4("viewMatrix", conversionViews[i]);
+
+		//render the cube
+		glDrawArrays(GL_TRIANGLES, 0, 36);
+	}
+
+	//bind back to default framebuffer and reset viewport
+	glViewport(0, 0, Window::ScreenWidth, Window::ScreenHeight);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glBindVertexArray(0);
+
+	//delete input; //the input texture is not needed anymore
+
+	//return new cubemap
+	return cubemap;
+}
+
 void Renderer::_initShaders() {
+	//initialize equirectangular to cubemap shader
+	_equiToCubeShader = new Shader(Filepath::ShaderPath + "skybox shader/cube.vs", Filepath::ShaderPath + "skybox shader/equiToCube.fs");
+
+	_equiToCubeShader->use();
+	_equiToCubeShader->setInt("equirectangularMap", 0);
+
 	//initialize lighting pass shader
 	_lightingShader = new Shader(Filepath::ShaderPath + "post processing shader/screenQuad.vs", Filepath::ShaderPath + "post processing shader/lightingPass.fs");
 
@@ -453,9 +527,9 @@ void Renderer::_initShaders() {
 	_lightingShaderPbr->use();
 	_lightingShaderPbr->setInt("gPositionMetallic", 0);
 	_lightingShaderPbr->setInt("gNormalRoughness", 1);
-	_lightingShaderPbr->setInt("gAlbedo", 2);
-	_lightingShaderPbr->setInt("gIrradiance", 3);
-	_lightingShaderPbr->setInt("gPrefilter", 4);
+	_lightingShaderPbr->setInt("gAlbedoF0r", 2);
+	_lightingShaderPbr->setInt("gIrradianceF0g", 3);
+	_lightingShaderPbr->setInt("gPrefilterF0b", 4);
 	_lightingShaderPbr->setInt("gEmissionAO", 5);
 
 	_lightingShaderPbr->setInt("ssao", 6);
@@ -611,41 +685,32 @@ void Renderer::_initGBuffer() {
 	//create the position color buffer
 	_gPosition = new Texture();
 	_gPosition->bind(GL_TEXTURE_2D);
-	_gPosition->init(GL_TEXTURE_2D, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT); //16-bit precision RGB texture
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); //ensure we dont accidentally oversample
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	_gPosition->init(GL_TEXTURE_2D, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT, NULL); //16-bit precision RGB texture
+	_gPosition->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_CLAMP_TO_EDGE);
 
 	//create the normal color buffer
 	_gNormal = new Texture();
 	_gNormal->bind(GL_TEXTURE_2D);
-	_gNormal->init(GL_TEXTURE_2D, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT); //16-bit precision RGB texture
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); //ensure we dont accidentally oversample
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	_gNormal->init(GL_TEXTURE_2D, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT, NULL); //16-bit precision RGB texture
+	_gNormal->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_CLAMP_TO_EDGE);
 
 	//create the color + specular color buffer
 	_gAlbedoSpec = new Texture();
 	_gAlbedoSpec->bind(GL_TEXTURE_2D);
-	_gAlbedoSpec->init(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGBA, GL_FLOAT); //16-bit precision RGBA texture
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	_gAlbedoSpec->init(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGBA, GL_FLOAT, NULL); //16-bit precision RGBA texture
+	_gAlbedoSpec->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_NONE);
 
 	//create the emission + shininess color buffer
 	_gEmissionShiny = new Texture();
 	_gEmissionShiny->bind(GL_TEXTURE_2D);
-	_gEmissionShiny->init(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGBA, GL_FLOAT); //16-bit precision RGBA texture
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	_gEmissionShiny->init(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGBA, GL_FLOAT, NULL); //16-bit precision RGBA texture
+	_gEmissionShiny->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_NONE);
 
 	//create the environment color buffer
 	_gEnvironment = new Texture();
 	_gEnvironment->bind(GL_TEXTURE_2D);
-	_gEnvironment->init(GL_TEXTURE_2D, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT); //16-bit precision RGB texture
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	_gEnvironment->init(GL_TEXTURE_2D, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT, NULL); //16-bit precision RGB texture
+	_gEnvironment->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_NONE);
 
 	//create depth renderbuffer
 	_gRBO = new Renderbuffer();
@@ -680,48 +745,38 @@ void Renderer::_initGBufferPbr() {
 	//create the position + metallic color buffer
 	_gPositionMetallic = new Texture();
 	_gPositionMetallic->bind(GL_TEXTURE_2D);
-	_gPositionMetallic->init(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGBA, GL_FLOAT); //16-bit precision RGBA texture
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); //ensure we dont accidentally oversample
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	_gPositionMetallic->init(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGBA, GL_FLOAT, NULL); //16-bit precision RGBA texture
+	_gPositionMetallic->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_CLAMP_TO_EDGE);
 
 	//create the normal + roughness color buffer
 	_gNormalRoughness = new Texture();
 	_gNormalRoughness->bind(GL_TEXTURE_2D);
-	_gNormalRoughness->init(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGBA, GL_FLOAT); //16-bit precision RGBA texture
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); //ensure we dont accidentally oversample
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	_gNormalRoughness->init(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGBA, GL_FLOAT, NULL); //16-bit precision RGBA texture
+	_gNormalRoughness->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_CLAMP_TO_EDGE);
 
-	//create the albedo color buffer
-	_gAlbedo = new Texture();
-	_gAlbedo->bind(GL_TEXTURE_2D);
-	_gAlbedo->init(GL_TEXTURE_2D, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT); //16-bit precision RGB texture
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	//create the albedo + F0 red channel color buffer
+	_gAlbedoF0r = new Texture();
+	_gAlbedoF0r->bind(GL_TEXTURE_2D);
+	_gAlbedoF0r->init(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGBA, GL_FLOAT, NULL); //16-bit precision RGBA texture
+	_gAlbedoF0r->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_NONE);
 
-	//create the irradiance color buffer
-	_gIrradiance = new Texture();
-	_gIrradiance->bind(GL_TEXTURE_2D);
-	_gIrradiance->init(GL_TEXTURE_2D, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT); //16-bit precision RGB texture
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	//create the irradiance + F0 green channel color buffer
+	_gIrradianceF0g = new Texture();
+	_gIrradianceF0g->bind(GL_TEXTURE_2D);
+	_gIrradianceF0g->init(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGBA, GL_FLOAT, NULL); //16-bit precision RGBA texture
+	_gIrradianceF0g->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_NONE);
 
-	//create the prefilter color buffer
-	_gPrefilter = new Texture();
-	_gPrefilter->bind(GL_TEXTURE_2D);
-	_gPrefilter->init(GL_TEXTURE_2D, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT); //16-bit precision RGB texture
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	//create the prefilter + F0 blue channel color buffer
+	_gPrefilterF0b = new Texture();
+	_gPrefilterF0b->bind(GL_TEXTURE_2D);
+	_gPrefilterF0b->init(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGBA, GL_FLOAT, NULL); //16-bit precision RGBA texture
+	_gPrefilterF0b->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_NONE);
 
 	//create the emission + ao color buffer
 	_gEmissionAO = new Texture();
 	_gEmissionAO->bind(GL_TEXTURE_2D);
-	_gEmissionAO->init(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGBA, GL_FLOAT); //16-bit precision RGBA texture
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	_gEmissionAO->init(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGBA, GL_FLOAT, NULL); //16-bit precision RGBA texture
+	_gEmissionAO->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_NONE);
 
 	//create depth renderbuffer
 	_gPbrRBO = new Renderbuffer();
@@ -734,9 +789,9 @@ void Renderer::_initGBufferPbr() {
 	_gBufferPbr->bind(GL_FRAMEBUFFER);
 	_gBufferPbr->attachTexture(GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _gPositionMetallic);
 	_gBufferPbr->attachTexture(GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, _gNormalRoughness);
-	_gBufferPbr->attachTexture(GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, _gAlbedo);
-	_gBufferPbr->attachTexture(GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D, _gIrradiance);
-	_gBufferPbr->attachTexture(GL_COLOR_ATTACHMENT4, GL_TEXTURE_2D, _gPrefilter);
+	_gBufferPbr->attachTexture(GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, _gAlbedoF0r);
+	_gBufferPbr->attachTexture(GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D, _gIrradianceF0g);
+	_gBufferPbr->attachTexture(GL_COLOR_ATTACHMENT4, GL_TEXTURE_2D, _gPrefilterF0b);
 	_gBufferPbr->attachTexture(GL_COLOR_ATTACHMENT5, GL_TEXTURE_2D, _gEmissionAO);
 	_gBufferPbr->attachRenderbuffer(GL_DEPTH_ATTACHMENT, _gPbrRBO);
 
@@ -753,17 +808,27 @@ void Renderer::_initGBufferPbr() {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
+void Renderer::_initConversionFBO() {
+	//init conversion RBO
+	_conversionRBO = new Renderbuffer();
+	_conversionRBO->bind();
+	_conversionRBO->init(GL_DEPTH_COMPONENT24, RenderSettings::SkyboxWidth, RenderSettings::SkyboxHeight);
+	glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+	//init conversion FBO
+	_conversionFBO = new Framebuffer();
+	_conversionFBO->bind(GL_FRAMEBUFFER);
+	_conversionFBO->attachRenderbuffer(GL_DEPTH_ATTACHMENT, _conversionRBO);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
 void Renderer::_initShadowFBO() {
 	//create shadow texture
 	_shadowMap = new Texture();
 	_shadowMap->bind(GL_TEXTURE_2D);
-	_shadowMap->init(GL_TEXTURE_2D, GL_DEPTH_COMPONENT24, RenderSettings::ShadowWidth, RenderSettings::ShadowHeight, GL_DEPTH_COMPONENT, GL_FLOAT); //we only need the depth component
-
-	//set texture filter options
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+	_shadowMap->init(GL_TEXTURE_2D, GL_DEPTH_COMPONENT24, RenderSettings::ShadowWidth, RenderSettings::ShadowHeight, GL_DEPTH_COMPONENT, GL_FLOAT, NULL); //we only need the depth component
+	_shadowMap->filter(GL_TEXTURE_2D, GL_NEAREST, GL_NEAREST, GL_CLAMP_TO_BORDER);
 
 	float borderColor[] = {1.0f, 1.0f, 1.0f, 1.0f};
 	glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor); //results in a shadow value of 0 when outside of the light frustum
@@ -793,15 +858,10 @@ void Renderer::_initShadowCubeFBOs() {
 
 		//init all cubemap faces
 		for(unsigned int j = 0; j < 6; j++) {
-			_shadowCubeMaps[i]->init(GL_TEXTURE_CUBE_MAP_POSITIVE_X + j, GL_DEPTH_COMPONENT24, RenderSettings::ShadowWidth, RenderSettings::ShadowHeight, GL_DEPTH_COMPONENT, GL_FLOAT); //we only need the depth component
+			_shadowCubeMaps[i]->init(GL_TEXTURE_CUBE_MAP_POSITIVE_X + j, GL_DEPTH_COMPONENT24, RenderSettings::ShadowWidth, RenderSettings::ShadowHeight, GL_DEPTH_COMPONENT, GL_FLOAT, NULL); //we only need the depth component
 		}
 
-		//set texture filter options
-		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+		_shadowCubeMaps[i]->filter(GL_TEXTURE_CUBE_MAP, GL_NEAREST, GL_NEAREST, GL_CLAMP_TO_EDGE);
 
 		//create shadow framebuffer and attach the shadow map to it, so the framebuffer can render to it
 		_shadowCubeFBOs.push_back(new Framebuffer());
@@ -841,20 +901,14 @@ void Renderer::_initHdrFBO() {
 	//create floating point color buffer
 	_sceneColorBuffer = new Texture();
 	_sceneColorBuffer->bind(GL_TEXTURE_2D);
-	_sceneColorBuffer->init(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGBA, GL_FLOAT);
-
-	//set texture filter options
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	_sceneColorBuffer->init(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGBA, GL_FLOAT, NULL);
+	_sceneColorBuffer->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_NONE);
 
 	//create floating point bright color buffer
 	_brightColorBuffer = new Texture();
 	_brightColorBuffer->bind(GL_TEXTURE_2D);
-	_brightColorBuffer->init(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGBA, GL_FLOAT);
-
-	//set texture filter options
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	_brightColorBuffer->init(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGBA, GL_FLOAT, NULL);
+	_brightColorBuffer->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_NONE);
 
 	//create depth renderbuffer
 	_hdrRBO = new Renderbuffer();
@@ -892,11 +946,8 @@ void Renderer::_initBlurFBOs() {
 		//create texture buffers
 		_blurColorBuffers[i] = new Texture();
 		_blurColorBuffers[i]->bind(GL_TEXTURE_2D);
-		_blurColorBuffers[i]->init(GL_TEXTURE_2D, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); //clamp to the edge as the blur filter would otherwise sample repeated texture values
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		_blurColorBuffers[i]->init(GL_TEXTURE_2D, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT, NULL);
+		_blurColorBuffers[i]->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_CLAMP_TO_EDGE);
 
 		_bloomBlurFBOs[i]->attachTexture(GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _blurColorBuffers[i]); //attach blur colorbuffer to the blur framebuffer
 
@@ -918,9 +969,8 @@ void Renderer::_initSSAOFBOs() {
 	//create ssao color buffer
 	_ssaoColorBuffer = new Texture();
 	_ssaoColorBuffer->bind(GL_TEXTURE_2D);
-	_ssaoColorBuffer->init(GL_TEXTURE_2D, GL_RED, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	_ssaoColorBuffer->init(GL_TEXTURE_2D, GL_RED, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT, NULL);
+	_ssaoColorBuffer->filter(GL_TEXTURE_2D, GL_NEAREST, GL_NEAREST, GL_NONE);
 
 	_ssaoFBO->attachTexture(GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _ssaoColorBuffer); //attach buffer to fbo
 
@@ -936,9 +986,8 @@ void Renderer::_initSSAOFBOs() {
 	//create ssao blur color buffer
 	_ssaoBlurColorBuffer = new Texture();
 	_ssaoBlurColorBuffer->bind(GL_TEXTURE_2D);
-	_ssaoBlurColorBuffer->init(GL_TEXTURE_2D, GL_RED, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	_ssaoBlurColorBuffer->init(GL_TEXTURE_2D, GL_RED, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT, NULL);
+	_ssaoBlurColorBuffer->filter(GL_TEXTURE_2D, GL_NEAREST, GL_NEAREST, GL_NONE);
 
 	_ssaoBlurFBO->attachTexture(GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _ssaoBlurColorBuffer); //attach buffer to fbo
 
@@ -958,25 +1007,15 @@ Texture* Renderer::_renderEnvironmentMap(std::vector<std::pair<RenderComponent*,
 
 	//init all cubemap faces
 	for(unsigned int i = 0; i < 6; i++) {
-		environmentMap->init(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, GL_RGB16F, RenderSettings::EnvironmentWidth, RenderSettings::EnvironmentHeight, GL_RGB, GL_FLOAT); //hdr
+		environmentMap->init(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, GL_RGB16F, RenderSettings::EnvironmentWidth, RenderSettings::EnvironmentHeight, GL_RGB, GL_FLOAT, NULL); //hdr
 	}
 
-	//set texture filter options
 	if(pbr) {
-		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); //enable pre-filter mipmap sampling to avoid artifacts
-
-		//generate mipmaps
-		glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+		environmentMap->filter(GL_TEXTURE_CUBE_MAP, GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR, GL_CLAMP_TO_EDGE);
+		environmentMap->generateMipmaps(GL_TEXTURE_CUBE_MAP);
 	} else {
-		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		environmentMap->filter(GL_TEXTURE_CUBE_MAP, GL_NEAREST, GL_NEAREST, GL_CLAMP_TO_EDGE);
 	}
-
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-
 
 	//view matrices for each cubemap face
 	std::vector<glm::mat4> environmentViews;
@@ -1042,15 +1081,10 @@ Texture* Renderer::_renderIrradianceMap(Texture* environmentMap, glm::mat4& irra
 
 	//init all cubemap faces
 	for(unsigned int i = 0; i < 6; i++) {
-		irradianceMap->init(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, GL_RGB16F, RenderSettings::IrradianceWidth, RenderSettings::IrradianceHeight, GL_RGB, GL_FLOAT); //hdr
+		irradianceMap->init(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, GL_RGB16F, RenderSettings::IrradianceWidth, RenderSettings::IrradianceHeight, GL_RGB, GL_FLOAT, NULL); //hdr
 	}
 
-	//set texture filter options
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+	irradianceMap->filter(GL_TEXTURE_CUBE_MAP, GL_LINEAR, GL_LINEAR, GL_CLAMP_TO_EDGE);
 
 	//view matrices for each cubemap face
 	std::vector<glm::mat4> irradianceViews;
@@ -1100,18 +1134,11 @@ Texture* Renderer::_renderPrefilterMap(Texture* environmentMap, glm::mat4& prefi
 
 	//init all cubemap faces
 	for(unsigned int i = 0; i < 6; i++) {
-		prefilterMap->init(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, GL_RGB16F, RenderSettings::PrefilterWidth, RenderSettings::PrefilterHeight, GL_RGB, GL_FLOAT); //hdr
+		prefilterMap->init(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, GL_RGB16F, RenderSettings::PrefilterWidth, RenderSettings::PrefilterHeight, GL_RGB, GL_FLOAT, NULL); //hdr
 	}
 
-	//set texture filter options
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); //set minifcation filter to mip_linear 
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-
-	//generate mipmaps
-	glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+	prefilterMap->filter(GL_TEXTURE_CUBE_MAP, GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR, GL_CLAMP_TO_EDGE);
+	prefilterMap->generateMipmaps(GL_TEXTURE_CUBE_MAP);
 
 	//view matrices for each cubemap face
 	std::vector<glm::mat4> prefilterViews;
@@ -1169,13 +1196,8 @@ void Renderer::_renderBrdfLUT() {
 	//create 2 channel lookup texture (LUT)
 	_brdfLUT = new Texture();
 	_brdfLUT->bind(GL_TEXTURE_2D);
-	_brdfLUT->init(GL_TEXTURE_2D, GL_RG16F, RenderSettings::EnvironmentWidth, RenderSettings::EnvironmentHeight, GL_RG, GL_FLOAT); //2 channel hdr
-
-	//set texture filter options (clamp to edge to avoid edge sampling artifacts)
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	_brdfLUT->init(GL_TEXTURE_2D, GL_RG16F, RenderSettings::EnvironmentWidth, RenderSettings::EnvironmentHeight, GL_RG, GL_FLOAT, NULL); //2 channel hdr
+	_brdfLUT->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_CLAMP_TO_EDGE);
 
 	//rescale renderbuffer to LUT texture dimensions
 	glViewport(0, 0, RenderSettings::EnvironmentWidth, RenderSettings::EnvironmentHeight);
@@ -1409,17 +1431,17 @@ void Renderer::_renderLighting(Texture* skybox, unsigned int pointLightCount, bo
 		glActiveTexture(GL_TEXTURE1);
 		_gNormalRoughness->bind(GL_TEXTURE_2D);
 
-		//bind albedo color buffer
+		//bind albedo + F0 red channel color buffer
 		glActiveTexture(GL_TEXTURE2);
-		_gAlbedo->bind(GL_TEXTURE_2D);
+		_gAlbedoF0r->bind(GL_TEXTURE_2D);
 
-		//bind irradiance color buffer
+		//bind irradiance + F0 green channel color buffer
 		glActiveTexture(GL_TEXTURE3);
-		_gIrradiance->bind(GL_TEXTURE_2D);
+		_gIrradianceF0g->bind(GL_TEXTURE_2D);
 
-		//bind prefilter color buffer
+		//bind prefilter + F0 blue channel color buffer
 		glActiveTexture(GL_TEXTURE4);
-		_gPrefilter->bind(GL_TEXTURE_2D);
+		_gPrefilterF0b->bind(GL_TEXTURE_2D);
 
 		//bind emission + ao colo buffer
 		glActiveTexture(GL_TEXTURE5);
@@ -1822,9 +1844,9 @@ void Renderer::_updateDimensions() {
 
 	delete _gPositionMetallic;
 	delete _gNormalRoughness;
-	delete _gAlbedo;
-	delete _gIrradiance;
-	delete _gPrefilter;
+	delete _gAlbedoF0r;
+	delete _gIrradianceF0g;
+	delete _gPrefilterF0b;
 	delete _gEmissionAO;
 
 	delete _sceneColorBuffer;

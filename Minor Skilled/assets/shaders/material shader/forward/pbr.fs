@@ -49,6 +49,8 @@ struct Material {
     sampler2D emission;
     sampler2D height;
 
+    vec3 F0;
+
     float refractionFactor;
     float heightScale;
 
@@ -174,7 +176,7 @@ void main() {
     shadow = 1.0f - shadow;
 
     //reflectance at normal incidence (directly looking at the surface)
-    vec3 F0 = vec3(0.04f);
+    vec3 F0 = material.F0;
     F0 = mix(F0, albedo, metallic); //use 0.04 for dielectrics (like plastic) and the albedo color for conductors (metals)
 
     //reflectance equation

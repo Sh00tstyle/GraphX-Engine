@@ -27,6 +27,8 @@ class Renderer {
 		void render(std::vector<Node*>& renderables, std::vector<Node*>& lights, Node* mainCamera, Node* directionalLight, Texture* skybox);
 		void renderEnvironmentMaps(std::vector<Node*>& renderables, Node* directionalLight, Texture* skybox);
 
+		Texture* convertEquiToCube(Texture* skybox);
+
 	private:
 		//vertex data
 		static const std::vector<float> _SkyboxVertices;
@@ -38,6 +40,7 @@ class Renderer {
 		Texture* _brdfLUT;
 
 		//shaders
+		Shader* _equiToCubeShader;
 		Shader* _lightingShader;
 		Shader* _lightingShaderPbr;
 		Shader* _shadowShader;
@@ -61,9 +64,9 @@ class Renderer {
 
 		Texture* _gPositionMetallic;
 		Texture* _gNormalRoughness;
-		Texture* _gAlbedo;
-		Texture* _gIrradiance;
-		Texture* _gPrefilter;
+		Texture* _gAlbedoF0r;
+		Texture* _gIrradianceF0g;
+		Texture* _gPrefilterF0b;
 		Texture* _gEmissionAO;
 
 		Texture* _shadowMap;
@@ -93,6 +96,7 @@ class Renderer {
 		Framebuffer* _gBuffer;
 		Framebuffer* _gBufferPbr;
 
+		Framebuffer* _conversionFBO;
 		Framebuffer* _shadowFBO;
 		std::vector<Framebuffer*> _shadowCubeFBOs;
 		Framebuffer* _environmentFBO;
@@ -105,6 +109,7 @@ class Renderer {
 		Renderbuffer* _gRBO;
 		Renderbuffer* _gPbrRBO;
 
+		Renderbuffer* _conversionRBO;
 		Renderbuffer* _environmentRBO;
 		Renderbuffer* _hdrRBO;
 
@@ -122,6 +127,7 @@ class Renderer {
 
 		void _initGBuffer();
 		void _initGBufferPbr();
+		void _initConversionFBO();
 		void _initShadowFBO();
 		void _initShadowCubeFBOs();
 		void _initEnvironmentFBO();

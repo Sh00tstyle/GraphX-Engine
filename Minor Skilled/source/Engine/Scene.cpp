@@ -35,7 +35,7 @@ Scene::~Scene() {
 void Scene::initialize() {
 	std::cout << "---Initializing Engine---" << std::endl;
 
-	_window = new Window(1280, 720, "GraphX Engine");
+	_window = new Window(1760, 990, "GraphX Engine");
 	_world = new World(); //scene graph
 	_renderer = new Renderer();
 	_ui = new OverlayUI(_window);
@@ -65,13 +65,14 @@ void Scene::run() {
 	}
 }
 
-void Scene::_setSkybox(Texture* skybox) {
+void Scene::_setSkybox(Texture* skybox, bool isEquirectangular) {
 	if(skybox == nullptr) {
 		std::cout << "ERROR: Unable to assign skybox. It was null." << std::endl;
 		return;
 	}
 
-	_skybox = skybox;
+	if(isEquirectangular) _skybox = _renderer->convertEquiToCube(skybox);
+	else _skybox = skybox;
 }
 
 void Scene::_setMainCamera(Node* mainCamera) {

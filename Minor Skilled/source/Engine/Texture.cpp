@@ -22,15 +22,27 @@ unsigned int& Texture::getID() {
 }
 
 void Texture::bind(GLenum target) {
-	glBindTexture(target, _id);
+	glBindTexture(target, _id); //bind texture to target
 }
 
-void Texture::init(GLenum target, GLenum internalFormat, unsigned int width, unsigned int height, GLenum format, GLenum type) {
-	glTexImage2D(target, 0, internalFormat, width, height, 0, format, type, NULL);
+void Texture::generateMipmaps(GLenum target) {
+	glGenerateMipmap(target);
 }
 
-void Texture::initMultisample(GLenum target, unsigned int samples, GLenum format, unsigned int width, unsigned int height) {
-	glTexImage2DMultisample(target, samples, format, width, height, GL_TRUE);
+void Texture::init(GLenum target, GLenum internalFormat, unsigned int width, unsigned int height, GLenum format, GLenum type, const void* pixels) {
+	glTexImage2D(target, 0, internalFormat, width, height, 0, format, type, pixels);
+}
+
+void Texture::filter(GLenum target, GLenum minFilter, GLenum magFilter, GLenum wrap) {
+	glTexParameteri(target, GL_TEXTURE_MIN_FILTER, minFilter);
+	glTexParameteri(target, GL_TEXTURE_MAG_FILTER, magFilter);
+
+	if(wrap != GL_NONE) {
+		glTexParameteri(target, GL_TEXTURE_WRAP_S, wrap);
+		glTexParameteri(target, GL_TEXTURE_WRAP_T, wrap);
+
+		if(target == GL_TEXTURE_CUBE_MAP) glTexParameteri(target, GL_TEXTURE_WRAP_R, wrap);
+	}
 }
 
 Texture * Texture::LoadTexture(std::string path, TextureFilter filter, bool sRGB) { 

@@ -9,8 +9,8 @@
 Shader* PBRMaterial::_ForwardShader = nullptr;
 Shader* PBRMaterial::_DeferredShader = nullptr;
 
-PBRMaterial::PBRMaterial(Texture * albedoMap, Texture * normalMap, Texture * metallicMap, Texture * roughnessMap, Texture * aoMap, BlendMode blendMode): Material(MaterialType::PBR, blendMode, true),
-_albedoMap(albedoMap), _normalMap(normalMap), _metallicMap(metallicMap), _roughnessMap(roughnessMap), _aoMap(aoMap), _emissionMap(nullptr), _heightMap(nullptr), _refractionFactor(0.0f), _heightScale(0.0f) {
+PBRMaterial::PBRMaterial(Texture * albedoMap, Texture * normalMap, Texture * metallicMap, Texture * roughnessMap, Texture * aoMap, BlendMode blendMode) : Material(MaterialType::PBR, blendMode, true),
+_albedoMap(albedoMap), _normalMap(normalMap), _metallicMap(metallicMap), _roughnessMap(roughnessMap), _aoMap(aoMap), _emissionMap(nullptr), _heightMap(nullptr), _F0(glm::vec3(0.04f)), _refractionFactor(0.0f), _heightScale(0.0f) {
 	_initShader();
 }
 
@@ -50,6 +50,10 @@ Texture * PBRMaterial::getHeightMap() {
 	return _heightMap;
 }
 
+glm::vec3 PBRMaterial::getF0() {
+	return _F0;
+}
+
 float PBRMaterial::getRefractionFactor() {
 	return _refractionFactor;
 }
@@ -84,6 +88,10 @@ void PBRMaterial::setEmissionMap(Texture * emissionMap) {
 
 void PBRMaterial::setHeightMap(Texture * heightMap) {
 	_heightMap = heightMap;
+}
+
+void PBRMaterial::setF0(glm::vec3 F0) {
+	_F0 = F0;
 }
 
 void PBRMaterial::setRefractionFactor(float refractionFactor) {

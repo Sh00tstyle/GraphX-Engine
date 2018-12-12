@@ -28,6 +28,7 @@ void Input::ProcessInput() {
 	if(GetMouseDown(MouseButton::Right)) glfwSetInputMode(_Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED); //captures the cursor and makes it invisible
 	else if(GetMouseUp(MouseButton::Right)) glfwSetInputMode(_Window, GLFW_CURSOR, GLFW_CURSOR_NORMAL); //releases the cursor and makes it visible
 
+	/**
 	//shadows
 	if(GetKeyDown(Key::KEY1)) {
 		if(RenderSettings::IsEnabled(RenderSettings::Shadows)) {
@@ -93,6 +94,7 @@ void Input::ProcessInput() {
 			std::cout << "Enabled PBR" << std::endl;
 		}
 	}
+	/**/
 }
 
 void Input::ResetMousePos() {

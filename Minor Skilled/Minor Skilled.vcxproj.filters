@@ -144,9 +144,6 @@
     <ClCompile Include="source\Materials\PBRMaterial.cpp">
       <Filter>source\Materials</Filter>
     </ClCompile>
-    <ClCompile Include="source\Utility\Converter.cpp">
-      <Filter>source\Utility</Filter>
-    </ClCompile>
     <ClCompile Include="source\UI\OverlayUI.cpp">
       <Filter>source\UI</Filter>
     </ClCompile>
@@ -286,9 +283,6 @@
     </ClInclude>
     <ClInclude Include="source\Engine\IBLMaps.h">
       <Filter>source\Engine</Filter>
-    </ClInclude>
-    <ClInclude Include="source\Utility\Converter.h">
-      <Filter>source\Utility</Filter>
     </ClInclude>
     <ClInclude Include="source\UI\OverlayUI.h">
       <Filter>source\UI</Filter>

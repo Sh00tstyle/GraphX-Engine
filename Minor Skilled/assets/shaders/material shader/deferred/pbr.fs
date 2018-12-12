@@ -9,6 +9,8 @@ struct Material {
     sampler2D emission;
     sampler2D height;
 
+    vec3 F0;
+
     float refractionFactor;
     float heightScale;
 
@@ -43,9 +45,9 @@ uniform samplerCube prefilterMap;
 
 layout (location = 0) out vec4 gPositionMetallic;
 layout (location = 1) out vec4 gNormalRoughness;
-layout (location = 2) out vec3 gAlbedo;
-layout (location = 3) out vec3 gIrradiance;
-layout (location = 4) out vec3 gPrefilter;
+layout (location = 2) out vec4 gAlbedoF0r;
+layout (location = 3) out vec4 gIrradianceF0g;
+layout (location = 4) out vec4 gPrefilterF0b;
 layout (location = 5) out vec4 gEmissionAO;
 
 vec3 GetNormal(vec2 texCoord);
@@ -79,11 +81,14 @@ void main() {
     gNormalRoughness.rgb = normal;
     gNormalRoughness.a = roughness;
 
-    gAlbedo.rgb = texture(material.albedo, texCoord).rgb;
+    gAlbedoF0r.rgb = texture(material.albedo, texCoord).rgb;
+    gAlbedoF0r.a = material.F0.r;
 
-    gIrradiance.rgb = texture(irradianceMap, normal).rgb;
+    gIrradianceF0g.rgb = texture(irradianceMap, normal).rgb;
+    gIrradianceF0g.a = material.F0.g;
 
-    gPrefilter.rgb = textureLod(prefilterMap, R, roughness * maxReflectionLod).rgb;
+    gPrefilterF0b.rgb = textureLod(prefilterMap, R, roughness * maxReflectionLod).rgb;
+    gPrefilterF0b.a = material.F0.b;
 
     gEmissionAO.rgb = texture(material.emission, texCoord).rgb;
     gEmissionAO.a = texture(material.ao, texCoord).r;

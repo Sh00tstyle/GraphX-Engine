@@ -18,6 +18,7 @@ class PBRMaterial : public Material {
 		Texture* getAoMap();
 		Texture* getEmissionMap();
 		Texture* getHeightMap();
+		glm::vec3 getF0();
 		float getRefractionFactor();
 		float getHeightScale();
 
@@ -28,6 +29,7 @@ class PBRMaterial : public Material {
 		void setAoMap(Texture* aoMap);
 		void setEmissionMap(Texture* emissionMap);
 		void setHeightMap(Texture* heightMap);
+		void setF0(glm::vec3 F0);
 		void setRefractionFactor(float refractionFactor);
 		void setHeightScale(float heightScale);
 
@@ -46,6 +48,7 @@ class PBRMaterial : public Material {
 		Texture* _aoMap;
 		Texture* _emissionMap;
 		Texture* _heightMap;
+		glm::vec3 _F0;
 		float _refractionFactor;
 		float _heightScale;
 

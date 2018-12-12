@@ -22,7 +22,6 @@
 #include "../Materials/TextureMaterial.h"
 #include "../Materials/PBRMaterial.h"
 
-#include "../Utility/Converter.h"
 #include "../Utility/Filepath.h"
 #include "../Utility/LightType.h"
 #include "../Utility/BlendMode.h"
@@ -120,8 +119,8 @@ void DemoScene::_initializeScene() {
 	Texture* skybox = Texture::LoadCubemap(cubemapFaces, true); //load skyboxes in linear space
 	/**/
 
-	Texture* skybox = Converter::EquirectangularToCubemap(Texture::LoadHDR(Filepath::SkyboxPath + "Milkyway/Milkyway_Small.hdr")); //low res
-	//Texture* skybox = Converter::EquirectangularToCubemap(Texture::LoadHDR(Filepath::SkyboxPath + "Milkyway/Milkyway_BG.jpg")); //high res
+	Texture* skybox = Texture::LoadHDR(Filepath::SkyboxPath + "Milkyway/Milkyway_Small.hdr"); //low res
+	//Texture* skybox = Texture::LoadHDR(Filepath::SkyboxPath + "Milkyway/Milkyway_BG.jpg"); //high res
 
 	//create materials
 	TextureMaterial* textureMaterial = new TextureMaterial(cyborgDiffuse, cyborgSpecular, cyborgNormal, BlendMode::Opaque);
@@ -212,7 +211,7 @@ void DemoScene::_initializeScene() {
 	//set main camera, (main) directional light and skybox
 	_setMainCamera(mainCamera);
 	_setDirectionalLight(directionalLight);
-	_setSkybox(skybox);
+	_setSkybox(skybox, true);
 
 	std::cout << "Scene initialized" << std::endl;
 }

@@ -26,7 +26,7 @@ class Scene {
 		Renderer* _renderer;
 		OverlayUI* _ui;
 
-		void _setSkybox(Texture* skybox);
+		void _setSkybox(Texture* skybox, bool isEquirectangular = false);
 		void _setMainCamera(Node* mainCamera);
 		void _setDirectionalLight(Node* directionalLight);
 

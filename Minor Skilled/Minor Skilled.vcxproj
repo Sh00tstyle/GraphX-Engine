@@ -51,7 +51,6 @@
     <ClCompile Include="source\Materials\PBRMaterial.cpp" />
     <ClCompile Include="source\Materials\TextureMaterial.cpp" />
     <ClCompile Include="source\UI\OverlayUI.cpp" />
-    <ClCompile Include="source\Utility\Converter.cpp" />
     <ClCompile Include="source\Utility\Filepath.cpp" />
     <ClCompile Include="source\Utility\Input.cpp" />
     <ClCompile Include="source\Utility\Math.cpp" />
@@ -98,7 +97,6 @@
     <ClInclude Include="source\UI\OverlayUI.h" />
     <ClInclude Include="source\Utility\BlendMode.h" />
     <ClInclude Include="source\Utility\ComponentType.h" />
-    <ClInclude Include="source\Utility\Converter.h" />
     <ClInclude Include="source\Utility\Filepath.h" />
     <ClInclude Include="source\Utility\Input.h" />
     <ClInclude Include="source\Utility\Key.h" />

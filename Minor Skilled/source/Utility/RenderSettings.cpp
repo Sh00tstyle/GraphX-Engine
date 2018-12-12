@@ -16,6 +16,9 @@ std::bitset<8> RenderSettings::Options = RenderSettings::Deferred |
 										 RenderSettings::FXAA;
 										 //RenderSettings::PBR;
 
+//v-sync
+bool RenderSettings::VSync = true;
+
 //shadow configurations
 const unsigned int RenderSettings::MaxCubeShadows = 5; 
 
