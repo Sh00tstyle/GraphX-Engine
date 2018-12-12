@@ -135,7 +135,7 @@ Texture* Converter::EquirectangularToCubemap(Texture* input) {
 
 void Converter::_InitConversionObjects() {
 	//init shader
-	_ConversionShader = new Shader(Filepath::ShaderPath + "skybox shader/equiToCube.vs", Filepath::ShaderPath + "skybox shader/equiToCube.fs");
+	_ConversionShader = new Shader(Filepath::ShaderPath + "skybox shader/cube.vs", Filepath::ShaderPath + "skybox shader/equiToCube.fs");
 
 	_ConversionShader->use();
 	_ConversionShader->setInt("equirectangularMap", 0);

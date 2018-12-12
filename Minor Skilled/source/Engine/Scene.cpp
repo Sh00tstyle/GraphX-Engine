@@ -5,7 +5,7 @@
 #include <bitset>
 
 #define STB_IMAGE_IMPLEMENTATION //NOTE: has to be done once in the project BEFORE including std_image.h
-#include "../Engine/stb_image/stb_image.h"
+#include "../../dependencies/stb_image/stb_image.h"
 
 #include "../Engine/Node.h"
 #include "../Engine/Window.h"
@@ -109,10 +109,13 @@ void Scene::_update() {
 }
 
 void Scene::_render() {
+	//start new imgui frame and setup the UI after the update is done
+	_ui->setupFrame();
+
 	//render the scene
 	_renderer->render(_renderables, _lights, _mainCamera, _directionalLight, _skybox);
 
-	//render the ui on top of it
+	//render the ui on top of the scene
 	_ui->render();
 }
 

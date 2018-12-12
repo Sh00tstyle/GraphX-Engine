@@ -23,7 +23,10 @@ CameraComponent::~CameraComponent() {
 
 void CameraComponent::update() {
 	//update projection matrix if needed
-	//_updateProjectionMatrix();
+	_updateProjectionMatrix();
+
+	//process movement if the right mouse button is pressed
+	if(!Input::GetMouse(MouseButton::Right)) return;
 
 	//mouse offset
 	glm::vec2 mouseOffset = Input::GetLastMousePos() - Input::GetCurrentMousePos();
@@ -78,6 +81,4 @@ void CameraComponent::_updateProjectionMatrix() {
 	if(!Window::DimensionsChanged) return;
 
 	projectionMatrix = glm::perspective(glm::radians(fieldOfView), (float)Window::ScreenWidth / (float)Window::ScreenHeight, _nearPlane, _farPlane);
-	
-	//Window::DimensionsChanged = false; //not needed, the renderer takes care of it since it needs to resize framebuffers and such as well
 }

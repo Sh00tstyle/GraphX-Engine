@@ -485,13 +485,13 @@ void Renderer::_initShaders() {
 	_environmentShader->setInt("diffuseMap", 0);
 
 	//initialize irradiance shader
-	_irradianceShader = new Shader(Filepath::ShaderPath + "skybox shader/irradiance.vs", Filepath::ShaderPath + "skybox shader/irradiance.fs");
+	_irradianceShader = new Shader(Filepath::ShaderPath + "skybox shader/cube.vs", Filepath::ShaderPath + "skybox shader/irradiance.fs");
 
 	_irradianceShader->use();
 	_irradianceShader->setInt("environmentMap", 0);
 
 	//initialize prefilter shader
-	_prefilterShader = new Shader(Filepath::ShaderPath + "skybox shader/prefilter.vs", Filepath::ShaderPath + "skybox shader/prefilter.fs");
+	_prefilterShader = new Shader(Filepath::ShaderPath + "skybox shader/cube.vs", Filepath::ShaderPath + "skybox shader/prefilter.fs");
 
 	_prefilterShader->use();
 	_prefilterShader->setInt("environmentMap", 0);

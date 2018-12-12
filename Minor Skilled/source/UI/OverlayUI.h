@@ -8,13 +8,18 @@ class OverlayUI {
 		OverlayUI(Window* window);
 		~OverlayUI();
 
+		void setupFrame();
 		void render();
 
 	private:
 		void _initImgui(Window* window);
 
-		void _startFrame();
-		void _renderProfiler();
+		void _setupProfiler();
+		void _setupConsole();
+		void _setupHierarchy();
+		void _setupInspector();
+		void _setupSettings();
+
 };
 
 #endif

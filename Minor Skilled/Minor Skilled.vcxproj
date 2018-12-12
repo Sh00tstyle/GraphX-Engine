@@ -19,6 +19,13 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="dependencies\glad\glad.c" />
+    <ClCompile Include="dependencies\imgui\imgui.cpp" />
+    <ClCompile Include="dependencies\imgui\imgui_demo.cpp" />
+    <ClCompile Include="dependencies\imgui\imgui_draw.cpp" />
+    <ClCompile Include="dependencies\imgui\imgui_impl_glfw.cpp" />
+    <ClCompile Include="dependencies\imgui\imgui_impl_opengl3.cpp" />
+    <ClCompile Include="dependencies\imgui\imgui_widgets.cpp" />
     <ClCompile Include="source\Application\DemoScene.cpp" />
     <ClCompile Include="source\Application\main.cpp" />
     <ClCompile Include="source\Components\CameraComponent.cpp" />
@@ -26,7 +33,6 @@
     <ClCompile Include="source\Components\RenderComponent.cpp" />
     <ClCompile Include="source\Engine\Component.cpp" />
     <ClCompile Include="source\Engine\Framebuffer.cpp" />
-    <ClCompile Include="source\Engine\glad\glad.c" />
     <ClCompile Include="source\Engine\Material.cpp" />
     <ClCompile Include="source\Engine\Mesh.cpp" />
     <ClCompile Include="source\Engine\Model.cpp" />
@@ -44,12 +50,6 @@
     <ClCompile Include="source\Materials\ColorMaterial.cpp" />
     <ClCompile Include="source\Materials\PBRMaterial.cpp" />
     <ClCompile Include="source\Materials\TextureMaterial.cpp" />
-    <ClCompile Include="source\UI\imgui\imgui.cpp" />
-    <ClCompile Include="source\UI\imgui\imgui_demo.cpp" />
-    <ClCompile Include="source\UI\imgui\imgui_draw.cpp" />
-    <ClCompile Include="source\UI\imgui\imgui_impl_glfw.cpp" />
-    <ClCompile Include="source\UI\imgui\imgui_impl_opengl3.cpp" />
-    <ClCompile Include="source\UI\imgui\imgui_widgets.cpp" />
     <ClCompile Include="source\UI\OverlayUI.cpp" />
     <ClCompile Include="source\Utility\Converter.cpp" />
     <ClCompile Include="source\Utility\Filepath.cpp" />
@@ -59,6 +59,16 @@
     <ClCompile Include="source\Utility\Time.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="dependencies\imgui\imconfig.h" />
+    <ClInclude Include="dependencies\imgui\imgui.h" />
+    <ClInclude Include="dependencies\imgui\imgui_impl_glfw.h" />
+    <ClInclude Include="dependencies\imgui\imgui_impl_opengl3.h" />
+    <ClInclude Include="dependencies\imgui\imgui_internal.h" />
+    <ClInclude Include="dependencies\imgui\imstb_rectpack.h" />
+    <ClInclude Include="dependencies\imgui\imstb_textedit.h" />
+    <ClInclude Include="dependencies\imgui\imstb_truetype.h" />
+    <ClInclude Include="dependencies\stb_image\stb_image.h" />
+    <ClInclude Include="dependencies\stb_image\stb_image_write.h" />
     <ClInclude Include="source\Application\DemoScene.h" />
     <ClInclude Include="source\Components\CameraComponent.h" />
     <ClInclude Include="source\Components\LightComponent.h" />
@@ -75,8 +85,6 @@
     <ClInclude Include="source\Engine\Renderer.h" />
     <ClInclude Include="source\Engine\Scene.h" />
     <ClInclude Include="source\Engine\Shader.h" />
-    <ClInclude Include="source\Engine\stb_image\stb_image.h" />
-    <ClInclude Include="source\Engine\stb_image\stb_image_write.h" />
     <ClInclude Include="source\Engine\Texture.h" />
     <ClInclude Include="source\Engine\Transform.h" />
     <ClInclude Include="source\Engine\Vertex.h" />
@@ -87,14 +95,6 @@
     <ClInclude Include="source\Materials\ColorMaterial.h" />
     <ClInclude Include="source\Materials\PBRMaterial.h" />
     <ClInclude Include="source\Materials\TextureMaterial.h" />
-    <ClInclude Include="source\UI\imgui\imconfig.h" />
-    <ClInclude Include="source\UI\imgui\imgui.h" />
-    <ClInclude Include="source\UI\imgui\imgui_impl_glfw.h" />
-    <ClInclude Include="source\UI\imgui\imgui_impl_opengl3.h" />
-    <ClInclude Include="source\UI\imgui\imgui_internal.h" />
-    <ClInclude Include="source\UI\imgui\imstb_rectpack.h" />
-    <ClInclude Include="source\UI\imgui\imstb_textedit.h" />
-    <ClInclude Include="source\UI\imgui\imstb_truetype.h" />
     <ClInclude Include="source\UI\OverlayUI.h" />
     <ClInclude Include="source\Utility\BlendMode.h" />
     <ClInclude Include="source\Utility\ComponentType.h" />
@@ -111,10 +111,40 @@
     <ClInclude Include="source\Utility\Time.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="assets\shaders\material shader\color.fs" />
-    <None Include="assets\shaders\material shader\color.vs" />
-    <None Include="assets\shaders\material shader\texture.fs" />
-    <None Include="assets\shaders\material shader\texture.vs" />
+    <None Include="assets\shaders\material shader\deferred\color.fs" />
+    <None Include="assets\shaders\material shader\deferred\color.vs" />
+    <None Include="assets\shaders\material shader\deferred\pbr.fs" />
+    <None Include="assets\shaders\material shader\deferred\pbr.vs" />
+    <None Include="assets\shaders\material shader\deferred\texture.fs" />
+    <None Include="assets\shaders\material shader\deferred\texture.vs" />
+    <None Include="assets\shaders\material shader\forward\color.fs" />
+    <None Include="assets\shaders\material shader\forward\color.vs" />
+    <None Include="assets\shaders\material shader\forward\pbr.fs" />
+    <None Include="assets\shaders\material shader\forward\pbr.vs" />
+    <None Include="assets\shaders\material shader\forward\texture.fs" />
+    <None Include="assets\shaders\material shader\forward\texture.vs" />
+    <None Include="assets\shaders\post processing shader\bloomBlur.fs" />
+    <None Include="assets\shaders\post processing shader\lightingPass.fs" />
+    <None Include="assets\shaders\post processing shader\lightingPassPbr.fs" />
+    <None Include="assets\shaders\post processing shader\postProcessing.fs" />
+    <None Include="assets\shaders\post processing shader\screenQuad.vs" />
+    <None Include="assets\shaders\post processing shader\ssao.fs" />
+    <None Include="assets\shaders\post processing shader\ssaoBlur.fs" />
+    <None Include="assets\shaders\shadow shader\shadow.fs" />
+    <None Include="assets\shaders\shadow shader\shadow.vs" />
+    <None Include="assets\shaders\shadow shader\shadowCube.fs" />
+    <None Include="assets\shaders\shadow shader\shadowCube.gs" />
+    <None Include="assets\shaders\shadow shader\shadowCube.vs" />
+    <None Include="assets\shaders\skybox shader\brdf.fs" />
+    <None Include="assets\shaders\skybox shader\brdf.vs" />
+    <None Include="assets\shaders\skybox shader\cube.vs" />
+    <None Include="assets\shaders\skybox shader\environment.fs" />
+    <None Include="assets\shaders\skybox shader\environment.vs" />
+    <None Include="assets\shaders\skybox shader\equiToCube.fs" />
+    <None Include="assets\shaders\skybox shader\irradiance.fs" />
+    <None Include="assets\shaders\skybox shader\prefilter.fs" />
+    <None Include="assets\shaders\skybox shader\skybox.fs" />
+    <None Include="assets\shaders\skybox shader\skybox.vs" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
@@ -170,16 +200,16 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>..\Dependencies\include;$(IncludePath)</IncludePath>
-    <LibraryPath>..\Dependencies\lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>dependencies\include;$(IncludePath)</IncludePath>
+    <LibraryPath>dependencies\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>..\Dependencies\include;$(IncludePath)</IncludePath>
-    <LibraryPath>..\Dependencies\lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>dependencies\include;$(IncludePath)</IncludePath>
+    <LibraryPath>dependencies\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>

@@ -18,13 +18,15 @@ void Input::Initialize(GLFWwindow* window) {
 
 	//register mouse callbacks
 	glfwSetCursorPosCallback(window, _MouseCallback);
-
-	//set input mode
-	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED); //captures the cursor and makes it invisible
 }
 
 void Input::ProcessInput() {
+	//close the window
 	if(GetKey(Key::ESC)) glfwSetWindowShouldClose(_Window, true);
+
+	//capture and release the cursor when the RMB is pressed and released respectively
+	if(GetMouseDown(MouseButton::Right)) glfwSetInputMode(_Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED); //captures the cursor and makes it invisible
+	else if(GetMouseUp(MouseButton::Right)) glfwSetInputMode(_Window, GLFW_CURSOR, GLFW_CURSOR_NORMAL); //releases the cursor and makes it visible
 
 	//shadows
 	if(GetKeyDown(Key::KEY1)) {
