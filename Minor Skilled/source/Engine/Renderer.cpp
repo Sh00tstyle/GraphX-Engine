@@ -24,6 +24,7 @@
 #include "../Engine/Buffer.h"
 #include "../Engine/Renderbuffer.h"
 #include "../Engine/Framebuffer.h"
+#include "../Engine/Debug.h"
 
 #include "../Materials/TextureMaterial.h"
 
@@ -89,7 +90,7 @@ const std::vector<float> Renderer::_ScreenQuadVertices = {
 	1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
 };
 
-Renderer::Renderer() {
+Renderer::Renderer(Debug* profiler) : _profiler(profiler) {
 	glEnable(GL_DEPTH_TEST); //enable the z-buffer
 	glDepthFunc(GL_LESS); //set depth funtion to less
 
@@ -104,8 +105,13 @@ Renderer::Renderer() {
 
 	//glEnable(GL_MULTISAMPLE); //enable MSAA (only works in forward rendering and on the default framebuffer)
 
-	if(RenderSettings::VSync) glfwSwapInterval(1);
-	else glfwSwapInterval(0);
+	if(RenderSettings::VSync) {
+		glfwSwapInterval(1); //enable vsync
+		_vSync = true;
+	} else {
+		glfwSwapInterval(0); //disable vysnc
+		_vSync = false;
+	}
 
 	//shaders
 	_initShaders();
@@ -239,6 +245,7 @@ Renderer::~Renderer() {
 void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& lights, Node* mainCamera, Node* directionalLight, Texture* skybox) {
 	//update dimensions if needed
 	_updateDimensions();
+	_updateVSync();
 
 	//render from main camera
 	if(mainCamera == nullptr) {
@@ -309,25 +316,37 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 
 	//render shadow map
-	if(useShadows) _renderShadowMaps(renderComponents, pointLightPositions, lightSpaceMatrix);
+	if(useShadows) {
+		_profiler->startQuery(QueryType::Shadow);
+		_renderShadowMaps(renderComponents, pointLightPositions, lightSpaceMatrix);
+		_profiler->endQuery(QueryType::Shadow);
+	}
 
 	//render scene
 	bool pbr = RenderSettings::IsEnabled(RenderSettings::PBR);
 
 	if(RenderSettings::IsEnabled(RenderSettings::Deferred)) {
 		//render the geometry of the scene (deferred shading)
+		_profiler->startQuery(QueryType::Geometry);
 		_renderGeometry(solidRenderComponents, pbr);
+		_profiler->endQuery(QueryType::Geometry);
 
 		if(RenderSettings::IsEnabled(RenderSettings::SSAO)) {
+			_profiler->startQuery(QueryType::SSAO);
+
 			//render ssao texture (deferred shading)
 			_renderSSAO(pbr);
 
 			//blur ssao texture (deferred shading)
 			_renderSSAOBlur();
+
+			_profiler->endQuery(QueryType::SSAO);
 		}
 
 		//render lighting of the scene (deferred shading)
+		_profiler->startQuery(QueryType::Lighting);
 		_renderLighting(skybox, pointLightCount, pbr);
+		_profiler->endQuery(QueryType::Lighting);
 
 		//blit gBuffer depth buffer into the hdr framebuffer depth buffer to enable forward rendering into the deferred scene
 		_blitGDepthToHDR(pbr);
@@ -345,7 +364,9 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 	glDisable(GL_BLEND);
 
 	//render screen quad
+	_profiler->startQuery(QueryType::PostProcessing);
 	_renderPostProcessingQuad();
+	_profiler->endQuery(QueryType::PostProcessing);
 }
 
 void Renderer::renderEnvironmentMaps(std::vector<Node*>& renderables, Node* directionalLight, Texture* skybox) {
@@ -1864,4 +1885,18 @@ void Renderer::_updateDimensions() {
 	_initSSAOFBOs();
 
 	Window::DimensionsChanged = false; //reset
+}
+
+void Renderer::_updateVSync() {
+	if(RenderSettings::VSync == _vSync) return;
+
+	_vSync = RenderSettings::VSync;
+
+	if(_vSync) {
+		glfwSwapInterval(1); //enable vsync
+		_vSync = true;
+	} else {
+		glfwSwapInterval(0); //disable vysnc
+		_vSync = false;
+	}
 }

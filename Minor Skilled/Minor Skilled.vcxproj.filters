@@ -78,9 +78,6 @@
     <ClCompile Include="source\Engine\World.cpp">
       <Filter>source\Engine</Filter>
     </ClCompile>
-    <ClCompile Include="source\Utility\Filepath.cpp">
-      <Filter>source\Utility</Filter>
-    </ClCompile>
     <ClCompile Include="source\Utility\Time.cpp">
       <Filter>source\Utility</Filter>
     </ClCompile>
@@ -167,6 +164,12 @@
     </ClCompile>
     <ClCompile Include="dependencies\glad\glad.c">
       <Filter>dependencies\glad</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Utility\Filepath.cpp">
+      <Filter>source\Utility</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Engine\Debug.cpp">
+      <Filter>source\Engine</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -316,6 +319,12 @@
     </ClInclude>
     <ClInclude Include="dependencies\stb_image\stb_image_write.h">
       <Filter>dependencies\stb_image</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Utility\QueryType.h">
+      <Filter>source\Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Engine\Debug.h">
+      <Filter>source\Engine</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

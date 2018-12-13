@@ -23,6 +23,7 @@ class Node {
 		Transform* getTransform();
 		std::vector<Node*>* getChildren();
 		Node* getChildAt(unsigned int index);
+		unsigned int getChildCount();
 		Component* getComponent(ComponentType type);
 		bool hasComponent(ComponentType type);
 		

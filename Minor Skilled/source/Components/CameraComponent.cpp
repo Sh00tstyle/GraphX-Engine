@@ -8,14 +8,16 @@
 #include "../Engine/Node.h"
 #include "../Engine/Transform.h"
 #include "../Engine/Window.h"
+#include "../Engine//Transform.h"
+#include "../Engine/Debug.h"
 
 #include "../Components/LightComponent.h"
 
 #include "../Utility/Input.h"
 #include "../Utility/Time.h"
 
-CameraComponent::CameraComponent(glm::mat4 projectionMatrix, float fieldOfView, float nearPlane, float farPlane, float movementSpeed, float rotationSpeed): Component(ComponentType::Camera),
-projectionMatrix(projectionMatrix), fieldOfView(fieldOfView), _nearPlane(nearPlane), _farPlane(farPlane),  movementSpeed(movementSpeed), rotationSpeed(rotationSpeed), rotX(glm::mat4(1.0f)), rotY(glm::mat4(1.0f)) {
+CameraComponent::CameraComponent(glm::mat4 projectionMatrix, float fieldOfView, float nearPlane, float farPlane, float movementSpeed, float rotationSpeed) : Component(ComponentType::Camera),
+projectionMatrix(projectionMatrix), fieldOfView(fieldOfView), _nearPlane(nearPlane), _farPlane(farPlane), movementSpeed(movementSpeed), rotationSpeed(rotationSpeed), rotX(glm::mat4(1.0f)), rotY(glm::mat4(1.0f)), _startTransformMatrix(glm::mat4(1.0f)), _firstTransform(true) {
 }
 
 CameraComponent::~CameraComponent() {
@@ -27,6 +29,9 @@ void CameraComponent::update() {
 
 	//process movement if the right mouse button is pressed
 	Transform* transform = _owner->getTransform();
+
+	//check if the camera has been reset
+	_checkForCameraReset(transform);
 
 	if(Input::GetMouse(MouseButton::Right)) {
 		//mouse offset
@@ -82,4 +87,21 @@ void CameraComponent::_updateProjectionMatrix() {
 	if(!Window::DimensionsChanged) return;
 
 	projectionMatrix = glm::perspective(glm::radians(fieldOfView), (float)Window::ScreenWidth / (float)Window::ScreenHeight, _nearPlane, _farPlane);
+}
+
+void CameraComponent::_checkForCameraReset(Transform* transform) {
+	if(_firstTransform) {
+		//lazy initialize as soon as it gets updated the first time
+		_startTransformMatrix = transform->localTransform;
+
+		_firstTransform = false;
+	}
+
+	if(Input::GetKeyDown(Key::BACKSPACE)) {
+		transform->localTransform = _startTransformMatrix; //reset to initial state
+
+		//reset rotations as well
+		rotX = glm::mat4(1.0f);
+		rotY = glm::mat4(1.0f);
+	}
 }

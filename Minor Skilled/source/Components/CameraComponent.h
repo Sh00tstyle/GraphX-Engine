@@ -6,6 +6,7 @@
 #include "../Engine/Component.h"
 
 class Node;
+class Transform;
 
 class CameraComponent : public Component {
 	public:
@@ -23,6 +24,10 @@ class CameraComponent : public Component {
 
 	private:
 		void _updateProjectionMatrix();
+		void _checkForCameraReset(Transform* transform);
+
+		glm::mat4 _startTransformMatrix;
+		bool _firstTransform;
 
 		float _nearPlane;
 		float _farPlane;

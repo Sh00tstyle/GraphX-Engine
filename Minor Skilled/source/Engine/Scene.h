@@ -10,6 +10,7 @@ class Node;
 class Texture;
 class Renderer;
 class OverlayUI;
+class Debug;
 
 class Scene {
 	public:
@@ -37,6 +38,8 @@ class Scene {
 		Texture * _skybox;
 		Node* _mainCamera;
 		Node* _directionalLight;
+
+		Debug* _profiler;
 
 		std::vector<Node*> _renderables;
 		std::vector<Node*> _lights;

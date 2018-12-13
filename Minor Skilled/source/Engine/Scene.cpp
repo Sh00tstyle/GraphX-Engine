@@ -12,6 +12,7 @@
 #include "../Engine/World.h"
 #include "../Engine/Renderer.h"
 #include "../Engine/Texture.h"
+#include "../Engine/Debug.h"
 
 #include "../UI/OverlayUI.h"
 
@@ -30,6 +31,8 @@ Scene::~Scene() {
 	delete _world;
 	delete _skybox;
 	delete _renderer;
+	delete _profiler;
+	delete _ui;
 }
 
 void Scene::initialize() {
@@ -37,8 +40,9 @@ void Scene::initialize() {
 
 	_window = new Window(1760, 990, "GraphX Engine");
 	_world = new World(); //scene graph
-	_renderer = new Renderer();
-	_ui = new OverlayUI(_window);
+	_profiler = new Debug();
+	_renderer = new Renderer(_profiler);
+	_ui = new OverlayUI(_window, _profiler);
 
 	_skybox = nullptr;
 	_mainCamera = nullptr;
@@ -49,6 +53,8 @@ void Scene::initialize() {
 	_initializeEnvironmentMaps();
 	
 	std::cout << "---Engine initialized---" << std::endl;
+
+	Debug::Log("Engine initialized");
 }
 
 void Scene::run() {
@@ -59,6 +65,8 @@ void Scene::run() {
 
 		_update();
 		_render();
+
+		_profiler->profile();
 
 		_window->swapBuffers();
 		_window->pollEvents();
@@ -97,6 +105,8 @@ void Scene::_setDirectionalLight(Node * directionalLight) {
 }
 
 void Scene::_update() {
+	_profiler->startQuery(QueryType::Update);
+
 	//clear vectors
 	_renderables.clear();
 	_lights.clear();
@@ -107,23 +117,33 @@ void Scene::_update() {
 	//resets the last mouse pos back to the current mouse pos and updates keypresses
 	Input::ResetMousePos(); 
 	Input::CheckInputStatus();
+
+	_profiler->endQuery(QueryType::Update);
 }
 
 void Scene::_render() {
 	//start new imgui frame and setup the UI after the update is done
-	_ui->setupFrame();
+	_ui->setupFrame(_world);
 
 	//render the scene
+	_profiler->startQuery(QueryType::Rendering);
 	_renderer->render(_renderables, _lights, _mainCamera, _directionalLight, _skybox);
 
 	//render the ui on top of the scene
+	_profiler->startQuery(QueryType::UI);
 	_ui->render();
+	_profiler->endQuery(QueryType::UI);
+	_profiler->endQuery(QueryType::Rendering);
 }
 
 void Scene::_initializeEnvironmentMaps() {
 	//update the scene graph first to get the correct model matrices and data
 	_update();
 
+	_profiler->startQuery(QueryType::Environment);
+
 	//render the environment maps before the renderloop starts
 	_renderer->renderEnvironmentMaps(_renderables, _directionalLight, _skybox);
+
+	_profiler->endQuery(QueryType::Environment);
 }

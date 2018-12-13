@@ -18,10 +18,11 @@ class VertexArray;
 class Buffer;
 class Framebuffer;
 class Renderbuffer;
+class Debug;
 
 class Renderer {
 	public:
-		Renderer();
+		Renderer(Debug* profiler);
 		~Renderer();
 
 		void render(std::vector<Node*>& renderables, std::vector<Node*>& lights, Node* mainCamera, Node* directionalLight, Texture* skybox);
@@ -30,6 +31,12 @@ class Renderer {
 		Texture* convertEquiToCube(Texture* skybox);
 
 	private:
+		//profiler
+		Debug* _profiler;
+
+		//opengl settings
+		bool _vSync;
+
 		//vertex data
 		static const std::vector<float> _SkyboxVertices;
 		static const std::vector<float> _ScreenQuadVertices;
@@ -164,6 +171,7 @@ class Renderer {
 		void _blitGDepthToHDR(bool pbr);
 
 		void _updateDimensions();
+		void _updateVSync();
 };
 
 #endif

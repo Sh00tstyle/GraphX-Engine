@@ -42,7 +42,8 @@ void DemoScene::_initializeScene() {
 	Node* plane = new Node(glm::vec3(0.0f, -0.01f, 0.0f), "plane");
 	Node* sphereReflect = new Node(glm::vec3(2.0f, 0.8f, -1.0f), "sphereReflect");
 	Node* sphereLight = new Node(glm::vec3(-2.0f, 1.0f, 0.0f), "sphereLight");
-	Node* cube = new Node(glm::vec3(2.0f, 0.3f, 1.0f), "cube");
+	//Node* cube = new Node(glm::vec3(2.0f, 0.3f, 1.0f), "cube");
+	Node* cube = new Node(glm::vec3(0.0f, -1.0f, 0.0f), "cube");
 	Node* glass = new Node(glm::vec3(3.0f, 0.3f, 3.0f), "glass");
 	Node* bricks = new Node(glm::vec3(-2.5f, 0.5f, 2.5f), "bricks");
 	Node* pbrSphere = new Node(glm::vec3(-2.5f, 0.5, -1.5f), "pbrSphere");
@@ -195,6 +196,9 @@ void DemoScene::_initializeScene() {
 	glass->addComponent(glassRenderComponent);
 	bricks->addComponent(brickRenderComponent);
 	pbrSphere->addComponent(pbrRenderComponent);
+
+	//set children
+	//mainCamera->addChild(cube);
 
 	//add nodes to the world
 	_world->addChild(mainCamera);

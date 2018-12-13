@@ -12,6 +12,7 @@ class RenderSettings {
 		static const unsigned char FXAA;
 		static const unsigned char SSAO;
 		static const unsigned char PBR;
+		static const unsigned char MotionBlur;
 
 		static std::bitset<8> Options;
 
@@ -21,8 +22,8 @@ class RenderSettings {
 		static const unsigned int MaxCubeShadows;
 		static const unsigned int ShadowWidth;
 		static const unsigned int ShadowHeight;
-		static float CubeNearPlane;
-		static float CubeFarPlane;
+		static const float CubeNearPlane;
+		static const float CubeFarPlane;
 
 		static const unsigned int SkyboxWidth;
 		static const unsigned int SkyboxHeight;
@@ -38,7 +39,8 @@ class RenderSettings {
 
 		static const unsigned int MaxMipLevels;
 
-		static unsigned int SsaoKernelSize;
+		static const unsigned int SsaoKernelSize;
+
 		static float SsaoRadius;
 		static float SsaoBias;
 		static float SsaoPower;

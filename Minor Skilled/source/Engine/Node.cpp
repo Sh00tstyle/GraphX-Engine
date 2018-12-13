@@ -34,6 +34,10 @@ Node* Node::getChildAt(unsigned int index) {
 	return _children[index];
 }
 
+unsigned int Node::getChildCount() {
+	return _children.size();
+}
+
 Component* Node::getComponent(ComponentType type) {
 	return _components[type];
 }

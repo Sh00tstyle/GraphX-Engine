@@ -32,6 +32,7 @@
     <ClCompile Include="source\Components\LightComponent.cpp" />
     <ClCompile Include="source\Components\RenderComponent.cpp" />
     <ClCompile Include="source\Engine\Component.cpp" />
+    <ClCompile Include="source\Engine\Debug.cpp" />
     <ClCompile Include="source\Engine\Framebuffer.cpp" />
     <ClCompile Include="source\Engine\Material.cpp" />
     <ClCompile Include="source\Engine\Mesh.cpp" />
@@ -73,6 +74,7 @@
     <ClInclude Include="source\Components\LightComponent.h" />
     <ClInclude Include="source\Components\RenderComponent.h" />
     <ClInclude Include="source\Engine\Component.h" />
+    <ClInclude Include="source\Engine\Debug.h" />
     <ClInclude Include="source\Engine\Framebuffer.h" />
     <ClInclude Include="source\Engine\GLLight.h" />
     <ClInclude Include="source\Engine\IBLMaps.h" />
@@ -104,6 +106,7 @@
     <ClInclude Include="source\Utility\MaterialType.h" />
     <ClInclude Include="source\Utility\Math.h" />
     <ClInclude Include="source\Utility\MouseButton.h" />
+    <ClInclude Include="source\Utility\QueryType.h" />
     <ClInclude Include="source\Utility\RenderSettings.h" />
     <ClInclude Include="source\Utility\TextureFilter.h" />
     <ClInclude Include="source\Utility\Time.h" />

@@ -12,6 +12,7 @@ class World {
 
 		std::vector<Node*>* getChildren();
 		Node* getChildAt(unsigned int index);
+		unsigned int getChildCount();
 		void addChild(Node* node);
 		void removeChild(Node* node);
 		void update(std::vector<Node*>& renderables, std::vector<Node*>& lights);

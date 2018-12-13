@@ -19,6 +19,10 @@ Node * World::getChildAt(unsigned int index) {
 	return _children[index];
 }
 
+unsigned int World::getChildCount() {
+	return _children.size();
+}
+
 void World::addChild(Node* node) {
 	_children.push_back(node);
 }
