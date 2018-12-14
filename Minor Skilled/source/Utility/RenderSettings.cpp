@@ -3,9 +3,9 @@
 //render mode options
 const unsigned char RenderSettings::Shadows = 1 << 0;
 const unsigned char RenderSettings::Bloom = 1 << 1;
-const unsigned char RenderSettings::Deferred = 1 << 2;
-const unsigned char RenderSettings::FXAA = 1 << 3;
-const unsigned char RenderSettings::MotionBlur = 1 << 4;
+const unsigned char RenderSettings::FXAA = 1 << 2;
+const unsigned char RenderSettings::MotionBlur = 1 << 3;
+const unsigned char RenderSettings::Deferred = 1 << 4;
 const unsigned char RenderSettings::SSAO = 1 << 5; //deferred only
 const unsigned char RenderSettings::PBR = 1 << 6; //deferred only
 

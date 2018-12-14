@@ -14,6 +14,8 @@ class Model {
 	public:
 		~Model();
 
+		std::string filepath;
+
 		static Model* LoadModel(std::string path);
 
 		void draw();

@@ -50,15 +50,15 @@ Texture * PBRMaterial::getHeightMap() {
 	return _heightMap;
 }
 
-glm::vec3 PBRMaterial::getF0() {
+glm::vec3& PBRMaterial::getF0() {
 	return _F0;
 }
 
-float PBRMaterial::getRefractionFactor() {
+float& PBRMaterial::getRefractionFactor() {
 	return _refractionFactor;
 }
 
-float PBRMaterial::getHeightScale() {
+float& PBRMaterial::getHeightScale() {
 	return _heightScale;
 }
 

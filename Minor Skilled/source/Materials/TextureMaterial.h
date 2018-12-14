@@ -26,9 +26,9 @@ class TextureMaterial : public Material {
 		Texture* getEmissionMap();
 		Texture* getHeightMap();
 		Texture* getReflectionMap();
-		float getShininess();
-		float getRefractionFactor();
-		float getHeightScale();
+		float& getShininess();
+		float& getRefractionFactor();
+		float& getHeightScale();
 
 		void setDiffuseMap(Texture* diffuseMap);
 		void setSpecularMap(Texture* specularMap);

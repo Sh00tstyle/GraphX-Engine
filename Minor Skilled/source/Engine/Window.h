@@ -8,7 +8,7 @@
 
 class Window {
 	public:
-		Window(unsigned int width, unsigned int height, std::string name);
+		Window(unsigned int width, unsigned int height, unsigned int startXPos, unsigned int startYPos, std::string name);
 		~Window();
 
 		static unsigned int ScreenWidth;
@@ -29,7 +29,7 @@ class Window {
 		static void _framebufferSizeCallback(GLFWwindow* window, int width, int height); //needs to be static to be passed into GLFW
 
 		void _initializeGLFW();
-		void _initializeWindow(std::string name);
+		void _initializeWindow(std::string name, unsigned int xStartPos, unsigned int yStartPos);
 		void _initializeGLAD();
 };
 

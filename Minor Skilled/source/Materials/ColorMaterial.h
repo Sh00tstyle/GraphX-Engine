@@ -14,10 +14,10 @@ class ColorMaterial : public Material {
 		ColorMaterial(glm::vec3 ambientColor, glm::vec3 diffuseColor, glm::vec3 specularColor, float shininess = 32.0f, bool castsShadows = true);
 		~ColorMaterial();
 
-		glm::vec3 getAmbientColor();
-		glm::vec3 getDiffuseColor();
-		glm::vec3 getSpecularColor();
-		float getShininess();
+		glm::vec3& getAmbientColor();
+		glm::vec3& getDiffuseColor();
+		glm::vec3& getSpecularColor();
+		float& getShininess();
 
 		void setAmbientColor(glm::vec3 ambientColor);
 		void setDiffuseColor(glm::vec3 diffuseColor);

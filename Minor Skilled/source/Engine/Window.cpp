@@ -9,12 +9,12 @@ unsigned int Window::ScreenHeight = 720;
 
 bool Window::DimensionsChanged = false;
 
-Window::Window(unsigned int width, unsigned int height, std::string name) {
+Window::Window(unsigned int width, unsigned int height, unsigned int xStartPos, unsigned int yStartPos, std::string name) {
 	ScreenWidth = width;
 	ScreenHeight = height;
 
 	_initializeGLFW();
-	_initializeWindow(name);
+	_initializeWindow(name, xStartPos, yStartPos);
 	_initializeGLAD();
 
 	Input::Initialize(_glfwWindow);
@@ -57,19 +57,19 @@ void Window::_initializeGLFW() {
 	std::cout << "GLFW Initialization Status: " + std::to_string(success) << std::endl;
 }
 
-void Window::_initializeWindow(std::string name) {
+void Window::_initializeWindow(std::string name, unsigned int xStartPos, unsigned int yStartPos) {
 	_glfwWindow = glfwCreateWindow(ScreenWidth, ScreenHeight, name.c_str(), NULL, NULL);
 
 	if(_glfwWindow == NULL) {
 		std::cout << "Failed to create GLFW window" << std::endl;
 		glfwTerminate();
-		return;
 	} else {
+		glfwSetWindowPos(_glfwWindow, xStartPos, yStartPos);
+		glfwMakeContextCurrent(_glfwWindow);
+		glfwSetFramebufferSizeCallback(_glfwWindow, _framebufferSizeCallback);
+
 		std::cout << "Initialized Window" << std::endl;
 	}
-
-	glfwMakeContextCurrent(_glfwWindow);
-	glfwSetFramebufferSizeCallback(_glfwWindow, _framebufferSizeCallback);
 }
 
 void Window::_initializeGLAD() {

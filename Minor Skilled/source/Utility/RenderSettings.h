@@ -8,11 +8,11 @@ class RenderSettings {
 		//render mode options
 		static const unsigned char Shadows;
 		static const unsigned char Bloom;
-		static const unsigned char Deferred;
 		static const unsigned char FXAA;
+		static const unsigned char MotionBlur;
+		static const unsigned char Deferred;
 		static const unsigned char SSAO;
 		static const unsigned char PBR;
-		static const unsigned char MotionBlur;
 
 		static std::bitset<8> Options;
 

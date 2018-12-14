@@ -9,6 +9,7 @@ enum QueryType {
 	Geometry,
 	Lighting,
 	SSAO,
+	Blending,
 	PostProcessing,
 	UI
 };

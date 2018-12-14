@@ -38,7 +38,7 @@ Scene::~Scene() {
 void Scene::initialize() {
 	std::cout << "---Initializing Engine---" << std::endl;
 
-	_window = new Window(1760, 990, "GraphX Engine");
+	_window = new Window(1920, 1017, 0, 27, "GraphX Engine");
 	_world = new World(); //scene graph
 	_profiler = new Debug();
 	_renderer = new Renderer(_profiler);
@@ -54,7 +54,13 @@ void Scene::initialize() {
 	
 	std::cout << "---Engine initialized---" << std::endl;
 
+	//initialization info
 	Debug::Log("Engine initialized");
+	Debug::Log("Hold the right mouse button to control the camera");
+	Debug::Log("Use W/A/S/D to move");
+	Debug::Log("Use Space/LShift to ascend/decend");
+	Debug::Log("Use Backspace to reset the camera");
+	Debug::Log("Use Enter to toggle the UI");
 }
 
 void Scene::run() {
@@ -126,14 +132,13 @@ void Scene::_render() {
 	_ui->setupFrame(_world);
 
 	//render the scene
-	_profiler->startQuery(QueryType::Rendering);
 	_renderer->render(_renderables, _lights, _mainCamera, _directionalLight, _skybox);
 
 	//render the ui on top of the scene
 	_profiler->startQuery(QueryType::UI);
 	_ui->render();
 	_profiler->endQuery(QueryType::UI);
-	_profiler->endQuery(QueryType::Rendering);
+
 }
 
 void Scene::_initializeEnvironmentMaps() {

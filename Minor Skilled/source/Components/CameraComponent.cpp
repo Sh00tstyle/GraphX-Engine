@@ -84,8 +84,6 @@ void CameraComponent::update() {
 }
 
 void CameraComponent::_updateProjectionMatrix() {
-	if(!Window::DimensionsChanged) return;
-
 	projectionMatrix = glm::perspective(glm::radians(fieldOfView), (float)Window::ScreenWidth / (float)Window::ScreenHeight, _nearPlane, _farPlane);
 }
 

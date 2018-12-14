@@ -26,6 +26,7 @@ class LightComponent : public Component {
 		float constantAttenuation;
 		float linearAttenuation;
 		float quadraticAttenuation;
+
 		float innerCutoff;
 		float outerCutoff;
 

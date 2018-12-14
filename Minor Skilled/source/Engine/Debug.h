@@ -43,6 +43,8 @@ class Debug {
 		GLuint64 queryLightingEnd;
 		GLuint64 querySSAOStart;
 		GLuint64 querySSAOEnd;
+		GLuint64 queryBlendingStart;
+		GLuint64 queryBlendingEnd;
 		GLuint64 queryPostProcessingStart;
 		GLuint64 queryPostProcessingEnd;
 		GLuint64 queryUIStart;
@@ -54,6 +56,7 @@ class Debug {
 		unsigned int queryIDGeometry[2];
 		unsigned int queryIDLighting[2];
 		unsigned int queryIDSSAO[2];
+		unsigned int queryIDBlending[2];
 		unsigned int queryIDPostProcessing[2];
 		unsigned int queryIDUI[2];
 };

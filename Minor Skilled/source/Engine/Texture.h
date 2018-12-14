@@ -19,6 +19,8 @@ class Texture {
 		Texture();
 		~Texture();
 
+		std::string filepath;
+
 		unsigned int& getID();
 
 		void bind(GLenum target);

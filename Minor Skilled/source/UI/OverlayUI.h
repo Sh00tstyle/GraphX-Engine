@@ -1,6 +1,12 @@
 #ifndef OVERLAY_H
 #define OVERLAY_H
 
+#include <string>
+#include <sstream>
+
+#include <glm\glm.hpp>
+#include <glm\gtc\matrix_transform.hpp>
+
 class Window;
 class Debug;
 class World;
@@ -16,8 +22,11 @@ class OverlayUI {
 
 	private:
 		Debug * _profiler;
+		Node* _activeNode;
 
 		bool _renderUI;
+
+		std::stringstream _stream;
 
 		void _initImgui(Window* window);
 
@@ -27,7 +36,13 @@ class OverlayUI {
 		void _setupHierarchy(World* world);
 		void _setupInspector();
 
+		void _selectInspectorNode(Node* node);
+
 		void _drawHierarchyNodes(Node* node, unsigned int depth);
+
+		std::string _getVectorString(glm::vec3 vector, bool rgbFormat);
+		std::string _getFloatString(float value, unsigned int decimalPoints);
+		std::string _getNameFromPath(std::string path);
 };
 
 #endif

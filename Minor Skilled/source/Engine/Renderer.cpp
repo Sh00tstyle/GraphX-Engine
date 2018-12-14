@@ -314,6 +314,7 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 
 	//clear screen in light grey
 	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+	_profiler->startQuery(QueryType::Rendering);
 
 	//render shadow map
 	if(useShadows) {
@@ -360,13 +361,16 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 
 	//render blend objects (forward shading)
 	glEnable(GL_BLEND);
+	_profiler->startQuery(QueryType::Blending);
 	_renderScene(blendRenderComponents, pointLightCount, useShadows, false); //do not bind the hbr here and clear buffer bits since the solid objects are needed in the fbo
+	_profiler->endQuery(QueryType::Blending);
 	glDisable(GL_BLEND);
 
 	//render screen quad
 	_profiler->startQuery(QueryType::PostProcessing);
 	_renderPostProcessingQuad();
 	_profiler->endQuery(QueryType::PostProcessing);
+	_profiler->endQuery(QueryType::Rendering);
 }
 
 void Renderer::renderEnvironmentMaps(std::vector<Node*>& renderables, Node* directionalLight, Texture* skybox) {

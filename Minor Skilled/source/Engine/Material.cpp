@@ -19,7 +19,7 @@ void Material::setCastsShadows(bool value) {
 	_castsShadows = value;
 }
 
-bool Material::getCastsShadows() {
+bool& Material::getCastsShadows() {
 	return _castsShadows;
 }
 

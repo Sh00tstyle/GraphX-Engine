@@ -42,7 +42,6 @@ class Transform {
 		glm::vec3 _worldPosition;
 		glm::vec3 _worldSkew;
 		glm::vec4 _worldPerspective;
-
 };
 
 #endif

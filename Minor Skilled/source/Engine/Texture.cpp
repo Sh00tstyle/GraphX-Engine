@@ -53,6 +53,8 @@ Texture * Texture::LoadTexture(std::string path, TextureFilter filter, bool sRGB
 	//create opengl texture object
 	Texture* texture = new Texture();
 
+	texture->filepath = path;
+
 	//load texture from file
 	int width, height, nrComponents;
 	unsigned char* textureData = stbi_load(path.c_str(), &width, &height, &nrComponents, 0);
@@ -74,30 +76,27 @@ Texture * Texture::LoadTexture(std::string path, TextureFilter filter, bool sRGB
 
 		//load texture into opengl
 		texture->bind(GL_TEXTURE_2D);
-		glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, dataFormat, GL_UNSIGNED_BYTE, textureData);
-		glGenerateMipmap(GL_TEXTURE_2D);
+		texture->init(GL_TEXTURE_2D, internalFormat, width, height, dataFormat, GL_UNSIGNED_BYTE, textureData);
+		texture->generateMipmaps(GL_TEXTURE_2D);
 
 		//set texture filter options
 		switch(filter) {
 			case TextureFilter::Repeat:
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+				texture->filter(GL_TEXTURE_2D, GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR, GL_REPEAT);
 				break;
 
 			case TextureFilter::ClampToEdge:
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+				texture->filter(GL_TEXTURE_2D, GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR, GL_CLAMP_TO_EDGE);
 				break;
 		}
-
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 		stbi_image_free(textureData); //free memory
 
 	} else {
 		std::cout << "Texture failed to load at path: " + path << std::endl;
+		delete texture;
 		stbi_image_free(textureData); //free memory
+		return nullptr;
 	}
 
 	return texture; //texture id
@@ -106,6 +105,8 @@ Texture * Texture::LoadTexture(std::string path, TextureFilter filter, bool sRGB
 Texture * Texture::LoadCubemap(std::vector<std::string>& faces, bool sRGB) {
 	Texture* texture = new Texture();
 	texture->bind(GL_TEXTURE_CUBE_MAP);
+
+	texture->filepath = Filepath::SkyboxPath + faces[0];
 
 	GLenum internalFormat = sRGB ? GL_SRGB : GL_RGB;
 	int width, height, nrChannels;
@@ -116,19 +117,17 @@ Texture * Texture::LoadCubemap(std::vector<std::string>& faces, bool sRGB) {
 
 		unsigned char *data = stbi_load(filename.c_str(), &width, &height, &nrChannels, 0);
 		if(data) {
-			glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, internalFormat, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+			texture->init(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, internalFormat, width, height, GL_RGB, GL_UNSIGNED_BYTE, data);
 			stbi_image_free(data);
 		} else {
 			std::cout << "Cubemap texture failed to load at path: " + faces[i] << std::endl;
+			delete texture;
 			stbi_image_free(data);
+			return nullptr;
 		}
 	}
 
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+	texture->filter(GL_TEXTURE_CUBE_MAP, GL_LINEAR, GL_LINEAR, GL_CLAMP_TO_EDGE);
 
 	return texture;
 }
@@ -141,19 +140,19 @@ Texture* Texture::LoadHDR(std::string path) {
 	if(data) {
 		Texture* texture = new Texture();
 		texture->bind(GL_TEXTURE_2D);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_FLOAT, data); //load hdr (floating point)
+		texture->init(GL_TEXTURE_2D, GL_RGB16F, width, height, GL_RGB, GL_FLOAT, data);
 
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		texture->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_CLAMP_TO_EDGE);
+
+		texture->filepath = path;
 
 		stbi_image_free(data);
 
 		return texture;
 	} else {
-		return nullptr;
 		std::cout << "Failed to load HDR image." << std::endl;
+		stbi_image_free(data);
+		return nullptr;
 	}
 }
 

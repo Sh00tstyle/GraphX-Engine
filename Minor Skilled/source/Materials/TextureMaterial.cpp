@@ -56,15 +56,15 @@ Texture * TextureMaterial::getReflectionMap() {
 	return _reflectionMap;
 }
 
-float TextureMaterial::getShininess() {
+float& TextureMaterial::getShininess() {
 	return _shininess;
 }
 
-float TextureMaterial::getRefractionFactor() {
+float& TextureMaterial::getRefractionFactor() {
 	return _refractionFactor;
 }
 
-float TextureMaterial::getHeightScale() {
+float& TextureMaterial::getHeightScale() {
 	return _heightScale;
 }
 

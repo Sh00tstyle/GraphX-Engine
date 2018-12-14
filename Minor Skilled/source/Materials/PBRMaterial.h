@@ -18,9 +18,9 @@ class PBRMaterial : public Material {
 		Texture* getAoMap();
 		Texture* getEmissionMap();
 		Texture* getHeightMap();
-		glm::vec3 getF0();
-		float getRefractionFactor();
-		float getHeightScale();
+		glm::vec3& getF0();
+		float& getRefractionFactor();
+		float& getHeightScale();
 
 		void setAlbedoMap(Texture* albedoMap);
 		void setNormalMap(Texture* normalMap);

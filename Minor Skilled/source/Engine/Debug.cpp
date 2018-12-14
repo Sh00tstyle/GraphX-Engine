@@ -6,7 +6,7 @@
 std::vector<std::string> Debug::_Logs;
 
 void Debug::Log(std::string message) {
-	//inset the new logs message with a timestamp at the front of the vector
+	//add the new log message with a timestamp to the vector
 
 	//get the local time
 	std::time_t time = std::time(0);
@@ -20,11 +20,10 @@ void Debug::Log(std::string message) {
 
 	std::string timestamp = "[" + hour + ":" + minute + ":" + second + "] "; //formatted timestamp
 
-	_Logs.insert(_Logs.begin(), timestamp + message);
+	_Logs.push_back(timestamp + message);
 }
 
 std::vector<std::string>& Debug::GetLogs() {
-	//return a reference to all logs
 	return _Logs;
 }
 
@@ -39,6 +38,7 @@ Debug::~Debug() {
 	glDeleteQueries(2, queryIDGeometry);
 	glDeleteQueries(2, queryIDLighting);
 	glDeleteQueries(2, queryIDSSAO);
+	glDeleteQueries(2, queryIDBlending);
 	glDeleteQueries(2, queryIDPostProcessing);
 	glDeleteQueries(2, queryIDUI);
 }
@@ -50,11 +50,12 @@ void Debug::profile() {
 	GLint geometryTimerAvailable = 0;
 	GLint lightingTimerAvailable = 0;
 	GLint ssaoTimerAvailable = 0;
+	GLint blendingTimerAvailable = 0;
 	GLint postProcessingTimerAvailable = 0;
 	GLint uiTimerAvailable = 0;
 
 	while(!renderingTimerAvailable && !environmentTimerAvailable && !shadowTimerAvailable && !geometryTimerAvailable &&
-		  !lightingTimerAvailable && !ssaoTimerAvailable && !postProcessingTimerAvailable && !uiTimerAvailable) {
+		  !lightingTimerAvailable && !ssaoTimerAvailable && !blendingTimerAvailable && !postProcessingTimerAvailable && !uiTimerAvailable) {
 
 		glGetQueryObjectiv(queryIDRendering[1], GL_QUERY_RESULT_AVAILABLE, &renderingTimerAvailable);
 		glGetQueryObjectiv(queryIDEnvironment[1], GL_QUERY_RESULT_AVAILABLE, &environmentTimerAvailable);
@@ -62,6 +63,7 @@ void Debug::profile() {
 		glGetQueryObjectiv(queryIDGeometry[1], GL_QUERY_RESULT_AVAILABLE, &geometryTimerAvailable);
 		glGetQueryObjectiv(queryIDLighting[1], GL_QUERY_RESULT_AVAILABLE, &lightingTimerAvailable);
 		glGetQueryObjectiv(queryIDSSAO[1], GL_QUERY_RESULT_AVAILABLE, &ssaoTimerAvailable);
+		glGetQueryObjectiv(queryIDBlending[1], GL_QUERY_RESULT_AVAILABLE, &blendingTimerAvailable);
 		glGetQueryObjectiv(queryIDPostProcessing[1], GL_QUERY_RESULT_AVAILABLE, &postProcessingTimerAvailable);
 		glGetQueryObjectiv(queryIDUI[1], GL_QUERY_RESULT_AVAILABLE, &uiTimerAvailable);
 	}
@@ -78,6 +80,8 @@ void Debug::profile() {
 	glGetQueryObjectui64v(queryIDLighting[1], GL_QUERY_RESULT, &queryLightingEnd);
 	glGetQueryObjectui64v(queryIDSSAO[0], GL_QUERY_RESULT, &querySSAOStart);
 	glGetQueryObjectui64v(queryIDSSAO[1], GL_QUERY_RESULT, &querySSAOEnd);
+	glGetQueryObjectui64v(queryIDBlending[0], GL_QUERY_RESULT, &queryBlendingStart);
+	glGetQueryObjectui64v(queryIDBlending[1], GL_QUERY_RESULT, &queryBlendingEnd);
 	glGetQueryObjectui64v(queryIDPostProcessing[0], GL_QUERY_RESULT, &queryPostProcessingStart);
 	glGetQueryObjectui64v(queryIDPostProcessing[1], GL_QUERY_RESULT, &queryPostProcessingEnd);
 	glGetQueryObjectui64v(queryIDUI[0], GL_QUERY_RESULT, &queryUIStart);
@@ -108,6 +112,10 @@ void Debug::startQuery(QueryType query) {
 
 		case QueryType::Lighting:
 			glQueryCounter(queryIDLighting[0], GL_TIMESTAMP);
+			break;
+
+		case QueryType::Blending:
+			glQueryCounter(queryIDBlending[0], GL_TIMESTAMP);
 			break;
 
 		case QueryType::SSAO:
@@ -154,6 +162,10 @@ void Debug::endQuery(QueryType query) {
 			glQueryCounter(queryIDSSAO[1], GL_TIMESTAMP);
 			break;
 
+		case QueryType::Blending:
+			glQueryCounter(queryIDBlending[1], GL_TIMESTAMP);
+			break;
+
 		case QueryType::PostProcessing:
 			glQueryCounter(queryIDPostProcessing[1], GL_TIMESTAMP);
 			break;
@@ -194,6 +206,10 @@ double Debug::getQuery(QueryType query) {
 			return (querySSAOEnd - querySSAOStart) / 1000000.0;
 			break;
 
+		case QueryType::Blending:
+			return (queryBlendingEnd - queryBlendingStart) / 1000000.0;
+			break;
+
 		case QueryType::PostProcessing:
 			return (queryPostProcessingEnd - queryPostProcessingStart) / 1000000.0;
 			break;
@@ -215,6 +231,7 @@ void Debug::_initialize() {
 	glGenQueries(2, queryIDGeometry);
 	glGenQueries(2, queryIDLighting);
 	glGenQueries(2, queryIDSSAO);
+	glGenQueries(2, queryIDBlending);
 	glGenQueries(2, queryIDPostProcessing);
 	glGenQueries(2, queryIDUI);
 }

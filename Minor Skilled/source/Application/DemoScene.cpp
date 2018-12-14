@@ -36,14 +36,14 @@ void DemoScene::_initializeScene() {
 	std::cout << "Initializing Scene" << std::endl;
 
 	//create scene objects which represent graph nodes
-	Node* mainCamera = new Node(glm::vec3(0.0f, 0.5f, 3.0f), "mainCamera");
+	Node* mainCamera = new Node(glm::vec3(0.0f, 1.0f, 3.5f), "mainCamera");
 	Node* directionalLight = new Node(glm::vec3(0.0f, 0.0f, 0.0f), "directionalLight");
 	Node* cyborg = new Node(glm::vec3(0.0f, 0.0f, 0.0f), "cyborg");
 	Node* plane = new Node(glm::vec3(0.0f, -0.01f, 0.0f), "plane");
 	Node* sphereReflect = new Node(glm::vec3(2.0f, 0.8f, -1.0f), "sphereReflect");
 	Node* sphereLight = new Node(glm::vec3(-2.0f, 1.0f, 0.0f), "sphereLight");
-	//Node* cube = new Node(glm::vec3(2.0f, 0.3f, 1.0f), "cube");
-	Node* cube = new Node(glm::vec3(0.0f, -1.0f, 0.0f), "cube");
+	Node* cube = new Node(glm::vec3(2.0f, 0.3f, 1.0f), "cube");
+	//Node* cube = new Node(glm::vec3(0.0f, -1.0f, 0.0f), "cube");
 	Node* glass = new Node(glm::vec3(3.0f, 0.3f, 3.0f), "glass");
 	Node* bricks = new Node(glm::vec3(-2.5f, 0.5f, 2.5f), "bricks");
 	Node* pbrSphere = new Node(glm::vec3(-2.5f, 0.5, -1.5f), "pbrSphere");

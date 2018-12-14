@@ -20,7 +20,7 @@ class Material {
 		void setBlendMode(BlendMode blendMode);
 
 		void setCastsShadows(bool value);
-		bool getCastsShadows();
+		bool& getCastsShadows();
 
 		virtual void drawSimple(Shader* shader) = 0;
 		virtual void drawForward(glm::mat4& modelMatrix) = 0;

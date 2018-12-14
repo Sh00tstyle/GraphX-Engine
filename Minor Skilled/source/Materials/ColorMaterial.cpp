@@ -24,19 +24,19 @@ _ambientColor(ambientColor), _diffuseColor(diffuseColor), _specularColor(specula
 ColorMaterial::~ColorMaterial() {
 }
 
-glm::vec3 ColorMaterial::getAmbientColor() {
+glm::vec3& ColorMaterial::getAmbientColor() {
 	return _ambientColor;
 }
 
-glm::vec3 ColorMaterial::getDiffuseColor() {
+glm::vec3& ColorMaterial::getDiffuseColor() {
 	return _diffuseColor;
 }
 
-glm::vec3 ColorMaterial::getSpecularColor() {
+glm::vec3& ColorMaterial::getSpecularColor() {
 	return _specularColor;
 }
 
-float ColorMaterial::getShininess() {
+float& ColorMaterial::getShininess() {
 	return _shininess;
 }
 
