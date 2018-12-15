@@ -77,11 +77,12 @@ vec3 CalculateSpotLight(Light light, vec3 normal, vec3 viewDirection, float shad
 float CalculateShadow(vec3 normal);
 float CalculateCubemapShadow(vec3 normal, vec3 fragPos, int index);
 
-vec4 CalculateBrightColor(vec3 color);
+vec3 CalculateBrightColor(vec3 color);
 
 void main() {
     vec3 normal = normalize(fs_in.fragNormal);
     vec3 viewDirection = normalize(cameraPos - fs_in.fragPos);
+    brightColor.a = gl_FragCoord.z; //store the depth value in the alpha channel
 
     //shadows
     float shadow = CalculateShadow(normal);
@@ -117,7 +118,7 @@ void main() {
     }
 
     fragColor = vec4(result, 1.0f);
-    brightColor = CalculateBrightColor(result);
+    brightColor.rgb = CalculateBrightColor(result);
 }
 
 vec3 CalculateDirectionalLight(Light light, vec3 normal, vec3 viewDirection, float shadow) {
@@ -268,12 +269,12 @@ float CalculateCubemapShadow(vec3 normal, vec3 fragPos, int index) {
     return shadow;
 }
 
-vec4 CalculateBrightColor(vec3 color) {
+vec3 CalculateBrightColor(vec3 color) {
     const vec3 threshold = vec3(0.2126f, 0.7152f, 0.0722f);
 
     float brightness = dot(color, threshold);
 
     //return the color if it was bright enough, otherwise return black
-    if(brightness > 1.0f) return vec4(color, 1.0f);
-    else return vec4(vec3(0.0f), 1.0f);
+    if(brightness > 1.0f) return color;
+    else return vec3(0.0f);
 }

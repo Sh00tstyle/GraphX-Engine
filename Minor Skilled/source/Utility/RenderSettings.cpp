@@ -1,16 +1,16 @@
 #include "RenderSettings.h"
 
 //render mode options
-const unsigned char RenderSettings::Shadows = 1 << 0;
-const unsigned char RenderSettings::Bloom = 1 << 1;
-const unsigned char RenderSettings::FXAA = 1 << 2;
-const unsigned char RenderSettings::MotionBlur = 1 << 3;
-const unsigned char RenderSettings::Deferred = 1 << 4;
-const unsigned char RenderSettings::SSAO = 1 << 5; //deferred only
-const unsigned char RenderSettings::PBR = 1 << 6; //deferred only
+const unsigned int RenderSettings::Shadows = 1 << 0;
+const unsigned int RenderSettings::Bloom = 1 << 1;
+const unsigned int RenderSettings::FXAA = 1 << 2;
+const unsigned int RenderSettings::MotionBlur = 1 << 3;
+const unsigned int RenderSettings::Deferred = 1 << 4;
+const unsigned int RenderSettings::SSAO = 1 << 5; //deferred only
+const unsigned int RenderSettings::PBR = 1 << 6; //deferred only
 
 //active render modes
-std::bitset<8> RenderSettings::Options = 0;
+unsigned int RenderSettings::Options = 0;
 
 //v-sync
 bool RenderSettings::VSync = false;
@@ -54,24 +54,27 @@ float RenderSettings::SsaoPower = 5.0f;
 const unsigned int RenderSettings::MaxLights = 16;
 
 //post-processing configurations
-unsigned int RenderSettings::BloomBlurAmount = 10;
+unsigned int RenderSettings::BloomBlurAmount = 8;
 
 float RenderSettings::Gamma = 2.2f;
 float RenderSettings::Exposure = 1.0f;
+
+int RenderSettings::MotionBlurSamples = 10;
+float RenderSettings::VelocityScale = 0.15f;
 
 //FXAA bias configurations
 float RenderSettings::FxaaSpanMax = 6.0f;
 float RenderSettings::FxaaReduceMin = 1.0f / 128.0f;
 float RenderSettings::FxaaReduceMul = 1.0f / 8.0f;
 
-void RenderSettings::Enable(std::bitset<8> options) {
+void RenderSettings::Enable(unsigned int options) {
 	Options |= options; //enable options
 }
 
-void RenderSettings::Disable(std::bitset<8> options) {
+void RenderSettings::Disable(unsigned int options) {
 	Options &= ~options; //disable options
 }
 
-bool RenderSettings::IsEnabled(std::bitset<8> options) {
+bool RenderSettings::IsEnabled(unsigned int options) {
 	return (Options & options) == options; //returns true, if the options is enabled
 }

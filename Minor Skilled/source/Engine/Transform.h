@@ -15,14 +15,16 @@ class Transform {
 
 		void decompose();
 		void translate(glm::vec3 translation);
-		void rotate(float angle, glm::vec3 axis);
 		void scale(glm::vec3 scale);
+		void setEulerRotation(float pitch, float yaw, float roll);
 
 		glm::vec3 getLocalScale();
 		glm::quat getLocalRotation();
 		glm::vec3 getLocalPosition(bool decomposed = false);
 		glm::vec3 getLocalSkew();
 		glm::vec3 getLocalPerspective();
+
+		glm::vec3 getLocalEuler();
 
 		glm::vec3 getWorldScale();
 		glm::quat getWorldRotation();
@@ -36,6 +38,10 @@ class Transform {
 		glm::vec3 _localPosition;
 		glm::vec3 _localSkew;
 		glm::vec4 _localPerspective;
+
+		float _pitch;
+		float _yaw;
+		float _roll;
 
 		glm::vec3 _worldScale;
 		glm::quat _worldRotation;

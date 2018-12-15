@@ -5,6 +5,7 @@ in vec2 texCoord;
 layout (std140) uniform matricesBlock {
     mat4 viewMatrix;
     mat4 projectionMatrix;
+    mat4 previousViewProjectionMatrix;
     mat4 lightSpaceMatrix;
 };
 

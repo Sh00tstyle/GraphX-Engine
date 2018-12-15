@@ -17,10 +17,40 @@
 #include "../Utility/Time.h"
 
 CameraComponent::CameraComponent(glm::mat4 projectionMatrix, float fieldOfView, float nearPlane, float farPlane, float movementSpeed, float rotationSpeed) : Component(ComponentType::Camera),
-projectionMatrix(projectionMatrix), fieldOfView(fieldOfView), _nearPlane(nearPlane), _farPlane(farPlane), movementSpeed(movementSpeed), rotationSpeed(rotationSpeed), rotX(glm::mat4(1.0f)), rotY(glm::mat4(1.0f)), _startTransformMatrix(glm::mat4(1.0f)), _firstTransform(true) {
+_projectionMatrix(projectionMatrix), fieldOfView(fieldOfView), _nearPlane(nearPlane), _farPlane(farPlane), movementSpeed(movementSpeed), rotationSpeed(rotationSpeed), _transform(nullptr), _rotX(glm::mat4(1.0f)), _rotY(glm::mat4(1.0f)), _startTransformMatrix(glm::mat4(1.0f)), _firstTransform(true) {
 }
 
 CameraComponent::~CameraComponent() {
+}
+
+glm::mat4 CameraComponent::getProjectionMatrix() {
+	return _projectionMatrix;
+}
+
+glm::mat4 CameraComponent::getViewMatrix() {
+	_transform = _owner->getTransform();
+	glm::mat4 modelMatrix = _transform->worldTransform;
+	glm::mat4 viewMatrix = glm::inverse(modelMatrix);
+
+	return viewMatrix;
+}
+
+glm::mat4 CameraComponent::getPreviousViewProjectionMatrix() {
+	glm::mat4 previousViewProjection = _previousViewProjectionMatrix;
+
+	//update class member to new one
+	_previousViewProjectionMatrix = getProjectionMatrix() *  getViewMatrix(); //store for next frame
+
+	return previousViewProjection;
+}
+
+void CameraComponent::setOwner(Node * owner) {
+	_owner = owner; //initialize owner
+
+	_transform = _owner->getTransform();
+
+	//also initialize the previous view projection matrix
+	_previousViewProjectionMatrix = getProjectionMatrix() * getViewMatrix();
 }
 
 void CameraComponent::update() {
@@ -28,10 +58,10 @@ void CameraComponent::update() {
 	_updateProjectionMatrix();
 
 	//process movement if the right mouse button is pressed
-	Transform* transform = _owner->getTransform();
+	_transform = _owner->getTransform();
 
 	//check if the camera has been reset
-	_checkForCameraReset(transform);
+	_checkForCameraReset(_transform);
 
 	if(Input::GetMouse(MouseButton::Right)) {
 		//mouse offset
@@ -48,21 +78,21 @@ void CameraComponent::update() {
 		if(Input::GetKey(Key::LSHIFT)) translation.y = -movementSpeed * Time::DeltaTime;
 
 		//rotation
-		glm::mat4 yRotation = rotY;
-		glm::mat4 xRotation = rotX;
+		glm::mat4 yRotation = _rotY;
+		glm::mat4 xRotation = _rotX;
 
 		if(std::abs(mouseOffset.x) >= 0.01f) {
 			yRotation = glm::rotate(yRotation, glm::radians(mouseOffset.x * rotationSpeed * Time::DeltaTime), glm::vec3(0.0f, 1.0f, 0.0f));
-			rotY = yRotation;
+			_rotY = yRotation;
 		}
 
 		if(std::abs(mouseOffset.y) >= 0.01f) {
 			xRotation = glm::rotate(xRotation, glm::radians(mouseOffset.y * rotationSpeed * Time::DeltaTime), glm::vec3(1.0f, 0.0f, 0.0f));
-			rotX = xRotation;
+			_rotX = xRotation;
 		}
 
 		//reconstruct transform and apply to component
-		glm::vec3 localPos = transform->getLocalPosition();
+		glm::vec3 localPos = _transform->getLocalPosition();
 
 		glm::mat4 newTransform = glm::mat4(1.0f);
 
@@ -70,7 +100,7 @@ void CameraComponent::update() {
 		newTransform = newTransform * yRotation * xRotation; //first rotate over the x axis and the over the y axis
 		newTransform = glm::translate(newTransform, translation);
 
-		transform->localTransform = newTransform;
+		_transform->localTransform = newTransform;
 	}
 
 	//update lights attached to the camera
@@ -78,13 +108,13 @@ void CameraComponent::update() {
 		LightComponent* lightComponent = (LightComponent*)_owner->getComponent(ComponentType::Light);
 		if(lightComponent->lightType != LightType::Spot) return; //no need to update the light component when the attached light is no spotlight
 
-		glm::vec3 cameraForward = transform->localTransform[2]; //second row represents the (local) forward vector
+		glm::vec3 cameraForward = _transform->localTransform[2]; //second row represents the (local) forward vector
 		lightComponent->lightDirection = cameraForward;
 	}
 }
 
 void CameraComponent::_updateProjectionMatrix() {
-	projectionMatrix = glm::perspective(glm::radians(fieldOfView), (float)Window::ScreenWidth / (float)Window::ScreenHeight, _nearPlane, _farPlane);
+	_projectionMatrix = glm::perspective(glm::radians(fieldOfView), (float)Window::ScreenWidth / (float)Window::ScreenHeight, _nearPlane, _farPlane);
 }
 
 void CameraComponent::_checkForCameraReset(Transform* transform) {
@@ -95,11 +125,11 @@ void CameraComponent::_checkForCameraReset(Transform* transform) {
 		_firstTransform = false;
 	}
 
-	if(Input::GetKeyDown(Key::BACKSPACE)) {
+	if(Input::GetKeyDown(Key::RSHIFT)) {
 		transform->localTransform = _startTransformMatrix; //reset to initial state
 
 		//reset rotations as well
-		rotX = glm::mat4(1.0f);
-		rotY = glm::mat4(1.0f);
+		_rotX = glm::mat4(1.0f);
+		_rotY = glm::mat4(1.0f);
 	}
 }

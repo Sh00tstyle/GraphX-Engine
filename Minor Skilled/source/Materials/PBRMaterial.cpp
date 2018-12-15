@@ -278,14 +278,14 @@ void PBRMaterial::_initShader() {
 		_ForwardShader->setInt("material.emission", 5);
 		_ForwardShader->setInt("material.height", 6);
 
-		_ForwardShader->setInt("irradianceMap", 7);
-		_ForwardShader->setInt("prefilterMap", 8);
-		_ForwardShader->setInt("brdfLUT", 9);
+		_ForwardShader->setInt("irradianceMap", 8);
+		_ForwardShader->setInt("prefilterMap", 9);
+		_ForwardShader->setInt("brdfLUT", 10);
 
-		_ForwardShader->setInt("shadowMap", 10); //assign to slot 10, so that it shares it with the other materials which have more textures
+		_ForwardShader->setInt("shadowMap", 11); //assign to slot 10, so that it shares it with the other materials which have more textures
 
 		for(unsigned int i = 0; i < RenderSettings::MaxCubeShadows; i++) {
-			_ForwardShader->setInt("shadowCubemaps[" + std::to_string(i) + "]", 11 + i);
+			_ForwardShader->setInt("shadowCubemaps[" + std::to_string(i) + "]", 12 + i);
 		}
 
 		_ForwardShader->setUniformBlockBinding("matricesBlock", 0); //set uniform block "matrices" to binding point 0
@@ -306,8 +306,8 @@ void PBRMaterial::_initShader() {
 		_DeferredShader->setInt("material.emission", 5);
 		_DeferredShader->setInt("material.height", 6);
 
-		_DeferredShader->setInt("irradianceMap", 7);
-		_DeferredShader->setInt("prefilterMap", 8);
+		_DeferredShader->setInt("irradianceMap", 8);
+		_DeferredShader->setInt("prefilterMap", 9);
 
 		_DeferredShader->setUniformBlockBinding("matricesBlock", 0); //set uniform block "matrices" to binding point 0
 		_DeferredShader->setUniformBlockBinding("dataBlock", 1); //set uniform block "data" to binding point 1

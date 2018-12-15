@@ -66,12 +66,11 @@ void DemoScene::_initializeScene() {
 
 	transform = glass->getTransform();
 	transform->scale(glm::vec3(0.3f));
-	transform->rotate(90.0f, glm::vec3(1.0f, 0.0f, 0.0f));
+	transform->setEulerRotation(glm::radians(90.0f), 0.0f, 0.0f);
 
 	transform = bricks->getTransform();
 	transform->scale(glm::vec3(0.3f));
-	transform->rotate(45.0f, glm::vec3(1.0f, 0.0f, 0.0f));
-	transform->rotate(45.0f, glm::vec3(0.0f, 0.0f, 1.0f));
+	transform->setEulerRotation(glm::radians(45.0f), 0.0f, glm::radians(45.0f));
 
 	transform = pbrSphere->getTransform();
 	transform->scale(glm::vec3(0.2f));

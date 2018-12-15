@@ -38,6 +38,7 @@ in vec2 texCoord;
 layout (std140) uniform matricesBlock {
     mat4 viewMatrix;
     mat4 projectionMatrix;
+    mat4 previousViewProjectionMatrix;
     mat4 lightSpaceMatrix;
 };
 
@@ -63,7 +64,7 @@ uniform sampler2D gPosition;
 uniform sampler2D gNormal;
 uniform sampler2D gAlbedoSpec;
 uniform sampler2D gEmissionShiny;
-uniform sampler2D gEnvironment;
+uniform sampler2D gEnvironmentDepth;
 
 uniform sampler2D ssao;
 uniform samplerCube environmentMap;
@@ -80,16 +81,18 @@ vec3 CalculateSpotLight(Light light, vec3 albedo, float spec, float shininess, v
 float CalculateShadow(vec3 normal, vec3 fragPos, vec4 lightSpaceFragPos);
 float CalculateCubemapShadow(vec3 normal, vec3 fragPos, int index);
 
-vec4 CalculateBrightColor(vec3 color);
+vec3 CalculateBrightColor(vec3 color);
 
 void main() {
     //sample data from the gBuffer textures
     vec3 fragPos = texture(gPosition, texCoord).rgb;
     vec3 normal = texture(gNormal, texCoord).rgb;
     vec3 albedo = texture(gAlbedoSpec, texCoord).rgb;
-    vec3 environment = texture(gEnvironment, texCoord).rgb;
+    vec3 environment = texture(gEnvironmentDepth, texCoord).rgb;
     float specular = texture(gAlbedoSpec, texCoord).a;
     float shininess = texture(gEmissionShiny, texCoord).a * 255.0f;
+    
+    brightColor.a = texture(gEnvironmentDepth, texCoord).a;
 
     //transform to world pos
     vec3 worldFragPos = vec3(inverse(viewMatrix) * vec4(fragPos, 1.0f));
@@ -144,7 +147,7 @@ void main() {
     result += emission;
 
     //output bright color before applying AO
-    brightColor = CalculateBrightColor(result);
+    brightColor.rgb = CalculateBrightColor(result);
 
     //ambient occlusion
     if(useSSAO) {
@@ -305,12 +308,12 @@ float CalculateCubemapShadow(vec3 normal, vec3 fragPos, int index) {
     return shadow;
 }
 
-vec4 CalculateBrightColor(vec3 color) {
+vec3 CalculateBrightColor(vec3 color) {
     const vec3 threshold = vec3(0.2126f, 0.7152f, 0.0722f);
 
     float brightness = dot(color, threshold);
 
     //return the color if it was bright enough, otherwise return black
-    if(brightness > 1.0f) return vec4(color, 1.0f);
-    else return vec4(vec3(0.0f), 1.0f);
+    if(brightness > 1.0f) return color;
+    else return vec3(0.0f);
 }

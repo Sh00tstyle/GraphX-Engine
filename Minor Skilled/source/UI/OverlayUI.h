@@ -40,8 +40,6 @@ class OverlayUI {
 
 		void _drawHierarchyNodes(Node* node, unsigned int depth);
 
-		std::string _getVectorString(glm::vec3 vector, bool rgbFormat);
-		std::string _getFloatString(float value, unsigned int decimalPoints);
 		std::string _getNameFromPath(std::string path);
 };
 

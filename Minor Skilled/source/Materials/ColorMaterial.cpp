@@ -93,10 +93,10 @@ void ColorMaterial::_initShader() {
 		_ForwardShader = new Shader(Filepath::ShaderPath + "material shader/forward/color.vs", Filepath::ShaderPath + "material shader/forward/color.fs");
 
 		_ForwardShader->use();
-		_ForwardShader->setInt("shadowMap", 10); //assign to slot 10, so that it shares it with the other materials which have more textures
+		_ForwardShader->setInt("shadowMap", 11); //assign to slot 10, so that it shares it with the other materials which have more textures
 
 		for(unsigned int i = 0; i < RenderSettings::MaxCubeShadows; i++) {
-			_ForwardShader->setInt("shadowCubemaps[" + std::to_string(i) + "]", 11 + i);
+			_ForwardShader->setInt("shadowCubemaps[" + std::to_string(i) + "]", 12 + i);
 		}
 
 		_ForwardShader->setUniformBlockBinding("matricesBlock", 0); //set uniform block "matrices" to binding point 0

@@ -49,6 +49,7 @@ layout (location = 2) out vec4 gAlbedoF0r;
 layout (location = 3) out vec4 gIrradianceF0g;
 layout (location = 4) out vec4 gPrefilterF0b;
 layout (location = 5) out vec4 gEmissionAO;
+layout (location = 6) out vec3 gDepth;
 
 vec3 GetNormal(vec2 texCoord);
 vec2 ParallaxMapping();
@@ -92,6 +93,8 @@ void main() {
 
     gEmissionAO.rgb = texture(material.emission, texCoord).rgb;
     gEmissionAO.a = texture(material.ao, texCoord).r;
+
+    gDepth.r = gl_FragCoord.z;
 }
 
 vec3 GetNormal(vec2 texCoord) {

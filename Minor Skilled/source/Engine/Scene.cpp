@@ -59,7 +59,7 @@ void Scene::initialize() {
 	Debug::Log("Hold the right mouse button to control the camera");
 	Debug::Log("Use W/A/S/D to move");
 	Debug::Log("Use Space/LShift to ascend/decend");
-	Debug::Log("Use Backspace to reset the camera");
+	Debug::Log("Use RShift to reset the camera");
 	Debug::Log("Use Enter to toggle the UI");
 }
 

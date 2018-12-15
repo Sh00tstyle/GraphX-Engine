@@ -6,15 +6,15 @@
 class RenderSettings {
 	public:
 		//render mode options
-		static const unsigned char Shadows;
-		static const unsigned char Bloom;
-		static const unsigned char FXAA;
-		static const unsigned char MotionBlur;
-		static const unsigned char Deferred;
-		static const unsigned char SSAO;
-		static const unsigned char PBR;
+		static const unsigned int Shadows;
+		static const unsigned int Bloom;
+		static const unsigned int FXAA;
+		static const unsigned int MotionBlur;
+		static const unsigned int Deferred;
+		static const unsigned int SSAO;
+		static const unsigned int PBR;
 
-		static std::bitset<8> Options;
+		static unsigned int Options;
 
 		static bool VSync;
 
@@ -52,14 +52,17 @@ class RenderSettings {
 		static float Gamma;
 		static float Exposure;
 
+		static int MotionBlurSamples;
+		static float VelocityScale;
+
 		static float FxaaSpanMax;
 		static float FxaaReduceMin;
 		static float FxaaReduceMul;
 
 		//helper functions
-		static void Enable(std::bitset<8> options);
-		static void Disable(std::bitset<8> options);
-		static bool IsEnabled(std::bitset<8> options);
+		static void Enable(unsigned int options);
+		static void Disable(unsigned int options);
+		static bool IsEnabled(unsigned int options);
 };
 
 #endif

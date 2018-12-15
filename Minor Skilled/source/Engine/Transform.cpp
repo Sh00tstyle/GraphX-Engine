@@ -20,12 +20,18 @@ void Transform::translate(glm::vec3 translation) {
 	localTransform = glm::translate(localTransform, translation);
 }
 
-void Transform::rotate(float angle, glm::vec3 axis) {
-	localTransform = glm::rotate(localTransform, glm::radians(angle), axis);
-}
-
 void Transform::scale(glm::vec3 scale) {
 	localTransform = glm::scale(localTransform, scale);
+}
+
+void Transform::setEulerRotation(float pitch, float yaw, float roll) {
+	if(pitch != 0.0f) localTransform = glm::rotate(localTransform, pitch, glm::vec3(1.0f, 0.0f, 0.0f));
+	if(yaw != 0.0f) localTransform = glm::rotate(localTransform, yaw, glm::vec3(0.0f, 1.0f, 0.0f));
+	if(roll != 0.0f) localTransform = glm::rotate(localTransform, roll, glm::vec3(0.0f, 0.0f, 1.0f));
+
+	_pitch = pitch;
+	_yaw = yaw;
+	_roll = roll;
 }
 
 glm::vec3 Transform::getLocalScale() {
@@ -47,6 +53,10 @@ glm::vec3 Transform::getLocalSkew() {
 
 glm::vec3 Transform::getLocalPerspective() {
 	return _localPerspective;
+}
+
+glm::vec3 Transform::getLocalEuler() {
+	return glm::vec3(_pitch, _yaw, _roll);
 }
 
 glm::vec3 Transform::getWorldScale() {

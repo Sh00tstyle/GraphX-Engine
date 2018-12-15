@@ -9,6 +9,7 @@
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/euler_angles.hpp>
+#include <glm/gtx/quaternion.hpp>
 
 #include "../../dependencies/imgui/imgui.h"
 #include "../../dependencies/imgui/imgui_impl_opengl3.h"
@@ -170,32 +171,27 @@ void OverlayUI::_setupSettings() {
 	ImGui::SetWindowPos(ImVec2(Window::ScreenWidth * 1.0f / 3.0f, Window::ScreenHeight * 4.8f / 6.0f));
 	ImGui::SetWindowSize(ImVec2(Window::ScreenWidth * 1.0f / 3.0f, Window::ScreenHeight * 1.2f / 6.0f));
 
-	//disable deferred only settings if we are forward rendering
-	if(!RenderSettings::IsEnabled(RenderSettings::Deferred)) {
-		RenderSettings::Disable(RenderSettings::SSAO);
-		RenderSettings::Disable(RenderSettings::PBR);
-	}
-
-	unsigned int settings = (unsigned int)(RenderSettings::Options.to_ulong()); //optain settings and convert to uint
 	int bloomBlur = (int)RenderSettings::BloomBlurAmount;
 
 	ImGui::Text("General");
-	ImGui::CheckboxFlags("Shadows", &settings, RenderSettings::Shadows);
-	ImGui::CheckboxFlags("Bloom", &settings, RenderSettings::Bloom);
-	ImGui::CheckboxFlags("FXAA", &settings, RenderSettings::FXAA);
-	ImGui::CheckboxFlags("Motion Blur", &settings, RenderSettings::MotionBlur);
+	ImGui::CheckboxFlags("Shadows", &RenderSettings::Options, RenderSettings::Shadows);
+	ImGui::CheckboxFlags("Bloom", &RenderSettings::Options, RenderSettings::Bloom);
+	ImGui::CheckboxFlags("FXAA", &RenderSettings::Options, RenderSettings::FXAA);
+	ImGui::CheckboxFlags("Motion Blur", &RenderSettings::Options, RenderSettings::MotionBlur); //does not work for some weird reason
 	ImGui::Checkbox("vSync", &RenderSettings::VSync);
-	ImGui::CheckboxFlags("Deferred", &settings, RenderSettings::Deferred);
+	ImGui::CheckboxFlags("Deferred", &RenderSettings::Options, RenderSettings::Deferred);
 
 	ImGui::Indent();
-	ImGui::CheckboxFlags("SSAO", &settings, RenderSettings::SSAO);
-	ImGui::CheckboxFlags("PBR", &settings, RenderSettings::PBR);
+	ImGui::CheckboxFlags("SSAO", &RenderSettings::Options, RenderSettings::SSAO);
+	ImGui::CheckboxFlags("PBR", &RenderSettings::Options, RenderSettings::PBR);
 	ImGui::Unindent();
 
 	ImGui::Text("\nPost Processing Settings");
 	ImGui::InputFloat("Gamma", &RenderSettings::Gamma);
 	ImGui::InputFloat("Exposure", &RenderSettings::Exposure);
 	ImGui::InputInt("Bloom Blur", &bloomBlur);
+	ImGui::InputInt("Motion Blur Samples", &RenderSettings::MotionBlurSamples);
+	ImGui::InputFloat("Velocity Scale", &RenderSettings::VelocityScale);
 
 	ImGui::Text("\nSSAO Settings");
 	ImGui::InputFloat("Radius", &RenderSettings::SsaoRadius);
@@ -207,8 +203,13 @@ void OverlayUI::_setupSettings() {
 	ImGui::InputFloat("Min Reduce", &RenderSettings::FxaaReduceMin);
 	ImGui::InputFloat("Mul Reduce", &RenderSettings::FxaaReduceMul);
 
+	//disable deferred only settings if we are forward rendering
+	if(!RenderSettings::IsEnabled(RenderSettings::Deferred)) {
+		RenderSettings::Disable(RenderSettings::SSAO);
+		RenderSettings::Disable(RenderSettings::PBR);
+	}
+
 	//apply settings
-	RenderSettings::Options = settings; 
 	RenderSettings::BloomBlurAmount = bloomBlur;
 
 	ImGui::End();
@@ -246,7 +247,7 @@ void OverlayUI::_setupInspector() {
 		bool hasCamera = _activeNode->hasComponent(ComponentType::Camera);
 
 		//draw name
-		unsigned int indentions = 5;
+		unsigned int indentions = 6;
 
 		for(unsigned int i = 0; i < indentions; i++) ImGui::Indent();
 		ImGui::Text((_activeNode->getName()).c_str()); //draw name with intentions
@@ -257,20 +258,17 @@ void OverlayUI::_setupInspector() {
 			Transform* transform = _activeNode->getTransform();
 			glm::vec3 localPosition = transform->getLocalPosition();
 			glm::vec3 localScale = transform->getLocalScale();
-			glm::quat localRotationQuat = transform->getLocalRotation();
-			glm::vec3 localRotationEuler = glm::eulerAngles(localRotationQuat);
+			glm::vec3 localRotationEuler = transform->getLocalEuler();
 
 			ImGui::InputFloat3("Position", &localPosition.x);
 			ImGui::InputFloat3("Rotation", &localRotationEuler.x);
 			ImGui::InputFloat3("Scale", &localScale.x);
 
 			//apply new transform
-			glm::mat4 newLocalTransform = glm::mat4(1.0f);
-			newLocalTransform = glm::eulerAngleYXZ(localRotationEuler.y, localRotationEuler.x, localRotationEuler.z); //rotate
-			newLocalTransform = glm::translate(newLocalTransform, localPosition); //tanslate
-			newLocalTransform = glm::scale(newLocalTransform, localScale); //scale
-
-			transform->localTransform = newLocalTransform;
+			transform->localTransform = glm::mat4(1.0f);
+			transform->translate(localPosition);
+			transform->setEulerRotation(localRotationEuler.x, localRotationEuler.y, localRotationEuler.z);
+			transform->scale(localScale);
 		}
 
 		//draw camera component
@@ -279,8 +277,8 @@ void OverlayUI::_setupInspector() {
 				CameraComponent* cameraComponent = (CameraComponent*)_activeNode->getComponent(ComponentType::Camera);
 
 				ImGui::InputFloat("Field of View", &cameraComponent->fieldOfView);
-				ImGui::InputFloat("Movement Speed", &cameraComponent->movementSpeed);
-				ImGui::InputFloat("Rotation Speed", &cameraComponent->rotationSpeed);
+				ImGui::InputFloat("Movement Spd", &cameraComponent->movementSpeed);
+				ImGui::InputFloat("Rotation Spd", &cameraComponent->rotationSpeed);
 			}
 		}
 
@@ -294,16 +292,17 @@ void OverlayUI::_setupInspector() {
 				switch(lightType) {
 					case LightType::Directional:
 						ImGui::Text("General");
-						ImGui::Text("Light Type   \tDirectional Light\n");
+						ImGui::Text("Light Type   \t\tDirectional Light\n");
 						ImGui::ColorEdit3("Diffuse", &lightComponent->lightDiffuse.x);
 						ImGui::ColorEdit3("Ambient", &lightComponent->lightAmbient.x);
 						ImGui::ColorEdit3("Specular", &lightComponent->lightSpecular.x);
+						ImGui::Text("");
 						ImGui::InputFloat3("Direction", &lightComponent->lightDirection.x);
 						break;
 
 					case LightType::Point:
 						ImGui::Text("General");
-						ImGui::Text("Light Type   \tPoint Light\n");
+						ImGui::Text("Light Type   \t\tPoint Light\n");
 						ImGui::ColorEdit3("Diffuse", &lightComponent->lightDiffuse.x);
 						ImGui::ColorEdit3("Ambient", &lightComponent->lightAmbient.x);
 						ImGui::ColorEdit3("Specular", &lightComponent->lightSpecular.x);
@@ -315,10 +314,11 @@ void OverlayUI::_setupInspector() {
 
 					case LightType::Spot:
 						ImGui::Text("General");
-						ImGui::Text("Light Type   \tSpotlight\n");
+						ImGui::Text("Light Type   \t\tSpotlight\n");
 						ImGui::ColorEdit3("Diffuse", &lightComponent->lightDiffuse.x);
 						ImGui::ColorEdit3("Ambient", &lightComponent->lightAmbient.x);
 						ImGui::ColorEdit3("Specular", &lightComponent->lightSpecular.x);
+						ImGui::Text("");
 						ImGui::InputFloat3("Direction", &lightComponent->lightDirection.x);
 						ImGui::Text("\nAttenuation");
 						ImGui::InputFloat("Constant", &lightComponent->constantAttenuation);
@@ -340,7 +340,7 @@ void OverlayUI::_setupInspector() {
 				//draw model information
 				Model* model = renderComponent->model;
 
-				std::string modelString = "Model\nFile\t" + _getNameFromPath(model->filepath);
+				std::string modelString = "Model\nFile\t\t\t\t" + _getNameFromPath(model->filepath);
 
 				ImGui::Text(modelString.c_str());
 
@@ -352,15 +352,15 @@ void OverlayUI::_setupInspector() {
 
 				switch(material->getBlendMode()) {
 					case BlendMode::Opaque:
-						blendModeString = "Blend Mode\t\tOpaque";
+						blendModeString = "Blend Mode  \t\tOpaque";
 						break;
 
 					case BlendMode::Cutout:
-						blendModeString = "Blend Mode\t\tCutout";
+						blendModeString = "Blend Mode  \t\tCutout";
 						break;
 
 					case BlendMode::Transparent:
-						blendModeString = "Blend Mode\t\tTransparent";
+						blendModeString = "Blend Mode  \t\tTransparent";
 						break;
 				}
 
@@ -396,35 +396,36 @@ void OverlayUI::_setupInspector() {
 					case MaterialType::Textures:
 						textureMaterial = (TextureMaterial*)material;
 
+						diffuseMapString = "Diffuse Map \t\t" + _getNameFromPath(textureMaterial->getDiffuseMap()->filepath);
+
 						ImGui::Text("\nTexture Material");
 						ImGui::Text(blendModeString.c_str());
 						ImGui::Checkbox("Casts shadows", &textureMaterial->getCastsShadows());
 						ImGui::InputFloat("Shininess", &textureMaterial->getShininess());
+						ImGui::Text("");
 						ImGui::Text(diffuseMapString.c_str());
 						ImGui::Image(ImTextureID(textureMaterial->getDiffuseMap()->getID()), ImVec2(64, 64));
 
 						if(textureMaterial->getSpecularMap() != nullptr) {
-							specularMapString = "Specular Map\t" + _getNameFromPath(textureMaterial->getSpecularMap()->filepath);
-							
+							specularMapString = "Specular Map\t\t" + _getNameFromPath(textureMaterial->getSpecularMap()->filepath);
 							ImGui::Text(specularMapString.c_str());
 							ImGui::Image(ImTextureID(textureMaterial->getSpecularMap()->getID()), ImVec2(64, 64));
-			
 						}
 
 						if(textureMaterial->getNormalMap() != nullptr) {
-							normalMapString = "Normal Map\t" + _getNameFromPath(textureMaterial->getNormalMap()->filepath);
+							normalMapString = "Normal Map  \t\t" + _getNameFromPath(textureMaterial->getNormalMap()->filepath);
 							ImGui::Text(normalMapString.c_str());
 							ImGui::Image(ImTextureID(textureMaterial->getNormalMap()->getID()), ImVec2(64, 64));
 						}
 
 						if(textureMaterial->getEmissionMap() != nullptr) {
-							emissionMapString = "Emission Map\t" + _getNameFromPath(textureMaterial->getEmissionMap()->filepath);
+							emissionMapString = "Emission Map\t\t" + _getNameFromPath(textureMaterial->getEmissionMap()->filepath);
 							ImGui::Text(emissionMapString.c_str());
 							ImGui::Image(ImTextureID(textureMaterial->getEmissionMap()->getID()), ImVec2(64, 64));
 						}
 
 						if(textureMaterial->getHeightMap() != nullptr) {
-							heightMapString = "Height Map\t" + _getNameFromPath(textureMaterial->getHeightMap()->filepath);
+							heightMapString = "Height Map  \t\t" + _getNameFromPath(textureMaterial->getHeightMap()->filepath);
 
 							ImGui::Text(heightMapString.c_str());
 							ImGui::Image(ImTextureID(textureMaterial->getHeightMap()->getID()), ImVec2(64, 64));
@@ -432,7 +433,7 @@ void OverlayUI::_setupInspector() {
 						}
 
 						if(textureMaterial->getReflectionMap() != nullptr) {
-							reflectionMapString = "Reflection Map\t" + _getNameFromPath(textureMaterial->getReflectionMap()->filepath);
+							reflectionMapString = "Reflection Map  \t" + _getNameFromPath(textureMaterial->getReflectionMap()->filepath);
 							
 							ImGui::Text(reflectionMapString.c_str());
 							ImGui::Image(ImTextureID(textureMaterial->getReflectionMap()->getID()), ImVec2(64, 64));
@@ -444,17 +445,18 @@ void OverlayUI::_setupInspector() {
 					case MaterialType::PBR:
 						pbrMaterial = (PBRMaterial*)material;
 
-						albedoMapString = "Albedo Map\t" + _getNameFromPath(pbrMaterial->getAlbedoMap()->filepath);
-						normalMapString = "Normal Map\t" + _getNameFromPath(pbrMaterial->getNormalMap()->filepath);
-						metallicMapString = "Metallic Map\t" + _getNameFromPath(pbrMaterial->getMetallicMap()->filepath);
-						roughnessMapString = "Roughness Map\t" + _getNameFromPath(pbrMaterial->getRoughnessMap()->filepath);
-						aoMapString = "Ambient Occlusion Map\t" + _getNameFromPath(pbrMaterial->getAoMap()->filepath);
+						albedoMapString = "Albedo Map  \t\t" + _getNameFromPath(pbrMaterial->getAlbedoMap()->filepath);
+						normalMapString = "Normal Map  \t\t" + _getNameFromPath(pbrMaterial->getNormalMap()->filepath);
+						metallicMapString = "Metallic Map\t\t" + _getNameFromPath(pbrMaterial->getMetallicMap()->filepath);
+						roughnessMapString = "Roughness Map   \t" + _getNameFromPath(pbrMaterial->getRoughnessMap()->filepath);
+						aoMapString = "Occlusion Map   \t" + _getNameFromPath(pbrMaterial->getAoMap()->filepath);
 
 						ImGui::Text("\nPBR Material");
 						ImGui::Text(blendModeString.c_str());
 						ImGui::Checkbox("Casts shadows", &pbrMaterial->getCastsShadows());
 						ImGui::InputFloat("Refraction", &pbrMaterial->getRefractionFactor());
 						ImGui::ColorEdit3("F0 Color", &pbrMaterial->getF0().x);
+						ImGui::Text("");
 
 						ImGui::Text(albedoMapString.c_str());
 						ImGui::Image(ImTextureID(pbrMaterial->getAlbedoMap()->getID()), ImVec2(64, 64));
@@ -468,13 +470,13 @@ void OverlayUI::_setupInspector() {
 						ImGui::Image(ImTextureID(pbrMaterial->getAoMap()->getID()), ImVec2(64, 64));
 
 						if(pbrMaterial->getEmissionMap() != nullptr) {
-							emissionMapString = "Emission Map\t" + _getNameFromPath(pbrMaterial->getEmissionMap()->filepath);
+							emissionMapString = "Emission Map\t\t" + _getNameFromPath(pbrMaterial->getEmissionMap()->filepath);
 							ImGui::Text(emissionMapString.c_str());
 							ImGui::Image(ImTextureID(pbrMaterial->getEmissionMap()->getID()), ImVec2(64, 64));
 						}
 
 						if(pbrMaterial->getHeightMap() != nullptr) {
-							heightMapString = "Height Map\t" + _getNameFromPath(pbrMaterial->getHeightMap()->filepath);
+							heightMapString = "Height Map  \t\t" + _getNameFromPath(pbrMaterial->getHeightMap()->filepath);
 
 							ImGui::Text(heightMapString.c_str());
 							ImGui::Image(ImTextureID(pbrMaterial->getHeightMap()->getID()), ImVec2(64, 64));
@@ -518,29 +520,6 @@ void OverlayUI::_drawHierarchyNodes(Node* node, unsigned int depth) {
 
 		_drawHierarchyNodes(currentNode, depth + 1);
 	}
-}
-
-std::string OverlayUI::_getVectorString(glm::vec3 vector, bool rgbFormat) {
-	std::string x = _getFloatString(vector.x, 2);
-	std::string y = _getFloatString(vector.y, 2);
-	std::string z = _getFloatString(vector.z, 2);
-
-	std::string formattedVectorString;
-
-	if(rgbFormat) formattedVectorString = "r: " + x + " g: " + y + " b: " + z;
-	else formattedVectorString = "x: " + x + " y: " + y + " z: " + z;
-
-	return formattedVectorString;
-}
-
-std::string OverlayUI::_getFloatString(float value, unsigned int decimalPoints) {
-	std::string formattedValue;
-
-	_stream << std::fixed << std::setprecision(decimalPoints) << value;
-	formattedValue = _stream.str();
-	_stream.str("");
-
-	return formattedValue;
 }
 
 std::string OverlayUI::_getNameFromPath(std::string path) {

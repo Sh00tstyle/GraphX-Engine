@@ -4,6 +4,8 @@
 #include <iostream>
 #include <string>
 
+#include "../Engine/Debug.h"
+
 #include "../Utility/RenderSettings.h"
 
 std::map<Key, bool> Input::_KeysReleased;
@@ -27,74 +29,6 @@ void Input::ProcessInput() {
 	//capture and release the cursor when the RMB is pressed and released respectively
 	if(GetMouseDown(MouseButton::Right)) glfwSetInputMode(_Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED); //captures the cursor and makes it invisible
 	else if(GetMouseUp(MouseButton::Right)) glfwSetInputMode(_Window, GLFW_CURSOR, GLFW_CURSOR_NORMAL); //releases the cursor and makes it visible
-
-	/**
-	//shadows
-	if(GetKeyDown(Key::KEY1)) {
-		if(RenderSettings::IsEnabled(RenderSettings::Shadows)) {
-			RenderSettings::Disable(RenderSettings::Shadows);
-			std::cout << "Disabled Shadows" << std::endl;
-		} else {
-			RenderSettings::Enable(RenderSettings::Shadows);
-			std::cout << "Enabled Shadows" << std::endl;
-		}
-	}
-
-	//bloom
-	if(GetKeyDown(Key::KEY2)) {
-		if(RenderSettings::IsEnabled(RenderSettings::Bloom)) {
-			RenderSettings::Disable(RenderSettings::Bloom);
-			std::cout << "Disabled Bloom" << std::endl;
-		} else {
-			RenderSettings::Enable(RenderSettings::Bloom);
-			std::cout << "Enabled Bloom" << std::endl;
-		}
-	}
-
-	//deferred
-	if(GetKeyDown(Key::KEY3)) {
-		if(RenderSettings::IsEnabled(RenderSettings::Deferred)) {
-			RenderSettings::Disable(RenderSettings::Deferred);
-			std::cout << "Disabled Deferred" << std::endl;
-		} else {
-			RenderSettings::Enable(RenderSettings::Deferred);
-			std::cout << "Enabled Deferred" << std::endl;
-		}
-	}
-
-	//ssao
-	if(GetKeyDown(Key::KEY4)) {
-		if(RenderSettings::IsEnabled(RenderSettings::SSAO)) {
-			RenderSettings::Disable(RenderSettings::SSAO);
-			std::cout << "Disabled SSAO" << std::endl;
-		} else {
-			RenderSettings::Enable(RenderSettings::SSAO);
-			std::cout << "Enabled SSAO" << std::endl;
-		}
-	}
-	
-	//fxaa
-	if(GetKeyDown(Key::KEY5)) {
-		if(RenderSettings::IsEnabled(RenderSettings::FXAA)) {
-			RenderSettings::Disable(RenderSettings::FXAA);
-			std::cout << "Disabled FXAA" << std::endl;
-		} else {
-			RenderSettings::Enable(RenderSettings::FXAA);
-			std::cout << "Enabled FXAA" << std::endl;
-		}
-	}
-
-	//pbr
-	if(GetKeyDown(Key::KEY6)) {
-		if(RenderSettings::IsEnabled(RenderSettings::PBR)) {
-			RenderSettings::Disable(RenderSettings::PBR);
-			std::cout << "Disabled PBR" << std::endl;
-		} else {
-			RenderSettings::Enable(RenderSettings::PBR);
-			std::cout << "Enabled PBR" << std::endl;
-		}
-	}
-	/**/
 }
 
 void Input::ResetMousePos() {

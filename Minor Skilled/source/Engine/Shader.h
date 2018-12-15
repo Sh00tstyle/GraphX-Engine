@@ -32,7 +32,7 @@ class Shader {
 	private:
 		unsigned int _id;
 
-		void _checkCompileErrors(unsigned int shader, std::string type);
+		void _checkCompileErrors(unsigned int shader, std::string type, std::string shaderPath);
 };
 
 #endif

@@ -31,6 +31,7 @@ in VS_OUT {
 layout (std140) uniform matricesBlock {
     mat4 viewMatrix;
     mat4 projectionMatrix;
+    mat4 previousViewProjectionMatrix;
     mat4 lightSpaceMatrix;
 };
 
@@ -52,7 +53,7 @@ layout (location = 0) out vec3 gPosition;
 layout (location = 1) out vec3 gNormal;
 layout (location = 2) out vec4 gAlbedoSpec;
 layout (location = 3) out vec4 gEmissionShiny;
-layout (location = 4) out vec3 gEnvironment;
+layout (location = 4) out vec4 gEnvironmentDepth;
 
 vec3 GetSpecular(vec2 texCoord);
 vec3 GetNormal(vec2 texCoord);
@@ -79,7 +80,8 @@ void main() {
     gEmissionShiny.rgb = texture(material.emission, texCoord).rgb;
     gEmissionShiny.a = material.shininess / 255.0f;
 
-    gEnvironment.rgb = GetReflection(fs_in.fragNormalWorld, texCoord);
+    gEnvironmentDepth.rgb = GetReflection(fs_in.fragNormalWorld, texCoord);
+    gEnvironmentDepth.a = gl_FragCoord.z;
 }
 
 vec3 GetSpecular(vec2 texCoord) {

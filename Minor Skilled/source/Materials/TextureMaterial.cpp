@@ -267,11 +267,11 @@ void TextureMaterial::_initShader() {
 		_ForwardShader->setInt("material.reflection", 4);
 		_ForwardShader->setInt("material.height", 5);
 
-		_ForwardShader->setInt("environmentMap", 7);
-		_ForwardShader->setInt("shadowMap", 10); //assign to slot 10, so that it shares it with the other materials which have more textures
+		_ForwardShader->setInt("environmentMap", 8);
+		_ForwardShader->setInt("shadowMap", 11); //assign to slot 11, so that it shares it with the other materials which have more textures
 
 		for(unsigned int i = 0; i < RenderSettings::MaxCubeShadows; i++) {
-			_ForwardShader->setInt("shadowCubemaps[" + std::to_string(i) + "]", 11 + i);
+			_ForwardShader->setInt("shadowCubemaps[" + std::to_string(i) + "]", 12 + i);
 		}
 
 		_ForwardShader->setUniformBlockBinding("matricesBlock", 0); //set uniform block "matrices" to binding point 0
@@ -291,7 +291,7 @@ void TextureMaterial::_initShader() {
 		_DeferredShader->setInt("material.reflection", 4);
 		_DeferredShader->setInt("material.height", 5);
 
-		_DeferredShader->setInt("environmentMap", 7);
+		_DeferredShader->setInt("environmentMap", 8);
 
 		_DeferredShader->setUniformBlockBinding("matricesBlock", 0); //set uniform block "matrices" to binding point 0
 		_DeferredShader->setUniformBlockBinding("dataBlock", 1); //set uniform block "data" to binding point 1

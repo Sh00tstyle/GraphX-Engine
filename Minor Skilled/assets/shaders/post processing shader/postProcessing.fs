@@ -2,7 +2,15 @@
 
 in vec2 texCoord;
 
+layout (std140) uniform matricesBlock {
+    mat4 viewMatrix;
+    mat4 projectionMatrix;
+    mat4 previousViewProjectionMatrix;
+    mat4 lightSpaceMatrix;
+};
+
 uniform bool useFXAA;
+uniform bool useMotionBlur;
 uniform bool useBloom;
 
 uniform float gamma;
@@ -16,9 +24,13 @@ uniform float fxaaReduceMul;
 uniform sampler2D screenTexture;
 uniform sampler2D bloomBlur;
 
+uniform int motionBlurSamples;
+uniform float velocityScale;
+
 out vec4 fragColor;
 
-vec3 FXAA(vec3 color);
+vec3 FXAA(vec3 color, vec2 texCoord);
+vec3 MotionBlur(vec3 color);
 vec3 Bloom();
 vec3 ExposureTonemap(vec3 color);
 vec3 GammaCorrect(vec3 color);
@@ -27,7 +39,10 @@ void main() {
     vec3 color = texture(screenTexture, texCoord).rgb;
 
     //FXAA
-    if(useFXAA) color = FXAA(color);
+    if(useFXAA) color = FXAA(color, texCoord);
+
+    //Motion Blur
+    if(useMotionBlur) color = MotionBlur(color);
 
     //bloom
     if(useBloom) color += Bloom(); //additive blending
@@ -41,7 +56,7 @@ void main() {
     fragColor = vec4(color, 1.0f);
 }
 
-vec3 FXAA(vec3 color) {
+vec3 FXAA(vec3 color, vec2 texCoord) {
     //information from: https://www.youtube.com/watch?v=Z9bYzpwVINA
 
     //vector to determine luminosity of a pixel
@@ -81,6 +96,42 @@ vec3 FXAA(vec3 color) {
     //return result1 if we sampled to far, otherwise return result2
     if(lumaResult2 < lumaMin || lumaResult2 > lumaMax) return result1;
     else return result2;
+}
+
+vec3 MotionBlur(vec3 color) {
+    //information from: https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch27.html
+
+    //obtain world position
+    float zOverW = texture(bloomBlur, texCoord).a; //get the depth value stored in the alpha channel
+    vec4 H = vec4(texCoord.x * 2.0f - 1.0f, (1.0f - texCoord.y) * 2.0f - 1.0f, zOverW, 1.0f); //viewport position in the range [-1, 1]
+    mat4 viewProjectionMatrix = projectionMatrix * viewMatrix;
+    vec4 D = inverse(viewProjectionMatrix) * H; //transform by the view projection inverse matrix
+    vec4 worldPos = D / D.w; //divide by w to get the world position
+
+    //compute velocity vector
+    vec4 currentPos = H; //current viewport position
+    vec4 previousPos = previousViewProjectionMatrix * worldPos; //transform world position by the previous view projection matrix
+    previousPos /= previousPos.w; //convert to nonhomogeneous points [-1, 1] by dividing by w
+    vec2 velocity = (currentPos.xy - previousPos.xy) / 2.0f; //calculate pixel velocity
+    velocity *= velocityScale;
+
+    //blur the screen texture
+    vec3 result = color;
+    vec2 vTexCoord = texCoord - velocity; //sample along the velocity
+
+    for(int i = 0; i < motionBlurSamples; ++i) {
+        vec3 blurColor = texture(screenTexture, vTexCoord).rgb;
+        
+        if(useFXAA) blurColor = FXAA(blurColor, vTexCoord); //also apply fxaa if it is enabled
+
+        result += blurColor;
+        vTexCoord -= velocity;
+    }
+
+    //average the results
+    result /= (motionBlurSamples + 1.0f);
+
+    return result;
 }
 
 vec3 Bloom() {

@@ -43,20 +43,20 @@ Shader::Shader(std::string vertexPath, std::string fragmentPath) {
 	vertex = glCreateShader(GL_VERTEX_SHADER);
 	glShaderSource(vertex, 1, &vShaderCode, NULL);
 	glCompileShader(vertex);
-	_checkCompileErrors(vertex, "VERTEX");
+	_checkCompileErrors(vertex, "VERTEX", vertexPath);
 
 	//fragment Shader
 	fragment = glCreateShader(GL_FRAGMENT_SHADER);
 	glShaderSource(fragment, 1, &fShaderCode, NULL);
 	glCompileShader(fragment);
-	_checkCompileErrors(fragment, "FRAGMENT");
+	_checkCompileErrors(fragment, "FRAGMENT", fragmentPath);
 
 	//shader Program
 	_id = glCreateProgram();
 	glAttachShader(_id, vertex);
 	glAttachShader(_id, fragment);
 	glLinkProgram(_id);
-	_checkCompileErrors(_id, "PROGRAM");
+	_checkCompileErrors(_id, "PROGRAM", "");
 
 	//delete the shaders as they're linked into our program now and no longer necessary
 	glDeleteShader(vertex);
@@ -115,19 +115,19 @@ Shader::Shader(std::string vertexPath, std::string geometryPath, std::string fra
 	vertex = glCreateShader(GL_VERTEX_SHADER);
 	glShaderSource(vertex, 1, &vShaderCode, NULL);
 	glCompileShader(vertex);
-	_checkCompileErrors(vertex, "VERTEX");
+	_checkCompileErrors(vertex, "VERTEX", vertexPath);
 
 	//geometry shader
 	geometry = glCreateShader(GL_GEOMETRY_SHADER);
 	glShaderSource(geometry, 1, &gShaderCode, NULL);
 	glCompileShader(geometry);
-	_checkCompileErrors(geometry, "GEOMETRY");
+	_checkCompileErrors(geometry, "GEOMETRY", geometryPath);
 
 	//fragment Shader
 	fragment = glCreateShader(GL_FRAGMENT_SHADER);
 	glShaderSource(fragment, 1, &fShaderCode, NULL);
 	glCompileShader(fragment);
-	_checkCompileErrors(fragment, "FRAGMENT");
+	_checkCompileErrors(fragment, "FRAGMENT", fragmentPath);
 
 	//shader Program
 	_id = glCreateProgram();
@@ -135,7 +135,7 @@ Shader::Shader(std::string vertexPath, std::string geometryPath, std::string fra
 	glAttachShader(_id, geometry);
 	glAttachShader(_id, fragment);
 	glLinkProgram(_id);
-	_checkCompileErrors(_id, "PROGRAM");
+	_checkCompileErrors(_id, "PROGRAM", "");
 
 	//delete the shaders as they're linked into our program now and no longer necessary
 	glDeleteShader(vertex);
@@ -189,14 +189,14 @@ void Shader::setShaderStorageBlockBinding(std::string name, unsigned int index) 
 	glShaderStorageBlockBinding(_id, shaderStorageBlockIndex, index);
 }
 
-void Shader::_checkCompileErrors(unsigned int shader, std::string type) {
+void Shader::_checkCompileErrors(unsigned int shader, std::string type, std::string shaderPath) {
 	int success;
 	char infoLog[1024];
 	if(type != "PROGRAM") {
 		glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
 		if(!success) {
 			glGetShaderInfoLog(shader, 1024, NULL, infoLog);
-			std::cout << "ERROR::SHADER_COMPILATION_ERROR of type: " << type << "\n" << infoLog << "\n -- --------------------------------------------------- -- " << std::endl;
+			std::cout << "ERROR::SHADER_COMPILATION_ERROR of type: " << type << " PATH:" << shaderPath << "\n" << infoLog << "\n -- --------------------------------------------------- -- " << std::endl;
 		}
 	} else {
 		glGetProgramiv(shader, GL_LINK_STATUS, &success);

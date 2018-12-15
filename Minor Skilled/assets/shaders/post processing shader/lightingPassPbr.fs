@@ -40,6 +40,7 @@ in vec2 texCoord;
 layout (std140) uniform matricesBlock {
     mat4 viewMatrix;
     mat4 projectionMatrix;
+    mat4 previousViewProjectionMatrix;
     mat4 lightSpaceMatrix;
 };
 
@@ -67,6 +68,7 @@ uniform sampler2D gAlbedoF0r;
 uniform sampler2D gIrradianceF0g;
 uniform sampler2D gPrefilterF0b;
 uniform sampler2D gEmissionAO;
+uniform sampler2D gDepth;
 
 uniform sampler2D ssao;
 uniform sampler2D brdfLUT;
@@ -88,7 +90,7 @@ float CalculateShadow(vec3 normal, vec3 fragPos, vec4 lightSpaceFragPos);
 float CalculateCubemapShadow(vec3 normal, vec3 fragPos, int index);
 
 //helper functions
-vec4 CalculateBrightColor(vec3 color);
+vec3 CalculateBrightColor(vec3 color);
 
 //lighting
 vec3 CalculateDirectionalLight(Light light, vec3 V, vec3 N, vec3 F0, vec3 albedo, float roughness, float metallic);
@@ -105,6 +107,8 @@ void main() {
     float metallic = texture(gPositionMetallic, texCoord).a;
     float roughness = texture(gNormalRoughness, texCoord).a;
     float ao = texture(gEmissionAO, texCoord).a + texture(ssao, texCoord).r; //add material AO and SSAO
+
+    brightColor.a = texture(gDepth, texCoord).r;
 
     if(ao > 1.0f) ao = 1.0f;
 
@@ -180,7 +184,7 @@ void main() {
     color += emission;
 
     fragColor = vec4(color, 1.0f);
-    brightColor = CalculateBrightColor(color);
+    brightColor.rgb = CalculateBrightColor(color);
 }
 
 //PBR equations
@@ -308,14 +312,14 @@ float CalculateCubemapShadow(vec3 normal, vec3 fragPos, int index) {
 }
 
 //helper functions
-vec4 CalculateBrightColor(vec3 color) {
+vec3 CalculateBrightColor(vec3 color) {
     const vec3 threshold = vec3(0.2126f, 0.7152f, 0.0722f);
 
     float brightness = dot(color, threshold);
 
     //return the color if it was bright enough, otherwise return black
-    if(brightness > 1.0f) return vec4(color, 1.0f);
-    else return vec4(vec3(0.0f), 1.0f);
+    if(brightness > 1.0f) return color;
+    else return vec3(0.0f);
 }
 
 //lighting

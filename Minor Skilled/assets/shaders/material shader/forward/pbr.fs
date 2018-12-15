@@ -115,7 +115,7 @@ float CalculateCubemapShadow(vec3 normal, vec3 fragPos, int index);
 //helper functions
 vec3 GetNormal(vec2 texCoord);
 vec2 ParallaxMapping();
-vec4 CalculateBrightColor(vec3 color);
+vec3 CalculateBrightColor(vec3 color);
 
 //lighting
 vec3 CalculateDirectionalLight(Light light, vec3 V, vec3 N, vec3 F0, vec3 albedo, float roughness, float metallic);
@@ -124,6 +124,7 @@ vec3 CalculateSpotLight(Light light, vec3 V, vec3 N, vec3 F0, vec3 albedo, float
 
 void main() {
     //PBR lighting shader, using value names which are used in the equations for better understanding
+    brightColor.a = gl_FragCoord.z; //store the depth value in the alpha channel
 
     //parallax mapping
     vec2 texCoord = ParallaxMapping();
@@ -224,7 +225,7 @@ void main() {
     color += emission;
 
     fragColor = vec4(color, alpha);
-    brightColor = CalculateBrightColor(color);
+    brightColor.rgb = CalculateBrightColor(color);
 }
 
 //PBR equations
@@ -407,14 +408,14 @@ vec2 ParallaxMapping() {
     return finalTexCoords;
 }
 
-vec4 CalculateBrightColor(vec3 color) {
+vec3 CalculateBrightColor(vec3 color) {
     const vec3 threshold = vec3(0.2126f, 0.7152f, 0.0722f);
 
     float brightness = dot(color, threshold);
 
     //return the color if it was bright enough, otherwise return black
-    if(brightness > 1.0f) return vec4(color, 1.0f);
-    else return vec4(vec3(0.0f), 1.0f);
+    if(brightness > 1.0f) return color;
+    else return vec3(0.0f);
 }
 
 //lighting
