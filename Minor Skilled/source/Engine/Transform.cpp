@@ -1,6 +1,6 @@
 #include "Transform.h"
 
-Transform::Transform(glm::vec3 localPosition): localTransform(glm::mat4(1.0f)), worldTransform(glm::mat4(1.0f)) {
+Transform::Transform(glm::vec3 localPosition): localTransform(glm::mat4(1.0f)), worldTransform(glm::mat4(1.0f)), _pitch(0.0f), _yaw(0.0f), _roll(0.0f) {
 	translate(localPosition);
 }
 
@@ -25,10 +25,11 @@ void Transform::scale(glm::vec3 scale) {
 }
 
 void Transform::setEulerRotation(float pitch, float yaw, float roll) {
-	if(pitch != 0.0f) localTransform = glm::rotate(localTransform, pitch, glm::vec3(1.0f, 0.0f, 0.0f));
-	if(yaw != 0.0f) localTransform = glm::rotate(localTransform, yaw, glm::vec3(0.0f, 1.0f, 0.0f));
-	if(roll != 0.0f) localTransform = glm::rotate(localTransform, roll, glm::vec3(0.0f, 0.0f, 1.0f));
+	if(pitch != 0.0f) localTransform = glm::rotate(localTransform, glm::radians(pitch), glm::vec3(1.0f, 0.0f, 0.0f));
+	if(yaw != 0.0f) localTransform = glm::rotate(localTransform, glm::radians(yaw), glm::vec3(0.0f, 1.0f, 0.0f));
+	if(roll != 0.0f) localTransform = glm::rotate(localTransform, glm::radians(roll), glm::vec3(0.0f, 0.0f, 1.0f));
 
+	//store the angles in degrees
 	_pitch = pitch;
 	_yaw = yaw;
 	_roll = roll;
