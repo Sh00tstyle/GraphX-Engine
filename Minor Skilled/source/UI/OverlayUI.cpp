@@ -244,7 +244,6 @@ void OverlayUI::_setupInspector() {
 
 	if(nodeSelected) {
 		//draw node components
-		bool hasCamera = _activeNode->hasComponent(ComponentType::Camera);
 
 		//draw name
 		unsigned int indentions = 6;
@@ -254,7 +253,7 @@ void OverlayUI::_setupInspector() {
 		for(unsigned int i = 0; i < indentions; i++) ImGui::Unindent();
 
 		//draw transform when the node has no camera component
-		if(!hasCamera && ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen)) {
+		if(ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen)) {
 			Transform* transform = _activeNode->getTransform();
 			glm::vec3 localPosition = transform->getLocalPosition();
 			glm::vec3 localScale = transform->getLocalScale();
@@ -272,7 +271,7 @@ void OverlayUI::_setupInspector() {
 		}
 
 		//draw camera component
-		if(hasCamera) {
+		if(_activeNode->hasComponent(ComponentType::Camera)) {
 			if(ImGui::CollapsingHeader("Camera Component", ImGuiTreeNodeFlags_DefaultOpen)) {
 				CameraComponent* cameraComponent = (CameraComponent*)_activeNode->getComponent(ComponentType::Camera);
 

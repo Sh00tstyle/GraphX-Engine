@@ -13,7 +13,6 @@ class CameraComponent : public Component {
 		CameraComponent(glm::mat4 projectionMatrix, float fieldOfView, float nearPlane, float farPlane, float movementSpeed, float rotationSpeed);
 		~CameraComponent();
 
-		
 		float fieldOfView;
 		float movementSpeed; 
 		float rotationSpeed;
@@ -32,17 +31,15 @@ class CameraComponent : public Component {
 		glm::mat4 _projectionMatrix;
 		glm::mat4 _previousViewProjectionMatrix;
 
-		glm::mat4 _rotX;
-		glm::mat4 _rotY;
-
 		glm::mat4 _startTransformMatrix;
+		glm::vec3 _startEulerRotation;
 		bool _firstTransform;
 
 		float _nearPlane;
 		float _farPlane;
 
 		void _updateProjectionMatrix();
-		void _checkForCameraReset(Transform* transform);
+		void _checkForCameraReset();
 };
 
 #endif

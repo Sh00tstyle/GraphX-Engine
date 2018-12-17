@@ -61,6 +61,7 @@ void Scene::initialize() {
 	Debug::Log("Use Space/LShift to ascend/decend");
 	Debug::Log("Use RShift to reset the camera");
 	Debug::Log("Use Enter to toggle the UI");
+	Debug::Log("Use Escape to close the application");
 }
 
 void Scene::run() {

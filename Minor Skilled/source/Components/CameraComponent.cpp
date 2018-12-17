@@ -17,7 +17,8 @@
 #include "../Utility/Time.h"
 
 CameraComponent::CameraComponent(glm::mat4 projectionMatrix, float fieldOfView, float nearPlane, float farPlane, float movementSpeed, float rotationSpeed) : Component(ComponentType::Camera),
-_projectionMatrix(projectionMatrix), fieldOfView(fieldOfView), _nearPlane(nearPlane), _farPlane(farPlane), movementSpeed(movementSpeed), rotationSpeed(rotationSpeed), _transform(nullptr), _rotX(glm::mat4(1.0f)), _rotY(glm::mat4(1.0f)), _startTransformMatrix(glm::mat4(1.0f)), _firstTransform(true) {
+_projectionMatrix(projectionMatrix), fieldOfView(fieldOfView), _nearPlane(nearPlane), _farPlane(farPlane), movementSpeed(movementSpeed), rotationSpeed(rotationSpeed), _transform(nullptr), 
+_startTransformMatrix(glm::mat4(1.0f)), _startEulerRotation(glm::vec3(0.0f)), _firstTransform(true) {
 }
 
 CameraComponent::~CameraComponent() {
@@ -57,11 +58,8 @@ void CameraComponent::update() {
 	//update projection matrix if needed
 	_updateProjectionMatrix();
 
-	//process movement if the right mouse button is pressed
-	_transform = _owner->getTransform();
-
 	//check if the camera has been reset
-	_checkForCameraReset(_transform);
+	_checkForCameraReset();
 
 	if(Input::GetMouse(MouseButton::Right)) {
 		//mouse offset
@@ -78,29 +76,18 @@ void CameraComponent::update() {
 		if(Input::GetKey(Key::LSHIFT)) translation.y = -movementSpeed * Time::DeltaTime;
 
 		//rotation
-		glm::mat4 yRotation = _rotY;
-		glm::mat4 xRotation = _rotX;
+		glm::vec3 eulerAngles = _transform->getLocalEuler();
 
-		if(std::abs(mouseOffset.x) >= 0.01f) {
-			yRotation = glm::rotate(yRotation, glm::radians(mouseOffset.x * rotationSpeed * Time::DeltaTime), glm::vec3(0.0f, 1.0f, 0.0f));
-			_rotY = yRotation;
-		}
-
-		if(std::abs(mouseOffset.y) >= 0.01f) {
-			xRotation = glm::rotate(xRotation, glm::radians(mouseOffset.y * rotationSpeed * Time::DeltaTime), glm::vec3(1.0f, 0.0f, 0.0f));
-			_rotX = xRotation;
-		}
+		if(std::abs(mouseOffset.x) >= 0.01f) eulerAngles.y += mouseOffset.x * rotationSpeed * Time::DeltaTime;
+		if(std::abs(mouseOffset.y) >= 0.01f) eulerAngles.x += mouseOffset.y * rotationSpeed * Time::DeltaTime;;
 
 		//reconstruct transform and apply to component
 		glm::vec3 localPos = _transform->getLocalPosition();
 
-		glm::mat4 newTransform = glm::mat4(1.0f);
-
-		newTransform = glm::translate(newTransform, localPos);
-		newTransform = newTransform * yRotation * xRotation; //first rotate over the x axis and the over the y axis
-		newTransform = glm::translate(newTransform, translation);
-
-		_transform->localTransform = newTransform;
+		_transform->localTransform = glm::mat4(1.0f);
+		_transform->translate(localPos); //translate to old position
+		_transform->setEulerRotation(eulerAngles.x, eulerAngles.y, 0.0f); //rotate to new position
+		_transform->translate(translation); //translate by movement input
 	}
 
 	//update lights attached to the camera
@@ -117,19 +104,18 @@ void CameraComponent::_updateProjectionMatrix() {
 	_projectionMatrix = glm::perspective(glm::radians(fieldOfView), (float)Window::ScreenWidth / (float)Window::ScreenHeight, _nearPlane, _farPlane);
 }
 
-void CameraComponent::_checkForCameraReset(Transform* transform) {
+void CameraComponent::_checkForCameraReset() {
 	if(_firstTransform) {
 		//lazy initialize as soon as it gets updated the first time
-		_startTransformMatrix = transform->localTransform;
+		_startTransformMatrix = _transform->localTransform;
+		_startEulerRotation = _transform->getLocalEuler();
 
 		_firstTransform = false;
 	}
 
 	if(Input::GetKeyDown(Key::RSHIFT)) {
-		transform->localTransform = _startTransformMatrix; //reset to initial state
-
-		//reset rotations as well
-		_rotX = glm::mat4(1.0f);
-		_rotY = glm::mat4(1.0f);
+		//reset to initial state
+		_transform->localTransform = _startTransformMatrix;
+		_transform->setEulerRotation(_startEulerRotation.x, _startEulerRotation.y, _startEulerRotation.z);
 	}
 }

@@ -25,8 +25,9 @@ void Transform::scale(glm::vec3 scale) {
 }
 
 void Transform::setEulerRotation(float pitch, float yaw, float roll) {
-	if(pitch != 0.0f) localTransform = glm::rotate(localTransform, glm::radians(pitch), glm::vec3(1.0f, 0.0f, 0.0f));
+	//rotation order: YXZ - yaw, pitch, roll
 	if(yaw != 0.0f) localTransform = glm::rotate(localTransform, glm::radians(yaw), glm::vec3(0.0f, 1.0f, 0.0f));
+	if(pitch != 0.0f) localTransform = glm::rotate(localTransform, glm::radians(pitch), glm::vec3(1.0f, 0.0f, 0.0f));
 	if(roll != 0.0f) localTransform = glm::rotate(localTransform, glm::radians(roll), glm::vec3(0.0f, 0.0f, 1.0f));
 
 	//store the angles in degrees
