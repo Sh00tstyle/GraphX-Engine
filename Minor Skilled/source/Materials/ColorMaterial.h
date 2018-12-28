@@ -11,17 +11,17 @@ class LightComponent;
 class ColorMaterial : public Material {
 	public:
 		ColorMaterial(glm::vec3 diffuseColor);
-		ColorMaterial(glm::vec3 ambientColor, glm::vec3 diffuseColor, glm::vec3 specularColor, float shininess = 32.0f, bool castsShadows = true);
+		ColorMaterial(glm::vec3 ambientColor, glm::vec3 diffuseColor, float specular, float shininess = 32.0f, bool castsShadows = true);
 		~ColorMaterial();
 
 		glm::vec3& getAmbientColor();
 		glm::vec3& getDiffuseColor();
-		glm::vec3& getSpecularColor();
+		float& getSpecular();
 		float& getShininess();
 
 		void setAmbientColor(glm::vec3 ambientColor);
 		void setDiffuseColor(glm::vec3 diffuseColor);
-		void setSpecularColor(glm::vec3 specularColor);
+		void setSpecular(float specular);
 		void setShininess(float shininess);
 
 		virtual void drawSimple(Shader* shader);
@@ -34,7 +34,7 @@ class ColorMaterial : public Material {
 
 		glm::vec3 _ambientColor;
 		glm::vec3 _diffuseColor;
-		glm::vec3 _specularColor;
+		float _specular;
 		float _shininess;
 
 		virtual void _initShader();

@@ -130,13 +130,15 @@ Renderer::Renderer(Debug* profiler) : _profiler(profiler) {
 
 	_initConversionFBO();
 	_initShadowFBO();
-	_initShadowCubeFBOs();
+	_initShadowCubeFBO();
+	_initDepthFBO();
 	_initEnvironmentFBO();
 	_initHdrFBO();
 
 	//setup post processing
 	_initBlurFBOs();
 	_initSSAOFBOs();
+	_initSSRFBO();
 
 	_generateSSAOKernel();
 	_generateNoiseTexture();
@@ -162,6 +164,7 @@ Renderer::~Renderer() {
 	delete _lightingShaderPbr;
 	delete _shadowShader;
 	delete _shadowCubeShader;
+	delete _depthShader;
 	delete _environmentShader;
 	delete _irradianceShader;
 	delete _prefilterShader;
@@ -169,6 +172,7 @@ Renderer::~Renderer() {
 	delete _skyboxShader;
 	delete _ssaoShader;
 	delete _ssaoBlurShader;
+	delete _ssrShader;
 	delete _bloomBlurShader;
 	delete _postProcessingShader;
 
@@ -177,7 +181,7 @@ Renderer::~Renderer() {
 	delete _gNormal;
 	delete _gAlbedoSpec;
 	delete _gEmissionShiny;
-	delete _gEnvironmentDepth;
+	delete _gEnvironment;
 
 	delete _gPositionMetallic;
 	delete _gNormalRoughness;
@@ -185,7 +189,6 @@ Renderer::~Renderer() {
 	delete _gIrradianceF0g;
 	delete _gPrefilterF0b;
 	delete _gEmissionAO;
-	delete _gDepth;
 
 	delete _shadowMap;
 
@@ -193,6 +196,7 @@ Renderer::~Renderer() {
 		delete _shadowCubeMaps[i];
 	}
 
+	delete _sceneDepthBuffer;
 	delete _sceneColorBuffer;
 	delete _brightColorBuffer;
 	delete _blurColorBuffers[1];
@@ -201,6 +205,8 @@ Renderer::~Renderer() {
 	delete _ssaoNoiseTexture;
 	delete _ssaoColorBuffer;
 	delete _ssaoBlurColorBuffer;
+
+	delete _ssrColorBuffer;
 
 	//delete vertex arrays
 	delete _skyboxVAO;
@@ -221,10 +227,8 @@ Renderer::~Renderer() {
 
 	delete _conversionFBO;
 	delete _shadowFBO;
-
-	for(unsigned int i = 0; i < _shadowCubeFBOs.size(); i++) {
-		delete _shadowCubeFBOs[i];
-	}
+	delete _shadowCubeFBO;
+	delete _depthFBO;
 
 	delete _environmentFBO;
 	delete _hdrFBO;
@@ -233,6 +237,7 @@ Renderer::~Renderer() {
 	delete _bloomBlurFBOs[1];
 	delete _ssaoFBO;
 	delete _ssaoBlurFBO;
+	delete _ssrFBO;
 
 	//delete renderbuffers
 	delete _gRBO;
@@ -325,10 +330,16 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 		_profiler->endQuery(QueryType::Shadow);
 	}
 
+	//render the depth of the scene
+	_profiler->startQuery(QueryType::Depth);
+	_renderDepth(renderComponents);
+	_profiler->endQuery(QueryType::Depth);
+
 	//render scene
 	bool pbr = RenderSettings::IsEnabled(RenderSettings::PBR);
+	bool deferred = RenderSettings::IsEnabled(RenderSettings::Deferred);
 
-	if(RenderSettings::IsEnabled(RenderSettings::Deferred)) {
+	if(deferred) {
 		//render the geometry of the scene (deferred shading)
 		_profiler->startQuery(QueryType::Geometry);
 		_renderGeometry(solidRenderComponents, pbr);
@@ -367,6 +378,13 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 	_renderScene(blendRenderComponents, pointLightCount, useShadows, false); //do not bind the hbr here and clear buffer bits since the solid objects are needed in the fbo
 	_profiler->endQuery(QueryType::Blending);
 	glDisable(GL_BLEND);
+
+	//render the screen space reflection texture after the scene was rendered to use the final frame (deferred shading)
+	if(deferred && RenderSettings::IsEnabled(RenderSettings::SSR) && !RenderSettings::IsEnabled(RenderSettings::PBR)) { //dont use SSR for PBR right now
+		_profiler->startQuery(QueryType::SSR);
+		_renderSSR(mainCameraComponent);
+		_profiler->endQuery(QueryType::SSR);
+	}
 
 	//render screen quad
 	_profiler->startQuery(QueryType::PostProcessing);
@@ -533,7 +551,7 @@ void Renderer::_initShaders() {
 	_lightingShader->setInt("gNormal", 1);
 	_lightingShader->setInt("gAlbedoSpec", 2);
 	_lightingShader->setInt("gEmissionShiny", 3);
-	_lightingShader->setInt("gEnvironmentDepth", 4);
+	_lightingShader->setInt("gEnvironment", 4);
 
 	_lightingShader->setInt("ssao", 7);
 
@@ -558,7 +576,6 @@ void Renderer::_initShaders() {
 	_lightingShaderPbr->setInt("gIrradianceF0g", 3);
 	_lightingShaderPbr->setInt("gPrefilterF0b", 4);
 	_lightingShaderPbr->setInt("gEmissionAO", 5);
-	_lightingShaderPbr->setInt("gDepth", 6);
 
 	_lightingShaderPbr->setInt("ssao", 7);
 	_lightingShaderPbr->setInt("brdfLUT", 8);
@@ -575,10 +592,16 @@ void Renderer::_initShaders() {
 	_lightingShaderPbr->setShaderStorageBlockBinding("lightsBlock", 2); //set shader storage block "lights" to binding point 2
 
 	//initialize shadow shader
-	_shadowShader = new Shader(Filepath::ShaderPath + "shadow shader/shadow.vs", Filepath::ShaderPath + "shadow shader/shadow.fs");
+	_shadowShader = new Shader(Filepath::ShaderPath + "depth shader/shadow.vs", Filepath::ShaderPath + "depth shader/shadow.fs");
 
 	//initialize shadow cubemap shader (including geometry shader for layered rendering)
-	_shadowCubeShader = new Shader(Filepath::ShaderPath + "shadow shader/shadowCube.vs", Filepath::ShaderPath + "shadow shader/shadowCube.gs", Filepath::ShaderPath + "shadow shader/shadowCube.fs");
+	_shadowCubeShader = new Shader(Filepath::ShaderPath + "depth shader/shadowCube.vs", Filepath::ShaderPath + "depth shader/shadowCube.gs", Filepath::ShaderPath + "depth shader/shadowCube.fs");
+
+	//initialize scene depth shader
+	_depthShader = new Shader(Filepath::ShaderPath + "depth shader/depth.vs", Filepath::ShaderPath + "depth shader/depth.fs");
+
+	_depthShader->use();
+	_depthShader->setUniformBlockBinding("matricesBlock", 0); //set uniform block "matrices" to binding point 0
 
 	//initialize environment shader
 	_environmentShader = new Shader(Filepath::ShaderPath + "skybox shader/environment.vs", Filepath::ShaderPath + "skybox shader/environment.fs");
@@ -623,6 +646,18 @@ void Renderer::_initShaders() {
 	_ssaoBlurShader->use();
 	_ssaoBlurShader->setInt("ssaoInput", 0);
 
+	//initialize ssr shader
+	_ssrShader = new Shader(Filepath::ShaderPath + "post processing shader/screenQuad.vs", Filepath::ShaderPath + "post processing shader/ssr.fs");
+
+	_ssrShader->use();
+	_ssrShader->setInt("gPosition", 0);
+	_ssrShader->setInt("gNormal", 1);
+	_ssrShader->setInt("gAlbedoSpec", 2);
+	_ssrShader->setInt("sceneTexture", 3);
+	_ssrShader->setInt("depthTexture", 4);
+
+	_ssrShader->setUniformBlockBinding("matricesBlock", 0); //set uniform block "matrices" to binding point 0
+
 	//initialize bloom blur shader
 	_bloomBlurShader = new Shader(Filepath::ShaderPath + "post processing shader/screenQuad.vs", Filepath::ShaderPath + "post processing shader/bloomBlur.fs");
 
@@ -634,7 +669,9 @@ void Renderer::_initShaders() {
 
 	_postProcessingShader->use();
 	_postProcessingShader->setInt("screenTexture", 0);
-	_postProcessingShader->setInt("bloomBlur", 1);
+	_postProcessingShader->setInt("sceneDepth", 1);
+	_postProcessingShader->setInt("bloomBlur", 2);
+	_postProcessingShader->setInt("ssr", 3);
 }
 
 void Renderer::_initSkyboxVAO() {
@@ -735,10 +772,10 @@ void Renderer::_initGBuffer() {
 	_gEmissionShiny->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_NONE);
 
 	//create the environment color buffer
-	_gEnvironmentDepth = new Texture();
-	_gEnvironmentDepth->bind(GL_TEXTURE_2D);
-	_gEnvironmentDepth->init(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGBA, GL_FLOAT, NULL); //16-bit precision RGBA texture
-	_gEnvironmentDepth->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_NONE);
+	_gEnvironment = new Texture();
+	_gEnvironment->bind(GL_TEXTURE_2D);
+	_gEnvironment->init(GL_TEXTURE_2D, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT, NULL); //16-bit precision RGB texture
+	_gEnvironment->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_NONE);
 
 	//create depth renderbuffer
 	_gRBO = new Renderbuffer();
@@ -753,7 +790,7 @@ void Renderer::_initGBuffer() {
 	_gBuffer->attachTexture(GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, _gNormal);
 	_gBuffer->attachTexture(GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, _gAlbedoSpec);
 	_gBuffer->attachTexture(GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D, _gEmissionShiny);
-	_gBuffer->attachTexture(GL_COLOR_ATTACHMENT4, GL_TEXTURE_2D, _gEnvironmentDepth);
+	_gBuffer->attachTexture(GL_COLOR_ATTACHMENT4, GL_TEXTURE_2D, _gEnvironment);
 	_gBuffer->attachRenderbuffer(GL_DEPTH_ATTACHMENT, _gRBO);
 
 	//tell OpenGL which attachments the gBuffer will use for rendering
@@ -806,12 +843,6 @@ void Renderer::_initGBufferPbr() {
 	_gEmissionAO->init(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGBA, GL_FLOAT, NULL); //16-bit precision RGBA texture
 	_gEmissionAO->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_NONE);
 
-	//create depth color buffer
-	_gDepth = new Texture();
-	_gDepth->bind(GL_TEXTURE_2D);
-	_gDepth->init(GL_TEXTURE_2D, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT, NULL); //16-bit precision RGB texture
-	_gDepth->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_NONE);
-
 	//create depth renderbuffer
 	_gPbrRBO = new Renderbuffer();
 	_gPbrRBO->bind();
@@ -827,12 +858,11 @@ void Renderer::_initGBufferPbr() {
 	_gBufferPbr->attachTexture(GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D, _gIrradianceF0g);
 	_gBufferPbr->attachTexture(GL_COLOR_ATTACHMENT4, GL_TEXTURE_2D, _gPrefilterF0b);
 	_gBufferPbr->attachTexture(GL_COLOR_ATTACHMENT5, GL_TEXTURE_2D, _gEmissionAO);
-	_gBufferPbr->attachTexture(GL_COLOR_ATTACHMENT6, GL_TEXTURE_2D, _gDepth);
 	_gBufferPbr->attachRenderbuffer(GL_DEPTH_ATTACHMENT, _gPbrRBO);
 
 	//tell OpenGL which attachments the gBuffer will use for rendering
-	unsigned int attachments[7] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3, GL_COLOR_ATTACHMENT4, GL_COLOR_ATTACHMENT5, GL_COLOR_ATTACHMENT6};
-	glDrawBuffers(7, attachments);
+	unsigned int attachments[6] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3, GL_COLOR_ATTACHMENT4, GL_COLOR_ATTACHMENT5};
+	glDrawBuffers(6, attachments);
 
 	//check for completion
 	if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
@@ -884,7 +914,14 @@ void Renderer::_initShadowFBO() {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0); 
 }
 
-void Renderer::_initShadowCubeFBOs() {
+void Renderer::_initShadowCubeFBO() {
+	//create shadow cubemap framebuffer
+	_shadowCubeFBO = new Framebuffer();
+	_shadowCubeFBO->bind(GL_FRAMEBUFFER);
+
+	glDrawBuffer(GL_NONE);
+	glReadBuffer(GL_NONE);
+
 	//create shadow cubemap texture for each possible light
 	for(unsigned int i = 0; i < RenderSettings::MaxCubeShadows; i++) {
 		_shadowCubeMaps.push_back(new Texture()); //add to vector
@@ -897,19 +934,29 @@ void Renderer::_initShadowCubeFBOs() {
 		}
 
 		_shadowCubeMaps[i]->filter(GL_TEXTURE_CUBE_MAP, GL_NEAREST, GL_NEAREST, GL_CLAMP_TO_EDGE);
+	}
 
-		//create shadow framebuffer and attach the shadow map to it, so the framebuffer can render to it
-		_shadowCubeFBOs.push_back(new Framebuffer());
+	//bind back to default framebuffer
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
 
-		_shadowCubeFBOs[i]->bind(GL_FRAMEBUFFER);
-		_shadowCubeFBOs[i]->attachCubemap(GL_DEPTH_ATTACHMENT, _shadowCubeMaps[i]); //attach texture
-		glDrawBuffer(GL_NONE); //explicitly tell OpenGL that we are only using the depth attachments and no color attachments, otherwise the FBO will be incomplete
-		glReadBuffer(GL_NONE);
+void Renderer::_initDepthFBO() {
+	//create shadow texture
+	_sceneDepthBuffer = new Texture();
+	_sceneDepthBuffer->bind(GL_TEXTURE_2D);
+	_sceneDepthBuffer->init(GL_TEXTURE_2D, GL_DEPTH_COMPONENT32, Window::ScreenWidth, Window::ScreenHeight, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+	_sceneDepthBuffer->filter(GL_TEXTURE_2D, GL_NEAREST, GL_NEAREST, GL_CLAMP_TO_BORDER);
 
-		//check for completion
-		if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-			std::cout << "ERROR: Shadow cubemap " + std::to_string(i) + " framebuffer is incomplete." << std::endl;
-		}
+	//create shadow framebuffer and attach the shadow map to it, so the framebuffer can render to it
+	_depthFBO = new Framebuffer();
+	_depthFBO->bind(GL_FRAMEBUFFER);
+	_depthFBO->attachTexture(GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, _sceneDepthBuffer);
+	glDrawBuffer(GL_NONE); //explicitly tell OpenGL that we are only using the depth attachments and no color attachments, otherwise the FBO will be incomplete
+	glReadBuffer(GL_NONE);
+
+	//check for completion
+	if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+		std::cout << "ERROR: Scene depth framebuffer is incomplete." << std::endl;
 	}
 
 	//bind back to default framebuffer
@@ -937,13 +984,13 @@ void Renderer::_initHdrFBO() {
 	_sceneColorBuffer = new Texture();
 	_sceneColorBuffer->bind(GL_TEXTURE_2D);
 	_sceneColorBuffer->init(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGBA, GL_FLOAT, NULL);
-	_sceneColorBuffer->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_NONE);
+	_sceneColorBuffer->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_CLAMP_TO_BORDER);
 
 	//create floating point bright color buffer
 	_brightColorBuffer = new Texture();
 	_brightColorBuffer->bind(GL_TEXTURE_2D);
-	_brightColorBuffer->init(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGBA, GL_FLOAT, NULL);
-	_brightColorBuffer->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_NONE);
+	_brightColorBuffer->init(GL_TEXTURE_2D, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT, NULL);
+	_brightColorBuffer->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_CLAMP_TO_BORDER);
 
 	//create depth renderbuffer
 	_hdrRBO = new Renderbuffer();
@@ -997,16 +1044,15 @@ void Renderer::_initBlurFBOs() {
 }
 
 void Renderer::_initSSAOFBOs() {
-	//create ssao framebuffer
-	_ssaoFBO = new Framebuffer();
-	_ssaoFBO->bind(GL_FRAMEBUFFER);
-
 	//create ssao color buffer
 	_ssaoColorBuffer = new Texture();
 	_ssaoColorBuffer->bind(GL_TEXTURE_2D);
 	_ssaoColorBuffer->init(GL_TEXTURE_2D, GL_RED, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT, NULL);
 	_ssaoColorBuffer->filter(GL_TEXTURE_2D, GL_NEAREST, GL_NEAREST, GL_NONE);
 
+	//create ssao framebuffer
+	_ssaoFBO = new Framebuffer();
+	_ssaoFBO->bind(GL_FRAMEBUFFER);
 	_ssaoFBO->attachTexture(GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _ssaoColorBuffer); //attach buffer to fbo
 
 	//check for completion
@@ -1014,21 +1060,41 @@ void Renderer::_initSSAOFBOs() {
 		std::cout << "ERROR: SSAO framebuffer is incomplete." << std::endl;
 	}
 
-	//create ssao blur framebuffer
-	_ssaoBlurFBO = new Framebuffer();
-	_ssaoBlurFBO->bind(GL_FRAMEBUFFER);
-
 	//create ssao blur color buffer
 	_ssaoBlurColorBuffer = new Texture();
 	_ssaoBlurColorBuffer->bind(GL_TEXTURE_2D);
 	_ssaoBlurColorBuffer->init(GL_TEXTURE_2D, GL_RED, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT, NULL);
 	_ssaoBlurColorBuffer->filter(GL_TEXTURE_2D, GL_NEAREST, GL_NEAREST, GL_NONE);
 
+	//create ssao blur framebuffer
+	_ssaoBlurFBO = new Framebuffer();
+	_ssaoBlurFBO->bind(GL_FRAMEBUFFER);
 	_ssaoBlurFBO->attachTexture(GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _ssaoBlurColorBuffer); //attach buffer to fbo
 
 	//check for completion
 	if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
 		std::cout << "ERROR: SSAO blur framebuffer is incomplete." << std::endl;
+	}
+
+	//bind back to default framebuffer
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void Renderer::_initSSRFBO() {
+	//create color buffer for the ssr texture
+	_ssrColorBuffer = new Texture();
+	_ssrColorBuffer->bind(GL_TEXTURE_2D);
+	_ssrColorBuffer->init(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGBA, GL_FLOAT, NULL);
+	_ssrColorBuffer->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_NONE);
+
+	//create ssr framebuffer
+	_ssrFBO = new Framebuffer();
+	_ssrFBO->bind(GL_FRAMEBUFFER);
+	_ssrFBO->attachTexture(GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _ssrColorBuffer);
+
+	//check for completion
+	if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+		std::cout << "ERROR: SSR blur framebuffer is incomplete." << std::endl;
 	}
 
 	//bind back to default framebuffer
@@ -1277,14 +1343,14 @@ void Renderer::_renderShadowMaps(std::vector<std::pair<RenderComponent*, glm::ma
 		materialType = material->getMaterialType();
 
 		if(deferred) {
-			//if(pbr && materialType != MaterialType::PBR) continue; //skip non-pbr materials in pbr mode in deferred mode
-			//else if(!pbr && materialType == MaterialType::PBR) continue; //skip pbr material in non-pbr mode in deferred mode
+			if(pbr && materialType != MaterialType::PBR) continue; //skip non-pbr materials in pbr mode
+			else if(!pbr && materialType == MaterialType::PBR) continue; //skip pbr materials in non-pbr mode
 		}
 
 		modelMatrix = renderComponents[i].second;
 		model = renderComponent->model;
 
-		if(!material->getCastsShadows()) continue; //skip this model, if it should not cast shadows (e.g. like glass)
+		if(!material->getCastsShadows()) continue; //skip this model, if it should not cast shadows
 
 		_shadowShader->setMat4("modelMatrix", modelMatrix);
 		model->draw();
@@ -1299,7 +1365,8 @@ void Renderer::_renderShadowMaps(std::vector<std::pair<RenderComponent*, glm::ma
 
 	for(unsigned int i = 0; i < pointLights.size(); i++) {
 		//bind to correct cubemap shadow framebuffer
-		_shadowCubeFBOs[i]->bind(GL_FRAMEBUFFER);
+		_shadowCubeFBO->bind(GL_FRAMEBUFFER);
+		_shadowCubeFBO->attachCubemap(GL_DEPTH_ATTACHMENT, _shadowCubeMaps[i]); //attach the correct shadow cubemap as depth attachment to the framebuffer before rendering
 		glClear(GL_DEPTH_BUFFER_BIT);
 
 		//create depth cubemap shadow matrices
@@ -1345,6 +1412,44 @@ void Renderer::_renderShadowMaps(std::vector<std::pair<RenderComponent*, glm::ma
 
 	//reset viewport
 	glViewport(0, 0, Window::ScreenWidth, Window::ScreenHeight);
+}
+
+void Renderer::_renderDepth(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents) {
+	//render the depth texture seperately to enable rendering thickness maps if needed lateron
+
+	//bind to depth framebuffer
+	_depthFBO->bind(GL_FRAMEBUFFER);
+	glClear(GL_DEPTH_BUFFER_BIT);
+
+	//setup shader uniforms
+	_depthShader->use();
+
+	RenderComponent* renderComponent;
+	Material* material;
+	MaterialType materialType;
+	Model* model;
+	glm::mat4 modelMatrix;
+
+	bool deferred = RenderSettings::IsEnabled(RenderSettings::Deferred);
+	bool pbr = RenderSettings::IsEnabled(RenderSettings::PBR);
+
+	//render all models' depth into the shadow map from the lights perspective
+	for(unsigned int i = 0; i < renderComponents.size(); i++) {
+		renderComponent = renderComponents[i].first;
+		material = renderComponent->material;
+		materialType = material->getMaterialType();
+
+		if(deferred) {
+			if(pbr && materialType != MaterialType::PBR) continue; //skip non-pbr materials in pbr mode in deferred mode
+			else if(!pbr && materialType == MaterialType::PBR) continue; //skip pbr material in non-pbr mode in deferred mode
+		}
+
+		modelMatrix = renderComponents[i].second;
+		model = renderComponent->model;
+
+		_depthShader->setMat4("modelMatrix", modelMatrix);
+		model->draw();
+	}
 }
 
 void Renderer::_renderGeometry(std::vector<std::pair<RenderComponent*, glm::mat4>>& solidRenderComponents, bool pbr) {
@@ -1447,6 +1552,52 @@ void Renderer::_renderSSAOBlur() {
 	glBindVertexArray(0);
 }
 
+void Renderer::_renderSSR(CameraComponent* cameraComponent) {
+	//bind to ssr framebuffer
+	_ssrFBO->bind(GL_FRAMEBUFFER);
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	//setup shader uniforms
+	_ssrShader->use();
+
+	_ssrShader->setFloat("rayStep", RenderSettings::SsrRayStep);
+	_ssrShader->setFloat("minRayStep", RenderSettings::SsrMinRayStep);
+	_ssrShader->setInt("maxSteps", RenderSettings::SsrMaxSteps);
+	_ssrShader->setInt("binarySearchStepAmount", RenderSettings::SsrBinarySearchSteps);
+	_ssrShader->setFloat("reflectionSpecularFalloffExponent", RenderSettings::SsrSpecularFalloff);
+	_ssrShader->setFloat("maxThickness", RenderSettings::SsrMaxThickness);
+
+	_ssrShader->setFloat("maxDepth", cameraComponent->getFarPlane());
+
+	//bind position color buffer
+	glActiveTexture(GL_TEXTURE0);
+	_gPosition->bind(GL_TEXTURE_2D);
+
+	//bind normal color buffer
+	glActiveTexture(GL_TEXTURE1);
+	_gNormal->bind(GL_TEXTURE_2D);
+
+	//bind albedo + specular color buffer 
+	glActiveTexture(GL_TEXTURE2);
+	_gAlbedoSpec->bind(GL_TEXTURE_2D);
+
+	//bind scene texture
+	glActiveTexture(GL_TEXTURE3);
+	_sceneColorBuffer->bind(GL_TEXTURE_2D);
+
+	//bind scene texture
+	glActiveTexture(GL_TEXTURE4);
+	_sceneDepthBuffer->bind(GL_TEXTURE_2D);
+
+	//render quad
+	_screenQuadVAO->bind();
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	glBindVertexArray(0);
+
+	//bind back to default framebuffer
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
 void Renderer::_renderLighting(Texture* skybox, unsigned int pointLightCount, bool pbr) {
 	//bind to hdr framebuffer
 	_hdrFBO->bind(GL_FRAMEBUFFER);
@@ -1482,10 +1633,6 @@ void Renderer::_renderLighting(Texture* skybox, unsigned int pointLightCount, bo
 		glActiveTexture(GL_TEXTURE5);
 		_gEmissionAO->bind(GL_TEXTURE_2D);
 
-		//bind depth color buffer
-		glActiveTexture(GL_TEXTURE6);
-		_gDepth->bind(GL_TEXTURE_2D);
-
 		//bind brdf LUT
 		glActiveTexture(GL_TEXTURE8);
 		_brdfLUT->bind(GL_TEXTURE_2D);
@@ -1513,7 +1660,7 @@ void Renderer::_renderLighting(Texture* skybox, unsigned int pointLightCount, bo
 
 		//bind environment color buffer
 		glActiveTexture(GL_TEXTURE4);
-		_gEnvironmentDepth->bind(GL_TEXTURE_2D);
+		_gEnvironment->bind(GL_TEXTURE_2D);
 	}
 
 	//bind ssao texture
@@ -1660,6 +1807,9 @@ void Renderer::_renderPostProcessingQuad() {
 	_postProcessingShader->setBool("useBloom", RenderSettings::IsEnabled(RenderSettings::Bloom));
 	_postProcessingShader->setBool("useFXAA", RenderSettings::IsEnabled(RenderSettings::FXAA));
 	_postProcessingShader->setBool("useMotionBlur", RenderSettings::IsEnabled(RenderSettings::MotionBlur));
+	_postProcessingShader->setBool("useSSR", RenderSettings::IsEnabled(RenderSettings::SSR));
+
+	_postProcessingShader->setBool("ssrDebug", RenderSettings::SsrDebug);
 
 	_postProcessingShader->setInt("motionBlurSamples", RenderSettings::MotionBlurSamples);
 	_postProcessingShader->setFloat("velocityScale", RenderSettings::VelocityScale);
@@ -1673,12 +1823,18 @@ void Renderer::_renderPostProcessingQuad() {
 	_postProcessingShader->setFloat("fxaaReduceMin", RenderSettings::FxaaReduceMin);
 	_postProcessingShader->setFloat("fxaaReduceMul", RenderSettings::FxaaReduceMul);
 
-	//bind texture
+	//bind textures
 	glActiveTexture(GL_TEXTURE0);
 	_sceneColorBuffer->bind(GL_TEXTURE_2D); //bind screen texture
 
 	glActiveTexture(GL_TEXTURE1);
+	_sceneDepthBuffer->bind(GL_TEXTURE_2D); //bind scene depth texture
+
+	glActiveTexture(GL_TEXTURE2);
 	_blurColorBuffers[!horizontal]->bind(GL_TEXTURE_2D); //bind blurred bloom texture
+
+	glActiveTexture(GL_TEXTURE3);
+	_ssrColorBuffer->bind(GL_TEXTURE_2D);
 
 	//render texture to the screen and tone map and gamma correct
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
@@ -1870,11 +2026,13 @@ void Renderer::_updateDimensions() {
 	//first free all ressources that depend on the screen dimensions to avoid memory leaks
 	delete _gBuffer;
 	delete _gBufferPbr;
+	delete _depthFBO;
 	delete _hdrFBO;
 	delete _bloomBlurFBOs[0];
 	delete _bloomBlurFBOs[1];
 	delete _ssaoFBO;
 	delete _ssaoBlurFBO;
+	delete _ssrFBO;
 
 	delete _gRBO;
 	delete _gPbrRBO;
@@ -1884,7 +2042,7 @@ void Renderer::_updateDimensions() {
 	delete _gNormal;
 	delete _gAlbedoSpec;
 	delete _gEmissionShiny;
-	delete _gEnvironmentDepth;
+	delete _gEnvironment;
 
 	delete _gPositionMetallic;
 	delete _gNormalRoughness;
@@ -1893,19 +2051,23 @@ void Renderer::_updateDimensions() {
 	delete _gPrefilterF0b;
 	delete _gEmissionAO;
 
+	delete _sceneDepthBuffer;
 	delete _sceneColorBuffer;
 	delete _brightColorBuffer;
 	delete _blurColorBuffers[0];
 	delete _blurColorBuffers[1];
 	delete _ssaoColorBuffer;
 	delete _ssaoBlurColorBuffer;
+	delete _ssrColorBuffer;
 
 	//then reallocate them with the correct new dimensions
 	_initGBuffer();
 	_initGBufferPbr();
+	_initDepthFBO();
 	_initHdrFBO();
 	_initBlurFBOs();
 	_initSSAOFBOs();
+	_initSSRFBO();
 
 	Window::DimensionsChanged = false; //reset
 }

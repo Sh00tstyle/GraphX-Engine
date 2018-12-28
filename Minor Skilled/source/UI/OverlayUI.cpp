@@ -122,19 +122,29 @@ void OverlayUI::_setupProfiler() {
 			ImGui::Text("Shadow Pass:  \t\t\t\t0.0000 ms");
 		}
 
+		ImGui::Text("Depth Pass:   \t\t\t\t%.4f ms", _profiler->getQuery(QueryType::Depth));
+
 		if(RenderSettings::IsEnabled(RenderSettings::Deferred)) {
 			ImGui::Text("Geometry Pass:\t\t\t\t%.4f ms", _profiler->getQuery(QueryType::Geometry));
 			ImGui::Text("Lighting Pass:\t\t\t\t%.4f ms", _profiler->getQuery(QueryType::Lighting));
 
 			if(RenderSettings::IsEnabled(RenderSettings::SSAO)) {
-				ImGui::Text("SSAO Pass:\t\t\t\t%.4f ms", _profiler->getQuery(QueryType::SSAO));
+				ImGui::Text("SSAO Pass:\t\t\t\t\t%.4f ms", _profiler->getQuery(QueryType::SSAO));
 			} else {
-				ImGui::Text("SSAO Pass:\t\t\t\t0.0000 ms");
+				ImGui::Text("SSAO Pass:\t\t\t\t\t0.0000 ms");
 			}
+
+			if(RenderSettings::IsEnabled(RenderSettings::SSR)) {
+				ImGui::Text("SSR Pass: \t\t\t\t\t%.4f ms", _profiler->getQuery(QueryType::SSR));
+			} else {
+				ImGui::Text("SSR Pass: \t\t\t\t\t0.0000 ms");
+			}
+
 		} else {
 			ImGui::Text("Geometry Pass:\t\t\t\t0.0000 ms");
 			ImGui::Text("Lighting Pass:\t\t\t\t0.0000 ms");
 			ImGui::Text("SSAO Pass:\t\t\t\t\t0.0000 ms");
+			ImGui::Text("SSR Pass: \t\t\t\t\t0.0000 ms");
 		}
 
 		ImGui::Text("Blending Pass:\t\t\t\t%.4f ms", _profiler->getQuery(QueryType::Blending));
@@ -177,12 +187,13 @@ void OverlayUI::_setupSettings() {
 	ImGui::CheckboxFlags("Shadows", &RenderSettings::Options, RenderSettings::Shadows);
 	ImGui::CheckboxFlags("Bloom", &RenderSettings::Options, RenderSettings::Bloom);
 	ImGui::CheckboxFlags("FXAA", &RenderSettings::Options, RenderSettings::FXAA);
-	ImGui::CheckboxFlags("Motion Blur", &RenderSettings::Options, RenderSettings::MotionBlur); //does not work for some weird reason
+	ImGui::CheckboxFlags("Motion Blur", &RenderSettings::Options, RenderSettings::MotionBlur);
 	ImGui::Checkbox("vSync", &RenderSettings::VSync);
 	ImGui::CheckboxFlags("Deferred", &RenderSettings::Options, RenderSettings::Deferred);
 
 	ImGui::Indent();
 	ImGui::CheckboxFlags("SSAO", &RenderSettings::Options, RenderSettings::SSAO);
+	ImGui::CheckboxFlags("SSR", &RenderSettings::Options, RenderSettings::SSR);
 	ImGui::CheckboxFlags("PBR", &RenderSettings::Options, RenderSettings::PBR);
 	ImGui::Unindent();
 
@@ -198,6 +209,15 @@ void OverlayUI::_setupSettings() {
 	ImGui::InputFloat("Bias", &RenderSettings::SsaoBias);
 	ImGui::InputFloat("Power", &RenderSettings::SsaoPower);
 
+	ImGui::Text("\nSSR Settings");
+	ImGui::InputFloat("Ray Step", &RenderSettings::SsrRayStep);
+	ImGui::InputFloat("Min Ray Step", &RenderSettings::SsrMinRayStep);
+	ImGui::InputInt("Max Steps", &RenderSettings::SsrMaxSteps);
+	ImGui::InputInt("Binary Search Steps", &RenderSettings::SsrBinarySearchSteps);
+	ImGui::InputFloat("Specular Falloff", &RenderSettings::SsrSpecularFalloff);
+	ImGui::InputFloat("Max Thickness", &RenderSettings::SsrMaxThickness);
+	ImGui::Checkbox("Show Debug", &RenderSettings::SsrDebug);
+
 	ImGui::Text("\nFXAA Settings");
 	ImGui::InputFloat("Max Spam", &RenderSettings::FxaaSpanMax);
 	ImGui::InputFloat("Min Reduce", &RenderSettings::FxaaReduceMin);
@@ -206,6 +226,8 @@ void OverlayUI::_setupSettings() {
 	//disable deferred only settings if we are forward rendering
 	if(!RenderSettings::IsEnabled(RenderSettings::Deferred)) {
 		RenderSettings::Disable(RenderSettings::SSAO);
+		RenderSettings::Disable(RenderSettings::SSR);
+		RenderSettings::Disable(RenderSettings::SSGI);
 		RenderSettings::Disable(RenderSettings::PBR);
 	}
 
@@ -386,10 +408,10 @@ void OverlayUI::_setupInspector() {
 						ImGui::Text("\nColor Material");
 						ImGui::Text(blendModeString.c_str());
 						ImGui::Checkbox("Casts shadows", &colorMaterial->getCastsShadows());
+						ImGui::InputFloat("Specular", &colorMaterial->getSpecular());
 						ImGui::InputFloat("Shininess", &colorMaterial->getShininess());
 						ImGui::ColorEdit3("Diffuse Color", &colorMaterial->getDiffuseColor().x);
 						ImGui::ColorEdit3("Ambient Color", &colorMaterial->getAmbientColor().x);
-						ImGui::ColorEdit3("Specular Color", &colorMaterial->getSpecularColor().x);
 						break;
 
 					case MaterialType::Textures:
@@ -491,25 +513,24 @@ void OverlayUI::_setupInspector() {
 	ImGui::End();
 }
 
-void OverlayUI::_selectInspectorNode(Node* node) {
-	_activeNode = node; //select node to draw
-}
-
 void OverlayUI::_drawHierarchyNodes(Node* node, unsigned int depth) {
 	//add intendions based on the tree depth
-	std::string name = "";
-
 	for(unsigned int i = 0; i < depth; i++) {
-		name += "\t";
+		ImGui::Indent();
 	}
 
-	name += node->getName();
+	std::string name = node->getName();
 
 	if(ImGui::Button(name.c_str())) {
-		_selectInspectorNode(node);
+		_activeNode = node;
 	}
 
 	ImGui::AlignTextToFramePadding();
+
+	//unindent back to default
+	for(unsigned int i = 0; i < depth; i++) {
+		ImGui::Unindent();
+	}
 
 	//draw child nodes as well recursively
 	Node* currentNode;

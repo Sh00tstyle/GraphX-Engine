@@ -36,7 +36,7 @@ struct Light {
 struct Material {
     vec3 ambient;
     vec3 diffuse;
-    vec3 specular;
+    float specular;
     float shininess;
 };
 
@@ -68,7 +68,7 @@ uniform sampler2D shadowMap;
 uniform samplerCube shadowCubemaps[5];
 
 layout (location = 0) out vec4 fragColor;
-layout (location = 1) out vec4 brightColor;
+layout (location = 1) out vec3 brightColor;
 
 vec3 CalculateDirectionalLight(Light light, vec3 normal, vec3 viewDirection, float shadow);
 vec3 CalculatePointLight(Light light, vec3 normal, vec3 viewDirection, float shadow);
@@ -82,7 +82,6 @@ vec3 CalculateBrightColor(vec3 color);
 void main() {
     vec3 normal = normalize(fs_in.fragNormal);
     vec3 viewDirection = normalize(cameraPos - fs_in.fragPos);
-    brightColor.a = gl_FragCoord.z; //store the depth value in the alpha channel
 
     //shadows
     float shadow = CalculateShadow(normal);

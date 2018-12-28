@@ -99,7 +99,7 @@ uniform sampler2D shadowMap;
 uniform samplerCube shadowCubemaps[5];
 
 layout (location = 0) out vec4 fragColor;
-layout (location = 1) out vec4 brightColor;
+layout (location = 1) out vec3 brightColor;
 
 //PBR equations
 vec3 FresnelSchlick(vec3 H, vec3 V, vec3 F0);
@@ -124,7 +124,6 @@ vec3 CalculateSpotLight(Light light, vec3 V, vec3 N, vec3 F0, vec3 albedo, float
 
 void main() {
     //PBR lighting shader, using value names which are used in the equations for better understanding
-    brightColor.a = gl_FragCoord.z; //store the depth value in the alpha channel
 
     //parallax mapping
     vec2 texCoord = ParallaxMapping();

@@ -68,7 +68,6 @@ uniform sampler2D gAlbedoF0r;
 uniform sampler2D gIrradianceF0g;
 uniform sampler2D gPrefilterF0b;
 uniform sampler2D gEmissionAO;
-uniform sampler2D gDepth;
 
 uniform sampler2D ssao;
 uniform sampler2D brdfLUT;
@@ -76,7 +75,7 @@ uniform sampler2D shadowMap;
 uniform samplerCube shadowCubemaps[5];
 
 layout (location = 0) out vec4 fragColor;
-layout (location = 1) out vec4 brightColor;
+layout (location = 1) out vec3 brightColor;
 
 //PBR equations
 vec3 FresnelSchlick(vec3 H, vec3 V, vec3 F0);
@@ -107,8 +106,6 @@ void main() {
     float metallic = texture(gPositionMetallic, texCoord).a;
     float roughness = texture(gNormalRoughness, texCoord).a;
     float ao = texture(gEmissionAO, texCoord).a + texture(ssao, texCoord).r; //add material AO and SSAO
-
-    brightColor.a = texture(gDepth, texCoord).r;
 
     if(ao > 1.0f) ao = 1.0f;
 
@@ -161,8 +158,8 @@ void main() {
     //ambient lighting
     vec3 F = FresnelSchlickRoughness(N, V, F0, roughness);
 
-    vec3 kS = F;
-    vec3 kD = 1.0f - kS;
+    vec3 kS = F; //reflection strength
+    vec3 kD = 1.0f - kS; //refraction strength
     kD *= 1.0f - metallic;
 
     //sample from the irradiance map for the diffuse
@@ -172,7 +169,7 @@ void main() {
     //sample from the prefilter map and the BRDF lut and combine the results
     vec3 prefilteredColor = texture(gPrefilterF0b, texCoord).rgb;
     vec2 brdf = texture(brdfLUT, vec2(max(dot(N, V), 0.0f), roughness)).rg;
-    vec3 specular = prefilteredColor * (F * brdf.x + brdf.y);
+    vec3 specular = prefilteredColor * (kS * brdf.x + brdf.y);
 
     //apply IBL to the ambient color
     vec3 ambient = (kD * diffuse + specular) * ao;

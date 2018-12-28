@@ -12,12 +12,12 @@
 Shader* ColorMaterial::_ForwardShader = nullptr;
 Shader* ColorMaterial::_DeferredShader = nullptr;
 
-ColorMaterial::ColorMaterial(glm::vec3 diffuseColor):Material(MaterialType::Color, BlendMode::Opaque, true), _ambientColor(glm::vec3(0.0f)), _diffuseColor(diffuseColor), _specularColor(glm::vec3(0.0f)), _shininess(32.0f) {
+ColorMaterial::ColorMaterial(glm::vec3 diffuseColor):Material(MaterialType::Color, BlendMode::Opaque, true), _ambientColor(glm::vec3(0.0f)), _diffuseColor(diffuseColor), _specular(0.0f), _shininess(32.0f) {
 	_initShader();
 }
 
-ColorMaterial::ColorMaterial(glm::vec3 ambientColor, glm::vec3 diffuseColor, glm::vec3 specularColor, float shininess, bool castsShadows):Material(MaterialType::Color, BlendMode::Opaque, castsShadows),
-_ambientColor(ambientColor), _diffuseColor(diffuseColor), _specularColor(specularColor), _shininess(shininess) {
+ColorMaterial::ColorMaterial(glm::vec3 ambientColor, glm::vec3 diffuseColor, float specular, float shininess, bool castsShadows):Material(MaterialType::Color, BlendMode::Opaque, castsShadows),
+_ambientColor(ambientColor), _diffuseColor(diffuseColor), _specular(specular), _shininess(shininess) {
 	_initShader();
 }
 
@@ -32,8 +32,8 @@ glm::vec3& ColorMaterial::getDiffuseColor() {
 	return _diffuseColor;
 }
 
-glm::vec3& ColorMaterial::getSpecularColor() {
-	return _specularColor;
+float& ColorMaterial::getSpecular() {
+	return _specular;
 }
 
 float& ColorMaterial::getShininess() {
@@ -48,8 +48,8 @@ void ColorMaterial::setDiffuseColor(glm::vec3 diffuseColor) {
 	_diffuseColor = diffuseColor;
 }
 
-void ColorMaterial::setSpecularColor(glm::vec3 specularColor) {
-	_specularColor = specularColor;
+void ColorMaterial::setSpecular(float specular) {
+	_specular = specular;
 }
 
 void ColorMaterial::setShininess(float shininess) {
@@ -71,7 +71,7 @@ void ColorMaterial::drawForward(glm::mat4& modelMatrix) {
 	//set material properties
 	_ForwardShader->setVec3("material.diffuse", _diffuseColor);
 	_ForwardShader->setVec3("material.ambient", _ambientColor);
-	_ForwardShader->setVec3("material.specular", _specularColor);
+	_ForwardShader->setFloat("material.specular", _specular);
 	_ForwardShader->setFloat("material.shininess", _shininess);
 }
 
@@ -84,7 +84,7 @@ void ColorMaterial::drawDeferred(glm::mat4 & modelMatrix) {
 	//set material properties
 	_DeferredShader->setVec3("material.diffuse", _diffuseColor);
 	_DeferredShader->setVec3("material.ambient", _ambientColor);
-	_DeferredShader->setVec3("material.specular", _specularColor);
+	_DeferredShader->setFloat("material.specular", _specular);
 	_DeferredShader->setFloat("material.shininess", _shininess);
 }
 
@@ -93,7 +93,7 @@ void ColorMaterial::_initShader() {
 		_ForwardShader = new Shader(Filepath::ShaderPath + "material shader/forward/color.vs", Filepath::ShaderPath + "material shader/forward/color.fs");
 
 		_ForwardShader->use();
-		_ForwardShader->setInt("shadowMap", 11); //assign to slot 10, so that it shares it with the other materials which have more textures
+		_ForwardShader->setInt("shadowMap", 11); //assign to slot 11, so that it shares it with the other materials which have more textures
 
 		for(unsigned int i = 0; i < RenderSettings::MaxCubeShadows; i++) {
 			_ForwardShader->setInt("shadowCubemaps[" + std::to_string(i) + "]", 12 + i);

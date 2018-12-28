@@ -25,6 +25,5 @@ void main() {
         }
     }
 
-    float fragDepth = texture(image, texCoord).a; //forward the depth values
-    fragColor = vec4(result, fragDepth);
+    fragColor = vec4(result, 1.0f);
 }

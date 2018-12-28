@@ -36,8 +36,6 @@ class OverlayUI {
 		void _setupHierarchy(World* world);
 		void _setupInspector();
 
-		void _selectInspectorNode(Node* node);
-
 		void _drawHierarchyNodes(Node* node, unsigned int depth);
 
 		std::string _getNameFromPath(std::string path);

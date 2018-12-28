@@ -14,6 +14,7 @@ class Shader;
 class Texture;
 class RenderComponent;
 class LightComponent;
+class CameraComponent;
 class VertexArray;
 class Buffer;
 class Framebuffer;
@@ -52,6 +53,7 @@ class Renderer {
 		Shader* _lightingShaderPbr;
 		Shader* _shadowShader;
 		Shader* _shadowCubeShader;
+		Shader* _depthShader;
 		Shader* _environmentShader;
 		Shader* _irradianceShader;
 		Shader* _prefilterShader;
@@ -59,6 +61,7 @@ class Renderer {
 		Shader* _skyboxShader;
 		Shader* _ssaoShader;
 		Shader* _ssaoBlurShader;
+		Shader* _ssrShader;
 		Shader* _bloomBlurShader;
 		Shader* _postProcessingShader;
 
@@ -67,7 +70,7 @@ class Renderer {
 		Texture* _gNormal;
 		Texture* _gAlbedoSpec;
 		Texture* _gEmissionShiny;
-		Texture* _gEnvironmentDepth;
+		Texture* _gEnvironment;
 
 		Texture* _gPositionMetallic;
 		Texture* _gNormalRoughness;
@@ -75,10 +78,10 @@ class Renderer {
 		Texture* _gIrradianceF0g;
 		Texture* _gPrefilterF0b;
 		Texture* _gEmissionAO;
-		Texture* _gDepth;
 
 		Texture* _shadowMap;
 		std::vector<Texture*> _shadowCubeMaps;
+		Texture* _sceneDepthBuffer;
 		Texture* _sceneColorBuffer;
 		Texture* _brightColorBuffer;
 		Texture* _blurColorBuffers[2];
@@ -86,6 +89,7 @@ class Renderer {
 		Texture* _ssaoNoiseTexture;
 		Texture* _ssaoColorBuffer;
 		Texture* _ssaoBlurColorBuffer;
+		Texture* _ssrColorBuffer;
 
 		//VAOs, VBOs
 		VertexArray* _skyboxVAO;
@@ -106,13 +110,15 @@ class Renderer {
 
 		Framebuffer* _conversionFBO;
 		Framebuffer* _shadowFBO;
-		std::vector<Framebuffer*> _shadowCubeFBOs;
+		Framebuffer* _shadowCubeFBO;
+		Framebuffer* _depthFBO;
 		Framebuffer* _environmentFBO;
 		Framebuffer* _hdrFBO;
 		Framebuffer* _bloomFBO;
 		Framebuffer* _bloomBlurFBOs[2];
 		Framebuffer* _ssaoFBO;
 		Framebuffer* _ssaoBlurFBO;
+		Framebuffer* _ssrFBO;
 
 		Renderbuffer* _gRBO;
 		Renderbuffer* _gPbrRBO;
@@ -137,11 +143,13 @@ class Renderer {
 		void _initGBufferPbr();
 		void _initConversionFBO();
 		void _initShadowFBO();
-		void _initShadowCubeFBOs();
+		void _initShadowCubeFBO();
+		void _initDepthFBO();
 		void _initEnvironmentFBO();
 		void _initHdrFBO();
 		void _initBlurFBOs();
 		void _initSSAOFBOs();
+		void _initSSRFBO();
 		
 		//environment render functions
 		Texture* _renderEnvironmentMap(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, glm::mat4& environmentProjection, glm::vec3& renderPos, Texture* skybox, LightComponent* dirLight, bool pbr);
@@ -151,9 +159,11 @@ class Renderer {
 
 		//render functions
 		void _renderShadowMaps(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, std::vector<glm::vec3>& pointLights, glm::mat4& lightSpaceMatrix);
+		void _renderDepth(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents);
 		void _renderGeometry(std::vector<std::pair<RenderComponent*, glm::mat4>>& solidRenderComponents, bool pbr);
 		void _renderSSAO(bool pbr);
 		void _renderSSAOBlur();
+		void _renderSSR(CameraComponent* cameraComponent);
 		void _renderLighting(Texture* skybox, unsigned int pointLightCount, bool pbr);
 		void _renderScene(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, unsigned int pointLightCount, bool useShadows, bool bindFBO);
 		void _renderSkybox(glm::mat4& viewMatrix, glm::mat4& projectionMatrix, Texture* skybox);

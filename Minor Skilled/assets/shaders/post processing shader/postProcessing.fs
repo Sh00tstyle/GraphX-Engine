@@ -12,6 +12,9 @@ layout (std140) uniform matricesBlock {
 uniform bool useFXAA;
 uniform bool useMotionBlur;
 uniform bool useBloom;
+uniform bool useSSR;
+
+uniform bool ssrDebug;
 
 uniform float gamma;
 uniform float exposure;
@@ -22,7 +25,9 @@ uniform float fxaaReduceMin;
 uniform float fxaaReduceMul;
 
 uniform sampler2D screenTexture;
+uniform sampler2D sceneDepth;
 uniform sampler2D bloomBlur;
+uniform sampler2D ssr;
 
 uniform int motionBlurSamples;
 uniform float velocityScale;
@@ -32,6 +37,7 @@ out vec4 fragColor;
 vec3 FXAA(vec3 color, vec2 texCoord);
 vec3 MotionBlur(vec3 color);
 vec3 Bloom();
+vec3 SSR();
 vec3 ExposureTonemap(vec3 color);
 vec3 GammaCorrect(vec3 color);
 
@@ -39,21 +45,26 @@ void main() {
     vec3 color = texture(screenTexture, texCoord).rgb;
 
     //FXAA
-    if(useFXAA) color = FXAA(color, texCoord);
+    if(useFXAA) color = FXAA(color.rgb, texCoord);
 
     //Motion Blur
-    if(useMotionBlur) color = MotionBlur(color);
+    if(useMotionBlur) color = MotionBlur(color.rgb);
 
-    //bloom
-    if(useBloom) color += Bloom(); //additive blending
+    //Bloom
+    if(useBloom) color += Bloom();
+
+    //SSR
+    if(useSSR) color += SSR();
 
     //hdr tonemap
     color = ExposureTonemap(color);
 
     //gamma correct
     color = GammaCorrect(color);
-
+    
     fragColor = vec4(color, 1.0f);
+
+    if(ssrDebug && useSSR) fragColor = vec4(SSR(), 1.0f);
 }
 
 vec3 FXAA(vec3 color, vec2 texCoord) {
@@ -102,7 +113,7 @@ vec3 MotionBlur(vec3 color) {
     //information from: https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch27.html
 
     //obtain world position
-    float zOverW = texture(bloomBlur, texCoord).a; //get the depth value stored in the alpha channel
+    float zOverW = texture(sceneDepth, texCoord).r; //get the depth value
     vec4 H = vec4(texCoord.x * 2.0f - 1.0f, (1.0f - texCoord.y) * 2.0f - 1.0f, zOverW, 1.0f); //viewport position in the range [-1, 1]
     mat4 viewProjectionMatrix = projectionMatrix * viewMatrix;
     vec4 D = inverse(viewProjectionMatrix) * H; //transform by the view projection inverse matrix
@@ -136,6 +147,16 @@ vec3 MotionBlur(vec3 color) {
 
 vec3 Bloom() {
     return texture(bloomBlur, texCoord).rgb;
+}
+
+vec3 SSR() {
+    vec4 ssr = texture(ssr, texCoord);
+
+    if(ssr.a == 0.0f) {
+        return vec3(0.0f);
+    }
+
+    return ssr.rgb;
 }
 
 vec3 ExposureTonemap(vec3 color) {

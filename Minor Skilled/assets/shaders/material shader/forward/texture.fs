@@ -92,16 +92,16 @@ uniform sampler2D shadowMap;
 uniform samplerCube shadowCubemaps[5];
 
 layout (location = 0) out vec4 fragColor;
-layout (location = 1) out vec4 brightColor;
+layout (location = 1) out vec3 brightColor;
 
-vec3 GetSpecular(vec2 texCoord);
+float GetSpecular(vec2 texCoord);
 vec3 GetNormal(vec2 texCoord);
 vec3 GetReflection(vec3 normal, vec2 texCoord, out bool hasReflection);
 vec2 ParallaxMapping();
 
-vec3 CalculateDirectionalLight(Light light, vec3 diff, vec3 spec, vec3 normal, vec3 viewDirection, vec2 texCoord, float shadow);
-vec3 CalculatePointLight(Light light, vec3 diff, vec3 spec, vec3 normal, vec3 viewDirection, vec2 texCoord, float shadow);
-vec3 CalculateSpotLight(Light light, vec3 diff, vec3 spec, vec3 normal, vec3 viewDirection, vec2 texCoord, float shadow);
+vec3 CalculateDirectionalLight(Light light, vec3 diff, vec3 normal, float spec, vec3 viewDirection, vec2 texCoord, float shadow);
+vec3 CalculatePointLight(Light light, vec3 diff, vec3 normal, float spec, vec3 viewDirection, vec2 texCoord, float shadow);
+vec3 CalculateSpotLight(Light light, vec3 diff, vec3 normal, float spec, vec3 viewDirection, vec2 texCoord, float shadow);
 
 float CalculateShadow(vec3 normal);
 float CalculateCubemapShadow(vec3 normal, vec3 fragPos, int index);
@@ -110,7 +110,6 @@ vec3 CalculateBrightColor(vec3 color);
 
 void main() {
     vec3 viewDirection = normalize(cameraPos - fs_in.fragPosWorld);
-    brightColor.a = gl_FragCoord.z; //store the depth value in the alpha channel
 
     //parallax mapping
     vec2 texCoord = ParallaxMapping();
@@ -118,8 +117,8 @@ void main() {
 
     //get values from textures
     vec3 diffuse = texture(material.diffuse, texCoord).rgb;
-    vec3 specular = GetSpecular(texCoord);
     vec3 normal = GetNormal(texCoord);
+    float specular = GetSpecular(texCoord);
 
     //reflection
     bool hasReflection; //gets filled by the GetReflection function
@@ -164,15 +163,15 @@ void main() {
     for(int i = 0; i < usedLights; i++) {
         switch(lights[i].type) {
             case DIRECTIONAL:
-                result += CalculateDirectionalLight(lights[i], diffuse, specular, normal, viewDirection, texCoord, shadow);
+                result += CalculateDirectionalLight(lights[i], diffuse, normal, specular, viewDirection, texCoord, shadow);
                 break;
 
             case POINT:
-                result += CalculatePointLight(lights[i], diffuse, specular, normal, viewDirection, texCoord, shadow);
+                result += CalculatePointLight(lights[i], diffuse, normal, specular, viewDirection, texCoord, shadow);
                 break;
 
             case SPOT:
-                result += CalculateSpotLight(lights[i], diffuse, specular, normal, viewDirection, texCoord, shadow);
+                result += CalculateSpotLight(lights[i], diffuse, normal, specular, viewDirection, texCoord, shadow);
                 break;
         }
     }
@@ -189,17 +188,11 @@ void main() {
     brightColor.rgb = CalculateBrightColor(result);
 }
 
-vec3 GetSpecular(vec2 texCoord) {
-    //take the specular contribution from the specular map, otherwise use vec3(0.2f)
-    vec3 specular;
+float GetSpecular(vec2 texCoord) {
+    //take the specular contribution from the specular map, otherwise use none
 
-    if(material.hasSpecular) {
-        specular = texture(material.specular, texCoord).rgb;
-    } else {
-        specular = vec3(0.2f);
-    }
-
-    return specular;
+    if(material.hasSpecular) return texture(material.specular, texCoord).r;
+    else return 0.0f;
 }
 
 vec3 GetNormal(vec2 texCoord) {
@@ -292,7 +285,7 @@ vec2 ParallaxMapping() {
     return finalTexCoords;
 }
 
-vec3 CalculateDirectionalLight(Light light, vec3 diff, vec3 spec, vec3 normal, vec3 viewDirection, vec2 texCoord, float shadow) {
+vec3 CalculateDirectionalLight(Light light, vec3 diff, vec3 normal, float spec, vec3 viewDirection, vec2 texCoord, float shadow) {
     //ambient
     vec3 ambient = light.ambient.rgb * diff;
 
@@ -309,7 +302,7 @@ vec3 CalculateDirectionalLight(Light light, vec3 diff, vec3 spec, vec3 normal, v
     return (ambient + shadow * (diffuse + specular));
 }
 
-vec3 CalculatePointLight(Light light, vec3 diff, vec3 spec, vec3 normal, vec3 viewDirection, vec2 texCoord, float shadow) {
+vec3 CalculatePointLight(Light light, vec3 diff, vec3 normal, float spec, vec3 viewDirection, vec2 texCoord, float shadow) {
     vec3 lightDirection = normalize(light.position.xyz - fs_in.fragPosWorld);
 
     //ambient
@@ -336,7 +329,7 @@ vec3 CalculatePointLight(Light light, vec3 diff, vec3 spec, vec3 normal, vec3 vi
     return (ambient + shadow * (diffuse + specular));
 }
 
-vec3 CalculateSpotLight(Light light, vec3 diff, vec3 spec, vec3 normal, vec3 viewDirection, vec2 texCoord, float shadow) {
+vec3 CalculateSpotLight(Light light, vec3 diff, vec3 normal, float spec, vec3 viewDirection, vec2 texCoord, float shadow) {
     vec3 lightDirection = normalize(light.position.xyz - fs_in.fragPosWorld);
 
     //ambient

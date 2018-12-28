@@ -139,7 +139,6 @@ void Scene::_render() {
 	_profiler->startQuery(QueryType::UI);
 	_ui->render();
 	_profiler->endQuery(QueryType::UI);
-
 }
 
 void Scene::_initializeEnvironmentMaps() {

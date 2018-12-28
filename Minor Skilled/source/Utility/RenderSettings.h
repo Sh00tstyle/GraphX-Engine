@@ -12,6 +12,8 @@ class RenderSettings {
 		static const unsigned int MotionBlur;
 		static const unsigned int Deferred;
 		static const unsigned int SSAO;
+		static const unsigned int SSR;
+		static const unsigned int SSGI;
 		static const unsigned int PBR;
 
 		static unsigned int Options;
@@ -44,6 +46,15 @@ class RenderSettings {
 		static float SsaoRadius;
 		static float SsaoBias;
 		static float SsaoPower;
+
+		static float SsrRayStep;
+		static float SsrMinRayStep;
+		static int SsrMaxSteps;
+		static int SsrBinarySearchSteps;
+		static float SsrSpecularFalloff;
+		static float SsrMaxThickness;
+
+		static bool SsrDebug;
 
 		static const unsigned int MaxLights;
 

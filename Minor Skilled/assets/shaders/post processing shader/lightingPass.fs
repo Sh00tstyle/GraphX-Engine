@@ -64,7 +64,7 @@ uniform sampler2D gPosition;
 uniform sampler2D gNormal;
 uniform sampler2D gAlbedoSpec;
 uniform sampler2D gEmissionShiny;
-uniform sampler2D gEnvironmentDepth;
+uniform sampler2D gEnvironment;
 
 uniform sampler2D ssao;
 uniform samplerCube environmentMap;
@@ -72,7 +72,7 @@ uniform sampler2D shadowMap;
 uniform samplerCube shadowCubemaps[5];
 
 layout (location = 0) out vec4 fragColor;
-layout (location = 1) out vec4 brightColor;
+layout (location = 1) out vec3 brightColor;
 
 vec3 CalculateDirectionalLight(Light light, vec3 albedo, float spec, float shininess, vec3 normal, vec3 viewDirection, vec2 texCoord, float shadow);
 vec3 CalculatePointLight(Light light, vec3 albedo, float spec, float shininess, vec3 normal, vec3 fragPos, vec3 viewDirection, vec2 texCoord, float shadow);
@@ -88,11 +88,9 @@ void main() {
     vec3 fragPos = texture(gPosition, texCoord).rgb;
     vec3 normal = texture(gNormal, texCoord).rgb;
     vec3 albedo = texture(gAlbedoSpec, texCoord).rgb;
-    vec3 environment = texture(gEnvironmentDepth, texCoord).rgb;
+    vec3 environment = texture(gEnvironment, texCoord).rgb;
     float specular = texture(gAlbedoSpec, texCoord).a;
     float shininess = texture(gEmissionShiny, texCoord).a * 255.0f;
-    
-    brightColor.a = texture(gEnvironmentDepth, texCoord).a;
 
     //transform to world pos
     vec3 worldFragPos = vec3(inverse(viewMatrix) * vec4(fragPos, 1.0f));
@@ -102,7 +100,7 @@ void main() {
     if(length(environment) > 0.0f) {
         //only output the reflection and skip everything else if there is reflection
         fragColor = vec4(environment, 1.0f);
-        brightColor = vec4(vec3(0.0f), 1.0f);
+        brightColor = vec3(0.0f);
         return;
     }
 

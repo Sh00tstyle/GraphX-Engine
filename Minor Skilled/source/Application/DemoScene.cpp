@@ -138,8 +138,8 @@ void DemoScene::_initializeScene() {
 	heightMaterial->setHeightMap(heightTexture);
 	heightMaterial->setHeightScale(0.15f);
 
-	ColorMaterial* colorMaterial = new ColorMaterial(glm::vec3(0.1f), glm::vec3(0.5f), glm::vec3(0.3f), 32.0f);
-	ColorMaterial* sphereMaterial = new ColorMaterial(glm::vec3(1.5f, 1.5f, 0.0f), glm::vec3(1.5f, 1.5f, 0.0f), glm::vec3(1.5f, 1.5f, 0.0f));
+	ColorMaterial* colorMaterial = new ColorMaterial(glm::vec3(0.1f), glm::vec3(0.5f), 1.0f, 32.0f);
+	ColorMaterial* sphereMaterial = new ColorMaterial(glm::vec3(1.5f, 1.5f, 0.0f), glm::vec3(1.5f, 1.5f, 0.0f), 0.0f);
 
 	PBRMaterial* pbrMaterial = new PBRMaterial(albedo, normal, metallic, roughness, ao, BlendMode::Opaque);
 	//pbrMaterial->setRefractionFactor(1.52f);

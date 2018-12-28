@@ -37,12 +37,16 @@ class Debug {
 		GLuint64 queryEnvironmentEnd;
 		GLuint64 queryShadowStart;
 		GLuint64 queryShadowEnd;
+		GLuint64 queryDepthStart;
+		GLuint64 queryDepthEnd;
 		GLuint64 queryGeometryStart;
 		GLuint64 queryGeometryEnd;
 		GLuint64 queryLightingStart;
 		GLuint64 queryLightingEnd;
 		GLuint64 querySSAOStart;
 		GLuint64 querySSAOEnd;
+		GLuint64 querySSRStart;
+		GLuint64 querySSREnd;
 		GLuint64 queryBlendingStart;
 		GLuint64 queryBlendingEnd;
 		GLuint64 queryPostProcessingStart;
@@ -53,9 +57,11 @@ class Debug {
 		unsigned int queryIDRendering[2];
 		unsigned int queryIDEnvironment[2];
 		unsigned int queryIDShadow[2];
+		unsigned int queryIDDepth[2];
 		unsigned int queryIDGeometry[2];
 		unsigned int queryIDLighting[2];
 		unsigned int queryIDSSAO[2];
+		unsigned int queryIDSSR[2];
 		unsigned int queryIDBlending[2];
 		unsigned int queryIDPostProcessing[2];
 		unsigned int queryIDUI[2];

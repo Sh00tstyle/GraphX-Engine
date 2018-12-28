@@ -24,6 +24,10 @@ _startTransformMatrix(glm::mat4(1.0f)), _startEulerRotation(glm::vec3(0.0f)), _f
 CameraComponent::~CameraComponent() {
 }
 
+float CameraComponent::getFarPlane() {
+	return _farPlane;
+}
+
 glm::mat4 CameraComponent::getProjectionMatrix() {
 	return _projectionMatrix;
 }

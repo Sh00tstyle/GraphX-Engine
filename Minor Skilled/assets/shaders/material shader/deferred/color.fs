@@ -3,7 +3,7 @@
 struct Material {
     vec3 ambient;
     vec3 diffuse;
-    vec3 specular;
+    float specular;
     float shininess;
 };
 
@@ -18,7 +18,7 @@ layout (location = 0) out vec3 gPosition;
 layout (location = 1) out vec3 gNormal;
 layout (location = 2) out vec4 gAlbedoSpec;
 layout (location = 3) out vec4 gEmissionShiny;
-layout (location = 4) out vec4 gEnvironmentDepth;
+layout (location = 4) out vec3 gEnvironment;
 
 void main() {
     //store the data in the gBuffer
@@ -27,11 +27,10 @@ void main() {
     gNormal.rgb = normalize(fs_in.fragNormal);
 
     gAlbedoSpec.rgb = material.diffuse;
-    gAlbedoSpec.a = material.specular.r;
+    gAlbedoSpec.a = material.specular;
     
     gEmissionShiny.rgb = vec3(0.0f);
     gEmissionShiny.a = material.shininess / 255.0f;
 
-    gEnvironmentDepth.rgb = vec3(0.0f);
-    gEnvironmentDepth.a = gl_FragCoord.z;
+    gEnvironment.rgb = vec3(0.0f);
 }

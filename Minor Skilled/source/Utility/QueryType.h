@@ -6,9 +6,11 @@ enum QueryType {
 	Rendering,
 	Environment,
 	Shadow,
+	Depth,
 	Geometry,
 	Lighting,
 	SSAO,
+	SSR,
 	Blending,
 	PostProcessing,
 	UI
