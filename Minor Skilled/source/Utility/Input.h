@@ -26,8 +26,8 @@ class Input {
 		static bool GetMouseDown(MouseButton mouseButton);
 		static bool GetMouseUp(MouseButton mouseButton);
 
-		static glm::vec2 GetLastMousePos();
-		static glm::vec2 GetCurrentMousePos();
+		static glm::dvec2 GetLastMousePos();
+		static glm::dvec2 GetCurrentMousePos();
 
 	private:
 		static std::map<Key, bool> _KeysReleased;
@@ -36,8 +36,8 @@ class Input {
 		static GLFWwindow* _Window;
 
 		static bool _FirstMouse;
-		static glm::vec2 _LastMousePos; //movement offset since the last frame
-		static glm::vec2 _CurrentMousePos;
+		static glm::dvec2 _LastMousePos; //movement offset since the last frame
+		static glm::dvec2 _CurrentMousePos;
 
 		static void _MouseCallback(GLFWwindow* window, double xPos, double yPos);
 };

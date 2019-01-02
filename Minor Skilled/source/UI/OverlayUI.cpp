@@ -210,12 +210,8 @@ void OverlayUI::_setupSettings() {
 	ImGui::InputFloat("Power", &RenderSettings::SsaoPower);
 
 	ImGui::Text("\nSSR Settings");
-	ImGui::InputFloat("Ray Step", &RenderSettings::SsrRayStep);
-	ImGui::InputFloat("Min Ray Step", &RenderSettings::SsrMinRayStep);
-	ImGui::InputInt("Max Steps", &RenderSettings::SsrMaxSteps);
-	ImGui::InputInt("Binary Search Steps", &RenderSettings::SsrBinarySearchSteps);
-	ImGui::InputFloat("Specular Falloff", &RenderSettings::SsrSpecularFalloff);
-	ImGui::InputFloat("Max Thickness", &RenderSettings::SsrMaxThickness);
+	ImGui::InputFloat("Step Size", &RenderSettings::SsrRayStepSize);
+	ImGui::InputInt("Max Steps", &RenderSettings::SsrMaxRaySteps);
 	ImGui::Checkbox("Show Debug", &RenderSettings::SsrDebug);
 
 	ImGui::Text("\nFXAA Settings");
@@ -227,7 +223,6 @@ void OverlayUI::_setupSettings() {
 	if(!RenderSettings::IsEnabled(RenderSettings::Deferred)) {
 		RenderSettings::Disable(RenderSettings::SSAO);
 		RenderSettings::Disable(RenderSettings::SSR);
-		RenderSettings::Disable(RenderSettings::SSGI);
 		RenderSettings::Disable(RenderSettings::PBR);
 	}
 

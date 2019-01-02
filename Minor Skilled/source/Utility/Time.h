@@ -3,12 +3,11 @@
 
 class Time {
 public:
-	static float DeltaTime;
-	static float CurrentTime;
-	static float LastTime;
+	static double DeltaTime;
+	static double CurrentTime;
+	static double LastTime;
 
 	static void UpdateTime();
-	static float GetFPS();
 
 };
 

@@ -138,7 +138,8 @@ void DemoScene::_initializeScene() {
 	heightMaterial->setHeightMap(heightTexture);
 	heightMaterial->setHeightScale(0.15f);
 
-	ColorMaterial* colorMaterial = new ColorMaterial(glm::vec3(0.1f), glm::vec3(0.5f), 1.0f, 32.0f);
+	ColorMaterial* colorMaterial = new ColorMaterial(glm::vec3(1.0f), glm::vec3(0.5f), 1.0f, 32.0f);
+	ColorMaterial* cubeMaterial = new ColorMaterial(glm::vec3(0.1f), glm::vec3(0.5f), 0.0f, 32.0f);
 	ColorMaterial* sphereMaterial = new ColorMaterial(glm::vec3(1.5f, 1.5f, 0.0f), glm::vec3(1.5f, 1.5f, 0.0f), 0.0f);
 
 	PBRMaterial* pbrMaterial = new PBRMaterial(albedo, normal, metallic, roughness, ao, BlendMode::Opaque);
@@ -149,7 +150,7 @@ void DemoScene::_initializeScene() {
 	RenderComponent* planeRenderComponent = new RenderComponent(planeModel, colorMaterial);
 	RenderComponent* sphereRenderComponent = new RenderComponent(sphereModel, reflectionMaterial);
 	RenderComponent* sphereLightRenderComponent = new RenderComponent(sphereModel, sphereMaterial);
-	RenderComponent* cubeRenderComponent = new RenderComponent(cubeModel, colorMaterial);
+	RenderComponent* cubeRenderComponent = new RenderComponent(cubeModel, cubeMaterial);
 	RenderComponent* glassRenderComponent = new RenderComponent(planeModel, blendMaterial);
 	RenderComponent* brickRenderComponent = new RenderComponent(planeModel, heightMaterial);
 	RenderComponent* pbrRenderComponent = new RenderComponent(sphereModel, pbrMaterial);

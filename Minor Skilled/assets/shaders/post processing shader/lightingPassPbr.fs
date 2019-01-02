@@ -194,7 +194,7 @@ vec3 FresnelSchlick(vec3 H, vec3 V, vec3 F0) { //fresnel equation
 
 vec3 FresnelSchlickRoughness(vec3 N, vec3 V, vec3 F0, float roughness) { //fresnel equation (including roughness)
     //ratio between specular and diffuse reflection (or in other words: reflection and refraction)
-    float NdotV = max(dot(N, V), 0.0f); //angle between halfway vector and view direction
+    float NdotV = max(dot(N, V), 0.0f); //angle between normal vector and view direction
 
     return F0 + (max(vec3(1.0f - roughness), F0) - F0) * pow(1.0f - NdotV, 5.0f);
 }

@@ -11,8 +11,8 @@
 std::map<Key, bool> Input::_KeysReleased;
 std::map<MouseButton, bool> Input::_MouseButtonsReleased;
 GLFWwindow* Input::_Window = nullptr;
-glm::vec2 Input::_LastMousePos = glm::vec2(0.0f, 0.0f);
-glm::vec2 Input::_CurrentMousePos = glm::vec2(0.0f, 0.0f);
+glm::dvec2 Input::_LastMousePos = glm::vec2(0.0, 0.0);
+glm::dvec2 Input::_CurrentMousePos = glm::vec2(0.0, 0.0);
 bool Input::_FirstMouse = true;
 
 void Input::Initialize(GLFWwindow* window) {
@@ -113,24 +113,24 @@ bool Input::GetMouseUp(MouseButton mouseButton) {
 	return false;
 }
 
-glm::vec2 Input::GetLastMousePos() {
+glm::dvec2 Input::GetLastMousePos() {
 	return _LastMousePos;
 }
 
-glm::vec2 Input::GetCurrentMousePos() {
+glm::dvec2 Input::GetCurrentMousePos() {
 	return _CurrentMousePos;
 }
 
 void Input::_MouseCallback(GLFWwindow * window, double xPos, double yPos) {
 	if(_FirstMouse) {
 		//initialize
-		_CurrentMousePos.x = (float)xPos;
-		_CurrentMousePos.y = (float)yPos;
+		_CurrentMousePos.x = xPos;
+		_CurrentMousePos.y = yPos;
 		_FirstMouse = false;
 	}
 
 	_LastMousePos = _CurrentMousePos;
 
-	_CurrentMousePos.x = (float)xPos;
-	_CurrentMousePos.y = (float)yPos;
+	_CurrentMousePos.x = xPos;
+	_CurrentMousePos.y = yPos;
 }

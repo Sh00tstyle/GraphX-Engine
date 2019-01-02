@@ -650,11 +650,10 @@ void Renderer::_initShaders() {
 	_ssrShader = new Shader(Filepath::ShaderPath + "post processing shader/screenQuad.vs", Filepath::ShaderPath + "post processing shader/ssr.fs");
 
 	_ssrShader->use();
-	_ssrShader->setInt("gPosition", 0);
-	_ssrShader->setInt("gNormal", 1);
-	_ssrShader->setInt("gAlbedoSpec", 2);
-	_ssrShader->setInt("sceneTexture", 3);
-	_ssrShader->setInt("depthTexture", 4);
+	_ssrShader->setInt("gNormal", 0);
+	_ssrShader->setInt("gAlbedoSpec", 1);
+	_ssrShader->setInt("sceneTexture", 2);
+	_ssrShader->setInt("depthTexture", 3);
 
 	_ssrShader->setUniformBlockBinding("matricesBlock", 0); //set uniform block "matrices" to binding point 0
 
@@ -1458,6 +1457,10 @@ void Renderer::_renderGeometry(std::vector<std::pair<RenderComponent*, glm::mat4
 	else _gBuffer->bind(GL_FRAMEBUFFER);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+	//SSR WIP
+	GLfloat clearColor[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+	glClearTexImage(_gAlbedoSpec->getID(), 0, GL_RGBA, GL_FLOAT, &clearColor); //initialize the albedo spec with 0 to avoid having specularity on the skybox
+
 	MaterialType materialType;
 	RenderComponent* renderComponent;
 	Material* material;
@@ -1560,33 +1563,23 @@ void Renderer::_renderSSR(CameraComponent* cameraComponent) {
 	//setup shader uniforms
 	_ssrShader->use();
 
-	_ssrShader->setFloat("rayStep", RenderSettings::SsrRayStep);
-	_ssrShader->setFloat("minRayStep", RenderSettings::SsrMinRayStep);
-	_ssrShader->setInt("maxSteps", RenderSettings::SsrMaxSteps);
-	_ssrShader->setInt("binarySearchStepAmount", RenderSettings::SsrBinarySearchSteps);
-	_ssrShader->setFloat("reflectionSpecularFalloffExponent", RenderSettings::SsrSpecularFalloff);
-	_ssrShader->setFloat("maxThickness", RenderSettings::SsrMaxThickness);
-
-	_ssrShader->setFloat("maxDepth", cameraComponent->getFarPlane());
-
-	//bind position color buffer
-	glActiveTexture(GL_TEXTURE0);
-	_gPosition->bind(GL_TEXTURE_2D);
+	_ssrShader->setFloat("rayStepSize", RenderSettings::SsrRayStepSize);
+	_ssrShader->setFloat("maxRaySteps", (int)RenderSettings::SsrMaxRaySteps);
 
 	//bind normal color buffer
-	glActiveTexture(GL_TEXTURE1);
+	glActiveTexture(GL_TEXTURE0);
 	_gNormal->bind(GL_TEXTURE_2D);
 
 	//bind albedo + specular color buffer 
-	glActiveTexture(GL_TEXTURE2);
+	glActiveTexture(GL_TEXTURE1);
 	_gAlbedoSpec->bind(GL_TEXTURE_2D);
 
 	//bind scene texture
-	glActiveTexture(GL_TEXTURE3);
+	glActiveTexture(GL_TEXTURE2);
 	_sceneColorBuffer->bind(GL_TEXTURE_2D);
 
 	//bind scene texture
-	glActiveTexture(GL_TEXTURE4);
+	glActiveTexture(GL_TEXTURE3);
 	_sceneDepthBuffer->bind(GL_TEXTURE_2D);
 
 	//render quad

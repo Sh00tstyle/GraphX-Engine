@@ -8,11 +8,10 @@ const unsigned int RenderSettings::MotionBlur = 1 << 3;
 const unsigned int RenderSettings::Deferred = 1 << 4;
 const unsigned int RenderSettings::SSAO = 1 << 5; //deferred only
 const unsigned int RenderSettings::SSR = 1 << 6; //deferred only
-const unsigned int RenderSettings::SSGI = 1 << 7; //deferred only
-const unsigned int RenderSettings::PBR = 1 << 8; //deferred only
+const unsigned int RenderSettings::PBR = 1 << 7; //deferred only
 
 //active render modes
-unsigned int RenderSettings::Options = 0;
+unsigned int RenderSettings::Options = RenderSettings::Deferred | RenderSettings::SSR;
 
 //v-sync
 bool RenderSettings::VSync = false;
@@ -53,14 +52,10 @@ float RenderSettings::SsaoBias = 0.025f;
 float RenderSettings::SsaoPower = 5.0f;
 
 //SSR configurations
-float RenderSettings::SsrRayStep = 0.1f;
-float RenderSettings::SsrMinRayStep = 0.1f;
-int RenderSettings::SsrMaxSteps = 30;
-int RenderSettings::SsrBinarySearchSteps = 10;
-float RenderSettings::SsrSpecularFalloff = 2.0f;
-float RenderSettings::SsrMaxThickness = 1.2f;
+float RenderSettings::SsrRayStepSize = 0.1f;
+int RenderSettings::SsrMaxRaySteps = 50;
 
-bool RenderSettings::SsrDebug = false;
+bool RenderSettings::SsrDebug = true;
 
 //lighting configurations
 const unsigned int RenderSettings::MaxLights = 16;

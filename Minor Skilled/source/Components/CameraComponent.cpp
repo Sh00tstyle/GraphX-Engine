@@ -24,6 +24,10 @@ _startTransformMatrix(glm::mat4(1.0f)), _startEulerRotation(glm::vec3(0.0f)), _f
 CameraComponent::~CameraComponent() {
 }
 
+float CameraComponent::getNearPlane() {
+	return _nearPlane;
+}
+
 float CameraComponent::getFarPlane() {
 	return _farPlane;
 }
@@ -66,24 +70,28 @@ void CameraComponent::update() {
 	_checkForCameraReset();
 
 	if(Input::GetMouse(MouseButton::Right)) {
+		double deltaTime = Time::DeltaTime;
+
 		//mouse offset
-		glm::vec2 mouseOffset = Input::GetLastMousePos() - Input::GetCurrentMousePos();
+		glm::dvec2 mouseOffset = Input::GetLastMousePos() - Input::GetCurrentMousePos();
 
 		//movement
 		glm::vec3 translation = glm::vec3(0.0f);
 
-		if(Input::GetKey(Key::W)) translation.z = -movementSpeed * Time::DeltaTime;
-		if(Input::GetKey(Key::S)) translation.z = movementSpeed * Time::DeltaTime;
-		if(Input::GetKey(Key::A)) translation.x = -movementSpeed * Time::DeltaTime;
-		if(Input::GetKey(Key::D)) translation.x = movementSpeed * Time::DeltaTime;
-		if(Input::GetKey(Key::SPACE)) translation.y = movementSpeed * Time::DeltaTime;
-		if(Input::GetKey(Key::LSHIFT)) translation.y = -movementSpeed * Time::DeltaTime;
+		if(Input::GetKey(Key::W)) translation.z = -movementSpeed * deltaTime;
+		else if(Input::GetKey(Key::S)) translation.z = movementSpeed * deltaTime;
+
+		if(Input::GetKey(Key::A)) translation.x = -movementSpeed * deltaTime;
+		else if(Input::GetKey(Key::D)) translation.x = movementSpeed * deltaTime;
+
+		if(Input::GetKey(Key::SPACE)) translation.y = movementSpeed * deltaTime;
+		else if(Input::GetKey(Key::LSHIFT)) translation.y = -movementSpeed * deltaTime;
 
 		//rotation
 		glm::vec3 eulerAngles = _transform->getLocalEuler();
 
-		if(std::abs(mouseOffset.x) >= 0.01f) eulerAngles.y += mouseOffset.x * rotationSpeed * Time::DeltaTime;
-		if(std::abs(mouseOffset.y) >= 0.01f) eulerAngles.x += mouseOffset.y * rotationSpeed * Time::DeltaTime;;
+		if(std::abs(mouseOffset.x) >= 0.01f) eulerAngles.y += mouseOffset.x * rotationSpeed * deltaTime;
+		if(std::abs(mouseOffset.y) >= 0.01f) eulerAngles.x += mouseOffset.y * rotationSpeed * deltaTime;
 
 		//reconstruct transform and apply to component
 		glm::vec3 localPos = _transform->getLocalPosition();

@@ -17,6 +17,7 @@ class CameraComponent : public Component {
 		float movementSpeed; 
 		float rotationSpeed;
 
+		float getNearPlane();
 		float getFarPlane();
 		glm::mat4 getProjectionMatrix();
 		glm::mat4 getViewMatrix();

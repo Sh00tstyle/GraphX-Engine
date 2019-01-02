@@ -34,7 +34,7 @@ uniform float velocityScale;
 
 out vec4 fragColor;
 
-vec3 FXAA(vec3 color, vec2 texCoord);
+vec3 FXAA(sampler2D sampleTexture, vec2 coord);
 vec3 MotionBlur(vec3 color);
 vec3 Bloom();
 vec3 SSR();
@@ -45,7 +45,7 @@ void main() {
     vec3 color = texture(screenTexture, texCoord).rgb;
 
     //FXAA
-    if(useFXAA) color = FXAA(color.rgb, texCoord);
+    if(useFXAA) color = FXAA(screenTexture, texCoord);
 
     //Motion Blur
     if(useMotionBlur) color = MotionBlur(color.rgb);
@@ -67,18 +67,18 @@ void main() {
     if(ssrDebug && useSSR) fragColor = vec4(SSR(), 1.0f);
 }
 
-vec3 FXAA(vec3 color, vec2 texCoord) {
+vec3 FXAA(sampler2D sampleTexture, vec2 coord) {
     //information from: https://www.youtube.com/watch?v=Z9bYzpwVINA
 
     //vector to determine luminosity of a pixel
     vec3 luma = vec3(0.299f, 0.587f, 0.114f);
 
     //sample in a cross pattern and calculate the luminosity of each sampled pixel
-    float lumaM = dot(luma, texture(screenTexture, texCoord).rgb); //middle
-    float lumaTL = dot(luma, texture(screenTexture, texCoord + vec2(-1.0f, -1.0f) * inverseScreenTextureSize).rgb); //top left
-    float lumaTR = dot(luma, texture(screenTexture, texCoord + vec2(1.0f, -1.0f) * inverseScreenTextureSize).rgb); //top right
-    float lumaBL = dot(luma, texture(screenTexture, texCoord + vec2(-1.0f, 1.0f) * inverseScreenTextureSize).rgb); //bottom left
-    float lumaBR = dot(luma, texture(screenTexture, texCoord + vec2(1.0f, 1.0f) * inverseScreenTextureSize).rgb); //bottom right
+    float lumaM = dot(luma, texture(sampleTexture, coord).rgb); //middle
+    float lumaTL = dot(luma, texture(sampleTexture, coord + vec2(-1.0f, -1.0f) * inverseScreenTextureSize).rgb); //top left
+    float lumaTR = dot(luma, texture(sampleTexture, coord + vec2(1.0f, -1.0f) * inverseScreenTextureSize).rgb); //top right
+    float lumaBL = dot(luma, texture(sampleTexture, coord + vec2(-1.0f, 1.0f) * inverseScreenTextureSize).rgb); //bottom left
+    float lumaBR = dot(luma, texture(sampleTexture, coord + vec2(1.0f, 1.0f) * inverseScreenTextureSize).rgb); //bottom right
 
     //determine blur direction and detect edges (if the vectors x and y values are both 0, there is no edge)
     vec2 blurDirection = vec2(-((lumaTL + lumaTR) - (lumaBL + lumaBR)), (lumaTL + lumaBL) - (lumaTR + lumaBR));
@@ -92,12 +92,12 @@ vec3 FXAA(vec3 color, vec2 texCoord) {
 
     //blur the edge pixels by sampling from the screen texture offset by the blur direction
     vec3 result1 =  (1.0f / 2.0f) * ( //smaller range
-                    texture(screenTexture, texCoord + (blurDirection * vec2(1.0f / 3.0f - 0.5f))).rgb +
-                    texture(screenTexture, texCoord + (blurDirection * vec2(2.0f / 3.0f - 0.5f))).rgb);
+                    texture(sampleTexture, coord + (blurDirection * vec2(1.0f / 3.0f - 0.5f))).rgb +
+                    texture(sampleTexture, coord + (blurDirection * vec2(2.0f / 3.0f - 0.5f))).rgb);
 
     vec3 result2 =  result1 * (1.0f / 2.0f) + (1.0f / 4.0f) * ( //bigger range
-                    texture(screenTexture, texCoord + (blurDirection * vec2(0.0f / 3.0f - 0.5f))).rgb +
-                    texture(screenTexture, texCoord + (blurDirection * vec2(3.0f / 3.0f - 0.5f))).rgb);
+                    texture(sampleTexture, coord + (blurDirection * vec2(0.0f / 3.0f - 0.5f))).rgb +
+                    texture(sampleTexture, coord + (blurDirection * vec2(3.0f / 3.0f - 0.5f))).rgb);
 
     //check if we sampled too far
     float lumaMin = min(lumaM, min(min(lumaTL, lumaTR), min(lumaBL, lumaBR)));
@@ -113,8 +113,8 @@ vec3 MotionBlur(vec3 color) {
     //information from: https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch27.html
 
     //obtain world position
-    float zOverW = texture(sceneDepth, texCoord).r; //get the depth value
-    vec4 H = vec4(texCoord.x * 2.0f - 1.0f, (1.0f - texCoord.y) * 2.0f - 1.0f, zOverW, 1.0f); //viewport position in the range [-1, 1]
+    float zOverW = texture(sceneDepth, texCoord).r * 2.0f - 1.0f; //get the depth value
+    vec4 H = vec4(texCoord * 2.0f - 1.0f, zOverW, 1.0f); //viewport position in the range [-1, 1]
     mat4 viewProjectionMatrix = projectionMatrix * viewMatrix;
     vec4 D = inverse(viewProjectionMatrix) * H; //transform by the view projection inverse matrix
     vec4 worldPos = D / D.w; //divide by w to get the world position
@@ -133,7 +133,7 @@ vec3 MotionBlur(vec3 color) {
     for(int i = 0; i < motionBlurSamples; ++i) {
         vec3 blurColor = texture(screenTexture, vTexCoord).rgb;
         
-        if(useFXAA) blurColor = FXAA(blurColor, vTexCoord); //also apply fxaa if it is enabled
+        if(useFXAA) blurColor = FXAA(screenTexture, vTexCoord); //also apply fxaa if it is enabled
 
         result += blurColor;
         vTexCoord -= velocity;
@@ -150,13 +150,15 @@ vec3 Bloom() {
 }
 
 vec3 SSR() {
-    vec4 ssr = texture(ssr, texCoord);
+    vec3 color;
 
-    if(ssr.a == 0.0f) {
-        return vec3(0.0f);
+    if(useFXAA) {
+        color = FXAA(ssr, texCoord); //apply FXAA as well so the blending doesnt look as obvious as FXAA blurs it a bit
+    } else {
+        color = texture(ssr, texCoord).rgb;
     }
 
-    return ssr.rgb;
+    return color;
 }
 
 vec3 ExposureTonemap(vec3 color) {
