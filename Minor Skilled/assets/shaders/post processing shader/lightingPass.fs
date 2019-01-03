@@ -62,9 +62,9 @@ uniform bool useSSAO;
 
 uniform sampler2D gPosition;
 uniform sampler2D gNormal;
-uniform sampler2D gAlbedoSpec;
-uniform sampler2D gEmissionShiny;
-uniform sampler2D gEnvironment;
+uniform sampler2D gAlbedo;
+uniform sampler2D gEmissionSpec;
+uniform sampler2D gEnvironmentShiny;
 
 uniform sampler2D ssao;
 uniform samplerCube environmentMap;
@@ -87,10 +87,10 @@ void main() {
     //sample data from the gBuffer textures
     vec3 fragPos = texture(gPosition, texCoord).rgb;
     vec3 normal = texture(gNormal, texCoord).rgb;
-    vec3 albedo = texture(gAlbedoSpec, texCoord).rgb;
-    vec3 environment = texture(gEnvironment, texCoord).rgb;
-    float specular = texture(gAlbedoSpec, texCoord).a;
-    float shininess = texture(gEmissionShiny, texCoord).a * 255.0f;
+    vec3 albedo = texture(gAlbedo, texCoord).rgb;
+    vec3 environment = texture(gEnvironmentShiny, texCoord).rgb;
+    float specular = texture(gEmissionSpec, texCoord).g;
+    float shininess = texture(gEnvironmentShiny, texCoord).a * 255.0f;
 
     //transform to world pos
     vec3 worldFragPos = vec3(inverse(viewMatrix) * vec4(fragPos, 1.0f));
@@ -141,7 +141,7 @@ void main() {
     }
 
     //emission
-    vec3 emission = texture(gEmissionShiny, texCoord).rgb;
+    vec3 emission = albedo * texture(gEmissionSpec, texCoord).r;
     result += emission;
 
     //output bright color before applying AO

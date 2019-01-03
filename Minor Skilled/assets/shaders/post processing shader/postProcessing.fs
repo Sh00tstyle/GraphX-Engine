@@ -24,8 +24,8 @@ uniform float fxaaSpanMax;
 uniform float fxaaReduceMin;
 uniform float fxaaReduceMul;
 
-uniform sampler2D screenTexture;
-uniform sampler2D sceneDepth;
+uniform sampler2D sceneTexture;
+uniform sampler2D depthTexture;
 uniform sampler2D bloomBlur;
 uniform sampler2D ssr;
 
@@ -42,10 +42,10 @@ vec3 ExposureTonemap(vec3 color);
 vec3 GammaCorrect(vec3 color);
 
 void main() {
-    vec3 color = texture(screenTexture, texCoord).rgb;
+    vec3 color = texture(sceneTexture, texCoord).rgb;
 
     //FXAA
-    if(useFXAA) color = FXAA(screenTexture, texCoord);
+    if(useFXAA) color = FXAA(sceneTexture, texCoord);
 
     //Motion Blur
     if(useMotionBlur) color = MotionBlur(color.rgb);
@@ -113,7 +113,7 @@ vec3 MotionBlur(vec3 color) {
     //information from: https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch27.html
 
     //obtain world position
-    float zOverW = texture(sceneDepth, texCoord).r * 2.0f - 1.0f; //get the depth value
+    float zOverW = texture(depthTexture, texCoord).r * 2.0f - 1.0f; //get the depth value
     vec4 H = vec4(texCoord * 2.0f - 1.0f, zOverW, 1.0f); //viewport position in the range [-1, 1]
     mat4 viewProjectionMatrix = projectionMatrix * viewMatrix;
     vec4 D = inverse(viewProjectionMatrix) * H; //transform by the view projection inverse matrix
@@ -131,9 +131,9 @@ vec3 MotionBlur(vec3 color) {
     vec2 vTexCoord = texCoord - velocity; //sample along the velocity
 
     for(int i = 0; i < motionBlurSamples; ++i) {
-        vec3 blurColor = texture(screenTexture, vTexCoord).rgb;
+        vec3 blurColor = texture(sceneTexture, vTexCoord).rgb;
         
-        if(useFXAA) blurColor = FXAA(screenTexture, vTexCoord); //also apply fxaa if it is enabled
+        if(useFXAA) blurColor = FXAA(sceneTexture, vTexCoord); //also apply fxaa if it is enabled
 
         result += blurColor;
         vTexCoord -= velocity;

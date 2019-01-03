@@ -48,6 +48,8 @@ class RenderSettings {
 
 		static float SsrRayStepSize;
 		static int SsrMaxRaySteps;
+		static float SsrFresnelExponent;
+		static float SsrMaxDelta;
 		static bool SsrDebug;
 
 		static const unsigned int MaxLights;

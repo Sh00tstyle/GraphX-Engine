@@ -11,6 +11,7 @@ struct Material {
 
     vec3 F0;
 
+    float specular;
     float refractionFactor;
     float heightScale;
 
@@ -43,12 +44,14 @@ uniform float maxReflectionLod;
 uniform samplerCube irradianceMap;
 uniform samplerCube prefilterMap;
 
-layout (location = 0) out vec4 gPositionMetallic;
-layout (location = 1) out vec4 gNormalRoughness;
-layout (location = 2) out vec4 gAlbedoF0r;
-layout (location = 3) out vec4 gIrradianceF0g;
-layout (location = 4) out vec4 gPrefilterF0b;
-layout (location = 5) out vec4 gEmissionAO;
+layout (location = 0) out vec3 gPosition;
+layout (location = 1) out vec3 gNormal;
+layout (location = 2) out vec3 gAlbedo;
+layout (location = 3) out vec2 gEmissionSpec;
+layout (location = 4) out vec3 gMetalRoughAO;
+layout (location = 5) out vec3 gIrradiance;
+layout (location = 6) out vec3 gPrefilter;
+layout (location = 7) out vec3 gReflectance;
 
 vec3 GetNormal(vec2 texCoord);
 vec2 ParallaxMapping();
@@ -75,23 +78,24 @@ void main() {
     }
 
     //store the data in the gBuffer
-    gPositionMetallic.rgb = fs_in.fragPosView;
-    gPositionMetallic.a = texture(material.metallic, texCoord).r;
+    gPosition.rgb = fs_in.fragPosView;
 
-    gNormalRoughness.rgb = normal;
-    gNormalRoughness.a = roughness;
+    gNormal.rgb = normal;
 
-    gAlbedoF0r.rgb = texture(material.albedo, texCoord).rgb;
-    gAlbedoF0r.a = material.F0.r;
+    gAlbedo.rgb = texture(material.albedo, texCoord).rgb;
 
-    gIrradianceF0g.rgb = texture(irradianceMap, normal).rgb;
-    gIrradianceF0g.a = material.F0.g;
+    gEmissionSpec.r = texture(material.emission, texCoord).r;
+    gEmissionSpec.g = material.specular;
 
-    gPrefilterF0b.rgb = textureLod(prefilterMap, R, roughness * maxReflectionLod).rgb;
-    gPrefilterF0b.a = material.F0.b;
+    gMetalRoughAO.r = texture(material.metallic, texCoord).r;
+    gMetalRoughAO.g = roughness;
+    gMetalRoughAO.b = texture(material.ao, texCoord).r;
 
-    gEmissionAO.rgb = texture(material.emission, texCoord).rgb;
-    gEmissionAO.a = texture(material.ao, texCoord).r;
+    gIrradiance.rgb = texture(irradianceMap, normal).rgb;
+
+    gPrefilter.rgb = textureLod(prefilterMap, R, roughness * maxReflectionLod).rgb;
+
+    gReflectance.rgb = material.F0;
 }
 
 vec3 GetNormal(vec2 texCoord) {

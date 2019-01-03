@@ -54,6 +54,8 @@ float RenderSettings::SsaoPower = 5.0f;
 //SSR configurations
 float RenderSettings::SsrRayStepSize = 0.1f;
 int RenderSettings::SsrMaxRaySteps = 50;
+float RenderSettings::SsrFresnelExponent = 5.0f;
+float RenderSettings::SsrMaxDelta = 0.03f;
 
 bool RenderSettings::SsrDebug = true;
 

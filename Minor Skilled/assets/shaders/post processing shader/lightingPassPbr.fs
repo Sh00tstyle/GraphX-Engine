@@ -62,12 +62,14 @@ layout(std430) buffer lightsBlock {
 
 uniform bool useSSAO;
 
-uniform sampler2D gPositionMetallic;
-uniform sampler2D gNormalRoughness;
-uniform sampler2D gAlbedoF0r;
-uniform sampler2D gIrradianceF0g;
-uniform sampler2D gPrefilterF0b;
-uniform sampler2D gEmissionAO;
+uniform sampler2D gPosition;
+uniform sampler2D gNormal;
+uniform sampler2D gAlbedo;
+uniform sampler2D gEmissionSpec;
+uniform sampler2D gMetalRoughAO;
+uniform sampler2D gIrradiance;
+uniform sampler2D gPrefilter;
+uniform sampler2D gReflectance;
 
 uniform sampler2D ssao;
 uniform sampler2D brdfLUT;
@@ -100,12 +102,12 @@ void main() {
     //PBR lighting shader, using value names which are used in the equations for better understanding
 
     //sample data from the gBuffer textures
-    vec3 fragPos = texture(gPositionMetallic, texCoord).rgb;
-    vec3 normal = texture(gNormalRoughness, texCoord).rgb;
-    vec3 albedo = texture(gAlbedoF0r, texCoord).rgb;
-    float metallic = texture(gPositionMetallic, texCoord).a;
-    float roughness = texture(gNormalRoughness, texCoord).a;
-    float ao = texture(gEmissionAO, texCoord).a + texture(ssao, texCoord).r; //add material AO and SSAO
+    vec3 fragPos = texture(gPosition, texCoord).rgb;
+    vec3 normal = texture(gNormal, texCoord).rgb;
+    vec3 albedo = texture(gAlbedo, texCoord).rgb;
+    float metallic = texture(gMetalRoughAO, texCoord).r;
+    float roughness = texture(gMetalRoughAO, texCoord).g;
+    float ao = texture(gMetalRoughAO, texCoord).b + texture(ssao, texCoord).r; //add material AO and SSAO
 
     if(ao > 1.0f) ao = 1.0f;
 
@@ -130,10 +132,7 @@ void main() {
     shadow = 1.0f - shadow;
 
     //reflectance at normal incidence (directly looking at the surface)
-    vec3 F0;
-    F0.r = texture(gAlbedoF0r, texCoord).a;
-    F0.g = texture(gIrradianceF0g, texCoord).a;
-    F0.b = texture(gPrefilterF0b, texCoord).a;
+    vec3 F0 = texture(gReflectance, texCoord).rgb;
     F0 = mix(F0, albedo, metallic); //use 0.04 for dielectrics (like plastic) and the albedo color for conductors (metals)
 
     //reflectance equation
@@ -163,11 +162,11 @@ void main() {
     kD *= 1.0f - metallic;
 
     //sample from the irradiance map for the diffuse
-    vec3 irradiance = texture(gIrradianceF0g, texCoord).rgb;
+    vec3 irradiance = texture(gIrradiance, texCoord).rgb;
     vec3 diffuse = irradiance * albedo;
 
     //sample from the prefilter map and the BRDF lut and combine the results
-    vec3 prefilteredColor = texture(gPrefilterF0b, texCoord).rgb;
+    vec3 prefilteredColor = texture(gPrefilter, texCoord).rgb;
     vec2 brdf = texture(brdfLUT, vec2(max(dot(N, V), 0.0f), roughness)).rg;
     vec3 specular = prefilteredColor * (kS * brdf.x + brdf.y);
 
@@ -177,7 +176,7 @@ void main() {
     vec3 color = ambient + Lo * shadow; //add results and apply shadow
 
     //emission
-    vec3 emission = texture(gEmissionAO, texCoord).rgb; //if there is no emission map, nothing will be added
+    vec3 emission = albedo * texture(gEmissionSpec, texCoord).r; //if there is no emission map, nothing will be added
     color += emission;
 
     fragColor = vec4(color, 1.0f);

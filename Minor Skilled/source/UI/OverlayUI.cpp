@@ -212,6 +212,8 @@ void OverlayUI::_setupSettings() {
 	ImGui::Text("\nSSR Settings");
 	ImGui::InputFloat("Step Size", &RenderSettings::SsrRayStepSize);
 	ImGui::InputInt("Max Steps", &RenderSettings::SsrMaxRaySteps);
+	ImGui::InputFloat("Fresnel Exponent", &RenderSettings::SsrFresnelExponent);
+	ImGui::InputFloat("Max Delta", &RenderSettings::SsrMaxDelta);
 	ImGui::Checkbox("Show Debug", &RenderSettings::SsrDebug);
 
 	ImGui::Text("\nFXAA Settings");
@@ -470,6 +472,7 @@ void OverlayUI::_setupInspector() {
 						ImGui::Text("\nPBR Material");
 						ImGui::Text(blendModeString.c_str());
 						ImGui::Checkbox("Casts shadows", &pbrMaterial->getCastsShadows());
+						ImGui::InputFloat("Specular", &pbrMaterial->getSpecular());
 						ImGui::InputFloat("Refraction", &pbrMaterial->getRefractionFactor());
 						ImGui::ColorEdit3("F0 Color", &pbrMaterial->getF0().x);
 						ImGui::Text("");

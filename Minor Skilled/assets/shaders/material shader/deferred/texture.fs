@@ -51,11 +51,10 @@ uniform samplerCube environmentMap;
 
 layout (location = 0) out vec3 gPosition;
 layout (location = 1) out vec3 gNormal;
-layout (location = 2) out vec4 gAlbedoSpec;
-layout (location = 3) out vec4 gEmissionShiny;
-layout (location = 4) out vec3 gEnvironment;
+layout (location = 2) out vec3 gAlbedo;
+layout (location = 3) out vec2 gEmissionSpec;
+layout (location = 4) out vec4 gEnvironmentShiny;
 
-float GetSpecular(vec2 texCoord);
 vec3 GetNormal(vec2 texCoord);
 vec3 GetReflection(vec3 normal, vec2 texCoord);
 vec2 ParallaxMapping(vec3 viewDirection);
@@ -67,27 +66,18 @@ void main() {
     vec2 texCoord = ParallaxMapping(viewDirection);
     if(material.hasHeight && (texCoord.x > 1.0f || texCoord.y > 1.0f || texCoord.x < 0.0f || texCoord.y < 0.0f)) discard; //cutoff edges to avoid artifacts when using parallax mapping
 
-    vec3 normal = GetNormal(texCoord);
-
     //store the data in the gBuffer
     gPosition.rgb = fs_in.fragPosView;
 
-    gNormal.rgb = normal;
+    gNormal.rgb = GetNormal(texCoord);
 
-    gAlbedoSpec.rgb = texture(material.diffuse, texCoord).rgb;
-    gAlbedoSpec.a = GetSpecular(texCoord);
+    gAlbedo.rgb = texture(material.diffuse, texCoord).rgb;
 
-    gEmissionShiny.rgb = texture(material.emission, texCoord).rgb;
-    gEmissionShiny.a = material.shininess / 255.0f;
+    gEmissionSpec.r = texture(material.emission, texCoord).r;
+    gEmissionSpec.g = texture(material.specular, texCoord).r;
 
-    gEnvironment.rgb = GetReflection(fs_in.fragNormalWorld, texCoord);
-}
-
-float GetSpecular(vec2 texCoord) {
-    //take the specular contribution from the specular map, otherwise use use none
-
-    if(material.hasSpecular) return texture(material.specular, texCoord).r;
-    else return 0.0f;
+    gEnvironmentShiny.rgb = GetReflection(fs_in.fragNormalWorld, texCoord);
+    gEnvironmentShiny.a = material.shininess / 255.0f;
 }
 
 vec3 GetNormal(vec2 texCoord) {

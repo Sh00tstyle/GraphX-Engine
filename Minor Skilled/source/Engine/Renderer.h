@@ -68,16 +68,15 @@ class Renderer {
 		//texture buffers
 		Texture* _gPosition;
 		Texture* _gNormal;
-		Texture* _gAlbedoSpec;
-		Texture* _gEmissionShiny;
-		Texture* _gEnvironment;
+		Texture* _gAlbedo;
+		Texture* _gEmissionSpec;
 
-		Texture* _gPositionMetallic;
-		Texture* _gNormalRoughness;
-		Texture* _gAlbedoF0r;
-		Texture* _gIrradianceF0g;
-		Texture* _gPrefilterF0b;
-		Texture* _gEmissionAO;
+		Texture* _gEnvironmentShiny;
+
+		Texture* _gMetalRoughAO;
+		Texture* _gIrradiance;
+		Texture* _gPrefilter;
+		Texture* _gReflectance;
 
 		Texture* _shadowMap;
 		std::vector<Texture*> _shadowCubeMaps;
@@ -121,7 +120,6 @@ class Renderer {
 		Framebuffer* _ssrFBO;
 
 		Renderbuffer* _gRBO;
-		Renderbuffer* _gPbrRBO;
 
 		Renderbuffer* _conversionRBO;
 		Renderbuffer* _environmentRBO;
@@ -139,8 +137,7 @@ class Renderer {
 		void _initUniformBuffers();
 		void _initShaderStorageBuffers();
 
-		void _initGBuffer();
-		void _initGBufferPbr();
+		void _initGBuffers();
 		void _initConversionFBO();
 		void _initShadowFBO();
 		void _initShadowCubeFBO();
@@ -161,7 +158,7 @@ class Renderer {
 		void _renderShadowMaps(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, std::vector<glm::vec3>& pointLights, glm::mat4& lightSpaceMatrix);
 		void _renderDepth(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents);
 		void _renderGeometry(std::vector<std::pair<RenderComponent*, glm::mat4>>& solidRenderComponents, bool pbr);
-		void _renderSSAO(bool pbr);
+		void _renderSSAO();
 		void _renderSSAOBlur();
 		void _renderSSR(CameraComponent* cameraComponent);
 		void _renderLighting(Texture* skybox, unsigned int pointLightCount, bool pbr);

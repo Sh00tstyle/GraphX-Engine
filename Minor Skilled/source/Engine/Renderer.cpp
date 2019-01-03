@@ -125,8 +125,7 @@ Renderer::Renderer(Debug* profiler) : _profiler(profiler) {
 	_initShaderStorageBuffers();
 
 	//setup FBOs
-	_initGBuffer();
-	_initGBufferPbr();
+	_initGBuffers();
 
 	_initConversionFBO();
 	_initShadowFBO();
@@ -179,16 +178,15 @@ Renderer::~Renderer() {
 	//delete textures
 	delete _gPosition;
 	delete _gNormal;
-	delete _gAlbedoSpec;
-	delete _gEmissionShiny;
-	delete _gEnvironment;
+	delete _gAlbedo;
+	delete _gEmissionSpec;
 
-	delete _gPositionMetallic;
-	delete _gNormalRoughness;
-	delete _gAlbedoF0r;
-	delete _gIrradianceF0g;
-	delete _gPrefilterF0b;
-	delete _gEmissionAO;
+	delete _gEnvironmentShiny;
+
+	delete _gMetalRoughAO;
+	delete _gIrradiance;
+	delete _gPrefilter;
+	delete _gReflectance;
 
 	delete _shadowMap;
 
@@ -241,7 +239,6 @@ Renderer::~Renderer() {
 
 	//delete renderbuffers
 	delete _gRBO;
-	delete _gPbrRBO;
 
 	delete _conversionRBO;
 	delete _environmentRBO;
@@ -349,7 +346,7 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 			_profiler->startQuery(QueryType::SSAO);
 
 			//render ssao texture (deferred shading)
-			_renderSSAO(pbr);
+			_renderSSAO();
 
 			//blur ssao texture (deferred shading)
 			_renderSSAOBlur();
@@ -380,7 +377,7 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 	glDisable(GL_BLEND);
 
 	//render the screen space reflection texture after the scene was rendered to use the final frame (deferred shading)
-	if(deferred && RenderSettings::IsEnabled(RenderSettings::SSR) && !RenderSettings::IsEnabled(RenderSettings::PBR)) { //dont use SSR for PBR right now
+	if(deferred && RenderSettings::IsEnabled(RenderSettings::SSR)) {
 		_profiler->startQuery(QueryType::SSR);
 		_renderSSR(mainCameraComponent);
 		_profiler->endQuery(QueryType::SSR);
@@ -408,7 +405,7 @@ void Renderer::renderEnvironmentMaps(std::vector<Node*>& renderables, Node* dire
 	//obtain directional light information
 	LightComponent* directionalLightComponent;
 
-	if(directionalLight->hasComponent(ComponentType::Light)) directionalLightComponent = (LightComponent*)directionalLight->getComponent(ComponentType::Light);
+	if(directionalLight != nullptr && directionalLight->hasComponent(ComponentType::Light)) directionalLightComponent = (LightComponent*)directionalLight->getComponent(ComponentType::Light);
 	else directionalLightComponent = nullptr;
 
 	//render all environment maps for all texture materials with reflection map
@@ -530,7 +527,7 @@ Texture* Renderer::convertEquiToCube(Texture* skybox) {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glBindVertexArray(0);
 
-	//delete input; //the input texture is not needed anymore
+	delete skybox; //the input texture is not needed anymore
 
 	//return new cubemap
 	return cubemap;
@@ -549,11 +546,11 @@ void Renderer::_initShaders() {
 	_lightingShader->use();
 	_lightingShader->setInt("gPosition", 0);
 	_lightingShader->setInt("gNormal", 1);
-	_lightingShader->setInt("gAlbedoSpec", 2);
-	_lightingShader->setInt("gEmissionShiny", 3);
-	_lightingShader->setInt("gEnvironment", 4);
+	_lightingShader->setInt("gAlbedo", 2);
+	_lightingShader->setInt("gEmissionSpec", 3);
+	_lightingShader->setInt("gEnvironmentShiny", 4);
 
-	_lightingShader->setInt("ssao", 7);
+	_lightingShader->setInt("ssao", 8);
 
 	_lightingShader->setInt("shadowMap", 11);
 
@@ -570,15 +567,17 @@ void Renderer::_initShaders() {
 	_lightingShaderPbr = new Shader(Filepath::ShaderPath + "post processing shader/screenQuad.vs", Filepath::ShaderPath + "post processing shader/lightingPassPbr.fs");
 
 	_lightingShaderPbr->use();
-	_lightingShaderPbr->setInt("gPositionMetallic", 0);
-	_lightingShaderPbr->setInt("gNormalRoughness", 1);
-	_lightingShaderPbr->setInt("gAlbedoF0r", 2);
-	_lightingShaderPbr->setInt("gIrradianceF0g", 3);
-	_lightingShaderPbr->setInt("gPrefilterF0b", 4);
-	_lightingShaderPbr->setInt("gEmissionAO", 5);
+	_lightingShaderPbr->setInt("gPosition", 0);
+	_lightingShaderPbr->setInt("gNormal", 1);
+	_lightingShaderPbr->setInt("gAlbedo", 2);
+	_lightingShaderPbr->setInt("gEmissionSpec", 3);
+	_lightingShaderPbr->setInt("gMetalRoughAO ", 4);
+	_lightingShaderPbr->setInt("gIrradiance ", 5);
+	_lightingShaderPbr->setInt("gPrefilter", 6);
+	_lightingShaderPbr->setInt("gReflectance", 7);
 
-	_lightingShaderPbr->setInt("ssao", 7);
-	_lightingShaderPbr->setInt("brdfLUT", 8);
+	_lightingShaderPbr->setInt("ssao", 8);
+	_lightingShaderPbr->setInt("brdfLUT", 9);
 
 	_lightingShaderPbr->setInt("shadowMap", 11);
 
@@ -651,7 +650,7 @@ void Renderer::_initShaders() {
 
 	_ssrShader->use();
 	_ssrShader->setInt("gNormal", 0);
-	_ssrShader->setInt("gAlbedoSpec", 1);
+	_ssrShader->setInt("gEmissionSpec", 1);
 	_ssrShader->setInt("sceneTexture", 2);
 	_ssrShader->setInt("depthTexture", 3);
 
@@ -667,8 +666,8 @@ void Renderer::_initShaders() {
 	_postProcessingShader = new Shader(Filepath::ShaderPath + "post processing shader/screenQuad.vs", Filepath::ShaderPath + "post processing shader/postProcessing.fs");
 
 	_postProcessingShader->use();
-	_postProcessingShader->setInt("screenTexture", 0);
-	_postProcessingShader->setInt("sceneDepth", 1);
+	_postProcessingShader->setInt("sceneTexture", 0);
+	_postProcessingShader->setInt("depthTexture", 1);
 	_postProcessingShader->setInt("bloomBlur", 2);
 	_postProcessingShader->setInt("ssr", 3);
 }
@@ -745,7 +744,9 @@ void Renderer::_initShaderStorageBuffers() {
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 }
 
-void Renderer::_initGBuffer() {
+void Renderer::_initGBuffers() {
+	//init the color buffers for both gBuffers
+
 	//create the position color buffer
 	_gPosition = new Texture();
 	_gPosition->bind(GL_TEXTURE_2D);
@@ -758,23 +759,51 @@ void Renderer::_initGBuffer() {
 	_gNormal->init(GL_TEXTURE_2D, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT, NULL); //16-bit precision RGB texture
 	_gNormal->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_CLAMP_TO_EDGE);
 
-	//create the color + specular color buffer
-	_gAlbedoSpec = new Texture();
-	_gAlbedoSpec->bind(GL_TEXTURE_2D);
-	_gAlbedoSpec->init(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGBA, GL_FLOAT, NULL); //16-bit precision RGBA texture
-	_gAlbedoSpec->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_NONE);
+	//create the albedo color buffer
+	_gAlbedo = new Texture();
+	_gAlbedo->bind(GL_TEXTURE_2D);
+	_gAlbedo->init(GL_TEXTURE_2D, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT, NULL); //16-bit precision RGB texture
+	_gAlbedo->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_NONE);
 
-	//create the emission + shininess color buffer
-	_gEmissionShiny = new Texture();
-	_gEmissionShiny->bind(GL_TEXTURE_2D);
-	_gEmissionShiny->init(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGBA, GL_FLOAT, NULL); //16-bit precision RGBA texture
-	_gEmissionShiny->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_NONE);
+	//create the emission + specular color buffer
+	_gEmissionSpec = new Texture();
+	_gEmissionSpec->bind(GL_TEXTURE_2D);
+	_gEmissionSpec->init(GL_TEXTURE_2D, GL_RG16F, Window::ScreenWidth, Window::ScreenHeight, GL_RG, GL_FLOAT, NULL); //16-bit precision RG texture
+	_gEmissionSpec->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_NONE);
 
-	//create the environment color buffer
-	_gEnvironment = new Texture();
-	_gEnvironment->bind(GL_TEXTURE_2D);
-	_gEnvironment->init(GL_TEXTURE_2D, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT, NULL); //16-bit precision RGB texture
-	_gEnvironment->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_NONE);
+	//init the color buffers for the normal gBuffer
+
+	//create the environment + shininess color buffer
+	_gEnvironmentShiny = new Texture();
+	_gEnvironmentShiny->bind(GL_TEXTURE_2D);
+	_gEnvironmentShiny->init(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGBA, GL_FLOAT, NULL); //16-bit precision RGBA texture
+	_gEnvironmentShiny->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_NONE);
+
+	//init the color buffers for the PBR gBuffer
+
+	//create metallic + roughness + ambient occlusion color buffer
+	_gMetalRoughAO = new Texture();
+	_gMetalRoughAO->bind(GL_TEXTURE_2D);
+	_gMetalRoughAO->init(GL_TEXTURE_2D, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT, NULL); //16-bit precision RGB texture
+	_gMetalRoughAO->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_NONE);
+
+	//create the irradiance color buffer
+	_gIrradiance = new Texture();
+	_gIrradiance->bind(GL_TEXTURE_2D);
+	_gIrradiance->init(GL_TEXTURE_2D, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT, NULL); //16-bit precision RGB texture
+	_gIrradiance->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_NONE);
+
+	//create the prefilter color buffer
+	_gPrefilter = new Texture();
+	_gPrefilter->bind(GL_TEXTURE_2D);
+	_gPrefilter->init(GL_TEXTURE_2D, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT, NULL); //16-bit precision RGB texture
+	_gPrefilter->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_NONE);
+
+	//create the reflectance (F0) color buffer
+	_gReflectance = new Texture();
+	_gReflectance->bind(GL_TEXTURE_2D);
+	_gReflectance->init(GL_TEXTURE_2D, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT, NULL); //16-bit precision RGB texture
+	_gReflectance->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_NONE);
 
 	//create depth renderbuffer
 	_gRBO = new Renderbuffer();
@@ -787,9 +816,9 @@ void Renderer::_initGBuffer() {
 	_gBuffer->bind(GL_FRAMEBUFFER);
 	_gBuffer->attachTexture(GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _gPosition);
 	_gBuffer->attachTexture(GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, _gNormal);
-	_gBuffer->attachTexture(GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, _gAlbedoSpec);
-	_gBuffer->attachTexture(GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D, _gEmissionShiny);
-	_gBuffer->attachTexture(GL_COLOR_ATTACHMENT4, GL_TEXTURE_2D, _gEnvironment);
+	_gBuffer->attachTexture(GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, _gAlbedo);
+	_gBuffer->attachTexture(GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D, _gEmissionSpec);
+	_gBuffer->attachTexture(GL_COLOR_ATTACHMENT4, GL_TEXTURE_2D, _gEnvironmentShiny);
 	_gBuffer->attachRenderbuffer(GL_DEPTH_ATTACHMENT, _gRBO);
 
 	//tell OpenGL which attachments the gBuffer will use for rendering
@@ -801,67 +830,22 @@ void Renderer::_initGBuffer() {
 		std::cout << "ERROR: gBuffer framebuffer is incomplete." << std::endl;
 	}
 
-	//unbind
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-}
-
-void Renderer::_initGBufferPbr() {
-	//create the position + metallic color buffer
-	_gPositionMetallic = new Texture();
-	_gPositionMetallic->bind(GL_TEXTURE_2D);
-	_gPositionMetallic->init(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGBA, GL_FLOAT, NULL); //16-bit precision RGBA texture
-	_gPositionMetallic->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_CLAMP_TO_EDGE);
-
-	//create the normal + roughness color buffer
-	_gNormalRoughness = new Texture();
-	_gNormalRoughness->bind(GL_TEXTURE_2D);
-	_gNormalRoughness->init(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGBA, GL_FLOAT, NULL); //16-bit precision RGBA texture
-	_gNormalRoughness->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_CLAMP_TO_EDGE);
-
-	//create the albedo + F0 red channel color buffer
-	_gAlbedoF0r = new Texture();
-	_gAlbedoF0r->bind(GL_TEXTURE_2D);
-	_gAlbedoF0r->init(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGBA, GL_FLOAT, NULL); //16-bit precision RGBA texture
-	_gAlbedoF0r->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_NONE);
-
-	//create the irradiance + F0 green channel color buffer
-	_gIrradianceF0g = new Texture();
-	_gIrradianceF0g->bind(GL_TEXTURE_2D);
-	_gIrradianceF0g->init(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGBA, GL_FLOAT, NULL); //16-bit precision RGBA texture
-	_gIrradianceF0g->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_NONE);
-
-	//create the prefilter + F0 blue channel color buffer
-	_gPrefilterF0b = new Texture();
-	_gPrefilterF0b->bind(GL_TEXTURE_2D);
-	_gPrefilterF0b->init(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGBA, GL_FLOAT, NULL); //16-bit precision RGBA texture
-	_gPrefilterF0b->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_NONE);
-
-	//create the emission + ao color buffer
-	_gEmissionAO = new Texture();
-	_gEmissionAO->bind(GL_TEXTURE_2D);
-	_gEmissionAO->init(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGBA, GL_FLOAT, NULL); //16-bit precision RGBA texture
-	_gEmissionAO->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_NONE);
-
-	//create depth renderbuffer
-	_gPbrRBO = new Renderbuffer();
-	_gPbrRBO->bind();
-	_gPbrRBO->init(GL_DEPTH_COMPONENT, Window::ScreenWidth, Window::ScreenHeight);
-	glBindRenderbuffer(GL_RENDERBUFFER, 0);
-
 	//create the gBuffer framebuffer and attach its color buffers for the deferred shading geometry pass
 	_gBufferPbr = new Framebuffer();
 	_gBufferPbr->bind(GL_FRAMEBUFFER);
-	_gBufferPbr->attachTexture(GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _gPositionMetallic);
-	_gBufferPbr->attachTexture(GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, _gNormalRoughness);
-	_gBufferPbr->attachTexture(GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, _gAlbedoF0r);
-	_gBufferPbr->attachTexture(GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D, _gIrradianceF0g);
-	_gBufferPbr->attachTexture(GL_COLOR_ATTACHMENT4, GL_TEXTURE_2D, _gPrefilterF0b);
-	_gBufferPbr->attachTexture(GL_COLOR_ATTACHMENT5, GL_TEXTURE_2D, _gEmissionAO);
-	_gBufferPbr->attachRenderbuffer(GL_DEPTH_ATTACHMENT, _gPbrRBO);
+	_gBufferPbr->attachTexture(GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _gPosition);
+	_gBufferPbr->attachTexture(GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, _gNormal);
+	_gBufferPbr->attachTexture(GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, _gAlbedo);
+	_gBufferPbr->attachTexture(GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D, _gEmissionSpec);
+	_gBufferPbr->attachTexture(GL_COLOR_ATTACHMENT4, GL_TEXTURE_2D, _gMetalRoughAO);
+	_gBufferPbr->attachTexture(GL_COLOR_ATTACHMENT5, GL_TEXTURE_2D, _gIrradiance);
+	_gBufferPbr->attachTexture(GL_COLOR_ATTACHMENT6, GL_TEXTURE_2D, _gPrefilter);
+	_gBufferPbr->attachTexture(GL_COLOR_ATTACHMENT7, GL_TEXTURE_2D, _gReflectance);
+	_gBufferPbr->attachRenderbuffer(GL_DEPTH_ATTACHMENT, _gRBO);
 
 	//tell OpenGL which attachments the gBuffer will use for rendering
-	unsigned int attachments[6] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3, GL_COLOR_ATTACHMENT4, GL_COLOR_ATTACHMENT5};
-	glDrawBuffers(6, attachments);
+	unsigned int attachmentsPbr[8] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3, GL_COLOR_ATTACHMENT4, GL_COLOR_ATTACHMENT5, GL_COLOR_ATTACHMENT6, GL_COLOR_ATTACHMENT7};
+	glDrawBuffers(8, attachmentsPbr);
 
 	//check for completion
 	if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
@@ -884,6 +868,7 @@ void Renderer::_initConversionFBO() {
 	_conversionFBO->bind(GL_FRAMEBUFFER);
 	_conversionFBO->attachRenderbuffer(GL_DEPTH_ATTACHMENT, _conversionRBO);
 
+	//unbind
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
@@ -1457,9 +1442,9 @@ void Renderer::_renderGeometry(std::vector<std::pair<RenderComponent*, glm::mat4
 	else _gBuffer->bind(GL_FRAMEBUFFER);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	//SSR WIP
+	//SSR
 	GLfloat clearColor[4] = {0.0f, 0.0f, 0.0f, 0.0f};
-	glClearTexImage(_gAlbedoSpec->getID(), 0, GL_RGBA, GL_FLOAT, &clearColor); //initialize the albedo spec with 0 to avoid having specularity on the skybox
+	glClearTexImage(_gEmissionSpec->getID(), 0, GL_RG, GL_FLOAT, &clearColor); //initialize the emission spec with 0 to avoid having specularity on the skybox
 
 	MaterialType materialType;
 	RenderComponent* renderComponent;
@@ -1498,7 +1483,7 @@ void Renderer::_renderGeometry(std::vector<std::pair<RenderComponent*, glm::mat4
 	}
 }
 
-void Renderer::_renderSSAO(bool pbr) {
+void Renderer::_renderSSAO() {
 	//bind to ssao framebuffer
 	_ssaoFBO->bind(GL_FRAMEBUFFER);
 	glClear(GL_COLOR_BUFFER_BIT);
@@ -1520,13 +1505,11 @@ void Renderer::_renderSSAO(bool pbr) {
 
 	//bind position color buffer
 	glActiveTexture(GL_TEXTURE0);
-	if(pbr) _gPositionMetallic->bind(GL_TEXTURE_2D);
-	else _gPosition->bind(GL_TEXTURE_2D);
+	_gPosition->bind(GL_TEXTURE_2D);
 
 	//bind normal color buffer
 	glActiveTexture(GL_TEXTURE1);
-	if(pbr) _gNormalRoughness->bind(GL_TEXTURE_2D);
-	else _gNormal->bind(GL_TEXTURE_2D);
+	_gNormal->bind(GL_TEXTURE_2D);
 
 	//bind noise texture
 	glActiveTexture(GL_TEXTURE2);
@@ -1565,14 +1548,16 @@ void Renderer::_renderSSR(CameraComponent* cameraComponent) {
 
 	_ssrShader->setFloat("rayStepSize", RenderSettings::SsrRayStepSize);
 	_ssrShader->setFloat("maxRaySteps", (int)RenderSettings::SsrMaxRaySteps);
+	_ssrShader->setFloat("fresnelExponent", RenderSettings::SsrFresnelExponent);
+	_ssrShader->setFloat("maxDelta", RenderSettings::SsrMaxDelta);
 
 	//bind normal color buffer
 	glActiveTexture(GL_TEXTURE0);
 	_gNormal->bind(GL_TEXTURE_2D);
 
-	//bind albedo + specular color buffer 
+	//bind albedo color buffer 
 	glActiveTexture(GL_TEXTURE1);
-	_gAlbedoSpec->bind(GL_TEXTURE_2D);
+	_gEmissionSpec->bind(GL_TEXTURE_2D);
 
 	//bind scene texture
 	glActiveTexture(GL_TEXTURE2);
@@ -1602,32 +1587,40 @@ void Renderer::_renderLighting(Texture* skybox, unsigned int pointLightCount, bo
 
 		_lightingShaderPbr->setBool("useSSAO", RenderSettings::IsEnabled(RenderSettings::SSAO));
 
-		//bind position + metallic color buffer
+		//bind position color buffer
 		glActiveTexture(GL_TEXTURE0);
-		_gPositionMetallic->bind(GL_TEXTURE_2D);
+		_gPosition->bind(GL_TEXTURE_2D);
 
-		//bind normal + roughness color buffer
+		//bind normal color buffer
 		glActiveTexture(GL_TEXTURE1);
-		_gNormalRoughness->bind(GL_TEXTURE_2D);
+		_gNormal->bind(GL_TEXTURE_2D);
 
-		//bind albedo + F0 red channel color buffer
+		//bind albedo color buffer
 		glActiveTexture(GL_TEXTURE2);
-		_gAlbedoF0r->bind(GL_TEXTURE_2D);
+		_gAlbedo->bind(GL_TEXTURE_2D);
 
-		//bind irradiance + F0 green channel color buffer
+		//bind emission + specular color buffer
 		glActiveTexture(GL_TEXTURE3);
-		_gIrradianceF0g->bind(GL_TEXTURE_2D);
+		_gEmissionSpec->bind(GL_TEXTURE_2D);
 
-		//bind prefilter + F0 blue channel color buffer
+		//bind metallic + roughness + ao color buffer
 		glActiveTexture(GL_TEXTURE4);
-		_gPrefilterF0b->bind(GL_TEXTURE_2D);
+		_gMetalRoughAO->bind(GL_TEXTURE_2D);
 
-		//bind emission + ao color buffer
+		//bind irradiance color buffer
 		glActiveTexture(GL_TEXTURE5);
-		_gEmissionAO->bind(GL_TEXTURE_2D);
+		_gIrradiance->bind(GL_TEXTURE_2D);
+
+		//bind prefilter color buffer
+		glActiveTexture(GL_TEXTURE6);
+		_gPrefilter->bind(GL_TEXTURE_2D);
+
+		//bind reflectance (F0) color buffer
+		glActiveTexture(GL_TEXTURE7);
+		_gReflectance->bind(GL_TEXTURE_2D);
 
 		//bind brdf LUT
-		glActiveTexture(GL_TEXTURE8);
+		glActiveTexture(GL_TEXTURE9);
 		_brdfLUT->bind(GL_TEXTURE_2D);
 	} else {
 		//use lighting shader and bind textures
@@ -1643,21 +1636,21 @@ void Renderer::_renderLighting(Texture* skybox, unsigned int pointLightCount, bo
 		glActiveTexture(GL_TEXTURE1);
 		_gNormal->bind(GL_TEXTURE_2D);
 
-		//bind albedo and specular color buffer
+		//bind albedo color buffer
 		glActiveTexture(GL_TEXTURE2);
-		_gAlbedoSpec->bind(GL_TEXTURE_2D);
+		_gAlbedo->bind(GL_TEXTURE_2D);
 
-		//bind emission and shininess color buffer
+		//bind emission + specular color buffer
 		glActiveTexture(GL_TEXTURE3);
-		_gEmissionShiny->bind(GL_TEXTURE_2D);
+		_gEmissionSpec->bind(GL_TEXTURE_2D);
 
-		//bind environment color buffer
+		//bind environment + shininess color buffer
 		glActiveTexture(GL_TEXTURE4);
-		_gEnvironment->bind(GL_TEXTURE_2D);
+		_gEnvironmentShiny->bind(GL_TEXTURE_2D);
 	}
 
 	//bind ssao texture
-	glActiveTexture(GL_TEXTURE7);
+	glActiveTexture(GL_TEXTURE8);
 	_ssaoBlurColorBuffer->bind(GL_TEXTURE_2D);
 
 	//bind shadow map
@@ -1827,7 +1820,7 @@ void Renderer::_renderPostProcessingQuad() {
 	_blurColorBuffers[!horizontal]->bind(GL_TEXTURE_2D); //bind blurred bloom texture
 
 	glActiveTexture(GL_TEXTURE3);
-	_ssrColorBuffer->bind(GL_TEXTURE_2D);
+	_ssrColorBuffer->bind(GL_TEXTURE_2D); //bind the ssr reflection texture
 
 	//render texture to the screen and tone map and gamma correct
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
@@ -2028,21 +2021,19 @@ void Renderer::_updateDimensions() {
 	delete _ssrFBO;
 
 	delete _gRBO;
-	delete _gPbrRBO;
 	delete _hdrRBO;
 
 	delete _gPosition;
 	delete _gNormal;
-	delete _gAlbedoSpec;
-	delete _gEmissionShiny;
-	delete _gEnvironment;
+	delete _gAlbedo;
+	delete _gEmissionSpec;
 
-	delete _gPositionMetallic;
-	delete _gNormalRoughness;
-	delete _gAlbedoF0r;
-	delete _gIrradianceF0g;
-	delete _gPrefilterF0b;
-	delete _gEmissionAO;
+	delete _gEnvironmentShiny;
+
+	delete _gMetalRoughAO;
+	delete _gIrradiance;
+	delete _gPrefilter;
+	delete _gReflectance;
 
 	delete _sceneDepthBuffer;
 	delete _sceneColorBuffer;
@@ -2054,8 +2045,7 @@ void Renderer::_updateDimensions() {
 	delete _ssrColorBuffer;
 
 	//then reallocate them with the correct new dimensions
-	_initGBuffer();
-	_initGBufferPbr();
+	_initGBuffers();
 	_initDepthFBO();
 	_initHdrFBO();
 	_initBlurFBOs();

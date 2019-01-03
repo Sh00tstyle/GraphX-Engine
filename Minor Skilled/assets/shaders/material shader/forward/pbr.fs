@@ -220,7 +220,7 @@ void main() {
     vec3 color = ambient + Lo * shadow; //add results and apply shadow
 
     //emission
-    vec3 emission = texture(material.emission, texCoord).rgb; //if there is no emission map, nothing will be added
+    vec3 emission = albedo * texture(material.emission, texCoord).r; //if there is no emission map, nothing will be added
     color += emission;
 
     fragColor = vec4(color, alpha);

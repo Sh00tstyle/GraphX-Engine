@@ -181,7 +181,7 @@ void main() {
     }
 
     //emission
-    vec3 emission = texture(material.emission, texCoord).rgb; //if there is no emission map, nothing will be added
+    vec3 emission = diffuse * texture(material.emission, texCoord).r; //if there is no emission map, nothing will be added
     result += emission;
 
     fragColor = vec4(result, alpha);
