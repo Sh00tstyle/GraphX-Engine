@@ -421,7 +421,7 @@ void Renderer::renderEnvironmentMaps(std::vector<Node*>& renderables, Node* dire
 
 	//set viewport and bind to cubemap framebuffer
 	glViewport(0, 0, RenderSettings::EnvironmentWidth, RenderSettings::EnvironmentHeight);
-	_environmentFBO->bind(GL_FRAMEBUFFER);
+	_environmentFBO->bind();
 
 	for(unsigned int i = 0; i < renderComponents.size(); i++) {
 		//check for material types
@@ -470,22 +470,22 @@ void Renderer::renderEnvironmentMaps(std::vector<Node*>& renderables, Node* dire
 
 	//reset viewport and bind back to default framebuffer
 	glViewport(0, 0, Window::ScreenWidth, Window::ScreenHeight);
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	Framebuffer::Unbind();
 }
 
 Texture* Renderer::convertEquiToCube(Texture* skybox) {
 	std::cout << "Converting equirectangular texture to cubemap..." << std::endl;
 
 	//create new cubemap texture
-	Texture* cubemap = new Texture();
-	cubemap->bind(GL_TEXTURE_CUBE_MAP);
+	Texture* cubemap = new Texture(GL_TEXTURE_CUBE_MAP);
+	cubemap->bind();
 
 	//init each cubemap face
 	for(unsigned int i = 0; i < 6; ++i) {
-		cubemap->init(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, GL_RGB16F, RenderSettings::SkyboxWidth, RenderSettings::SkyboxHeight, GL_RGB, GL_FLOAT, NULL);
+		cubemap->initTarget(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, GL_RGB16F, RenderSettings::SkyboxWidth, RenderSettings::SkyboxHeight, GL_RGB, GL_FLOAT, NULL);
 	}
 
-	cubemap->filter(GL_TEXTURE_CUBE_MAP, GL_LINEAR, GL_LINEAR, GL_CLAMP_TO_EDGE);
+	cubemap->filter(GL_LINEAR, GL_LINEAR, GL_CLAMP_TO_EDGE);
 
 	//setup projection and view matrices
 	glm::mat4 conversionProjection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
@@ -503,12 +503,12 @@ Texture* Renderer::convertEquiToCube(Texture* skybox) {
 	_equiToCubeShader->setMat4("projectionMatrix", conversionProjection);
 
 	//bind equirectangular input texture
-	glActiveTexture(GL_TEXTURE0);
-	skybox->bind(GL_TEXTURE_2D);
+	Texture::SetActiveUnit(0);
+	skybox->bind();
 
 	//set viewport and bind to conversion framebuffer
 	glViewport(0, 0, RenderSettings::SkyboxWidth, RenderSettings::SkyboxHeight);
-	_conversionFBO->bind(GL_FRAMEBUFFER);
+	_conversionFBO->bind();
 	_skyboxVAO->bind();
 
 	for(unsigned int i = 0; i < 6; ++i) {
@@ -519,13 +519,13 @@ Texture* Renderer::convertEquiToCube(Texture* skybox) {
 		_equiToCubeShader->setMat4("viewMatrix", conversionViews[i]);
 
 		//render the cube
-		glDrawArrays(GL_TRIANGLES, 0, 36);
+		_skyboxVAO->drawArrays(GL_TRIANGLES, 0, 36);
 	}
 
 	//bind back to default framebuffer and reset viewport
 	glViewport(0, 0, Window::ScreenWidth, Window::ScreenHeight);
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	glBindVertexArray(0);
+	Framebuffer::Unbind();
+	VertexArray::Unbind();
 
 	delete skybox; //the input texture is not needed anymore
 
@@ -571,8 +571,8 @@ void Renderer::_initShaders() {
 	_lightingShaderPbr->setInt("gNormal", 1);
 	_lightingShaderPbr->setInt("gAlbedo", 2);
 	_lightingShaderPbr->setInt("gEmissionSpec", 3);
-	_lightingShaderPbr->setInt("gMetalRoughAO ", 4);
-	_lightingShaderPbr->setInt("gIrradiance ", 5);
+	_lightingShaderPbr->setInt("gMetalRoughAO", 4);
+	_lightingShaderPbr->setInt("gIrradiance", 5);
 	_lightingShaderPbr->setInt("gPrefilter", 6);
 	_lightingShaderPbr->setInt("gReflectance", 7);
 
@@ -677,16 +677,13 @@ void Renderer::_initSkyboxVAO() {
 	_skyboxVAO = new VertexArray();
 	_skyboxVAO->bind();
 
-	_skyboxVBO = new Buffer();
-	_skyboxVBO->bind(GL_ARRAY_BUFFER);
-	_skyboxVBO->bufferData(GL_ARRAY_BUFFER, &_SkyboxVertices[0], _SkyboxVertices.size() * sizeof(float));
+	_skyboxVBO = new Buffer(GL_ARRAY_BUFFER);
+	_skyboxVBO->bind();
+	_skyboxVBO->bufferData(&_SkyboxVertices[0], _SkyboxVertices.size() * sizeof(float));
 
-	glEnableVertexAttribArray(0); //vertex
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(1); //normal
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
-	glEnableVertexAttribArray(2); //uv
-	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+	_skyboxVAO->setAttribute(0, 3, GL_FLOAT, 8 * sizeof(float), (void*)0);
+	_skyboxVAO->setAttribute(1, 3, GL_FLOAT, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+	_skyboxVAO->setAttribute(2, 2, GL_FLOAT, 8 * sizeof(float), (void*)(6 * sizeof(float)));
 }
 
 void Renderer::_initScreenQuadVAO() {
@@ -694,14 +691,12 @@ void Renderer::_initScreenQuadVAO() {
 	_screenQuadVAO = new VertexArray();
 	_screenQuadVAO->bind();
 
-	_screenQuadVBO = new Buffer();
-	_screenQuadVBO->bind(GL_ARRAY_BUFFER);
-	_screenQuadVBO->bufferData(GL_ARRAY_BUFFER, &_ScreenQuadVertices[0], _ScreenQuadVertices.size() * sizeof(float));
+	_screenQuadVBO = new Buffer(GL_ARRAY_BUFFER);
+	_screenQuadVBO->bind();
+	_screenQuadVBO->bufferData(&_ScreenQuadVertices[0], _ScreenQuadVertices.size() * sizeof(float));
 
-	glEnableVertexAttribArray(0); //vertex
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(1); //uv
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+	_screenQuadVAO->setAttribute(0, 3, GL_FLOAT, 5 * sizeof(float), (void*)0);
+	_screenQuadVAO->setAttribute(1, 2, GL_FLOAT, 5 * sizeof(float), (void*)(3 * sizeof(float)));
 }
 
 void Renderer::_initUniformBuffers() {
@@ -709,111 +704,83 @@ void Renderer::_initUniformBuffers() {
 	unsigned int neededMemory = sizeof(glm::mat4) * 4; //4x mat4
 
 	//create matrices uniform buffer
-	_matricesUBO = new Buffer();
-	_matricesUBO->bind(GL_UNIFORM_BUFFER);
-	_matricesUBO->allocateMemory(GL_UNIFORM_BUFFER, neededMemory); //allocate the memory, but don't fill it with data yet
-	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+	_matricesUBO = new Buffer(GL_UNIFORM_BUFFER);
+	_matricesUBO->bind();
+	_matricesUBO->allocateMemory(neededMemory); //allocate the memory, but don't fill it with data yet
 
 	//define the range of the buffer that links to a uniform binding point (binding point = 0)
-	_matricesUBO->bindBufferRange(GL_UNIFORM_BUFFER, 0, neededMemory);
+	_matricesUBO->bindBufferRange(0, neededMemory);
 
 	//create data uniform buffer
 	neededMemory = sizeof(glm::vec4) * 3 + sizeof(glm::vec4) * RenderSettings::MaxCubeShadows;
 
-	_dataUBO = new Buffer();
-	_dataUBO->bind(GL_UNIFORM_BUFFER);
-	_dataUBO->allocateMemory(GL_UNIFORM_BUFFER, neededMemory); //allocate the memory, but don't fill it with data yet
+	_dataUBO = new Buffer(GL_UNIFORM_BUFFER);
+	_dataUBO->bind();
+	_dataUBO->allocateMemory(neededMemory); //allocate the memory, but don't fill it with data yet
 
-	_dataUBO->bindBufferRange(GL_UNIFORM_BUFFER, 1, neededMemory); //bind to binding point 1
+	_dataUBO->bindBufferRange(1, neededMemory); //bind to binding point 1
 
 	//unbind
-	glBindBuffer(GL_UNIFORM_BUFFER, 0); 
+	Buffer::Unbind(GL_UNIFORM_BUFFER); 
 }
 
 void Renderer::_initShaderStorageBuffers() {
 	//create lights shader storage buffer (enables use of dynamic arrays within shaders)
 	unsigned int neededMemory = sizeof(glm::vec4) + sizeof(GLLight) * RenderSettings::MaxLights; //112 bytes per light struct + 16 for an additional int
 
-	_lightsSSBO = new Buffer();
-	_lightsSSBO->bind(GL_SHADER_STORAGE_BUFFER);
-	_lightsSSBO->allocateMemory(GL_SHADER_STORAGE_BUFFER, neededMemory); //allocate the memory, but don't fill it with data yet
+	_lightsSSBO = new Buffer(GL_SHADER_STORAGE_BUFFER);
+	_lightsSSBO->bind();
+	_lightsSSBO->allocateMemory(neededMemory); //allocate the memory, but don't fill it with data yet
 
-	_lightsSSBO->bindBufferRange(GL_SHADER_STORAGE_BUFFER, 2, neededMemory); //bind to binding point 2
+	_lightsSSBO->bindBufferRange(2, neededMemory); //bind to binding point 2
 
 	//unbind
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+	Buffer::Unbind(GL_SHADER_STORAGE_BUFFER);
 }
 
 void Renderer::_initGBuffers() {
 	//init the color buffers for both gBuffers
 
 	//create the position color buffer
-	_gPosition = new Texture();
-	_gPosition->bind(GL_TEXTURE_2D);
-	_gPosition->init(GL_TEXTURE_2D, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT, NULL); //16-bit precision RGB texture
-	_gPosition->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_CLAMP_TO_EDGE);
+	_gPosition = new Texture(GL_TEXTURE_2D, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT, GL_LINEAR, GL_LINEAR, GL_CLAMP_TO_EDGE, NULL, false);
 
 	//create the normal color buffer
-	_gNormal = new Texture();
-	_gNormal->bind(GL_TEXTURE_2D);
-	_gNormal->init(GL_TEXTURE_2D, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT, NULL); //16-bit precision RGB texture
-	_gNormal->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_CLAMP_TO_EDGE);
+	_gNormal = new Texture(GL_TEXTURE_2D, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT, GL_LINEAR, GL_LINEAR, GL_CLAMP_TO_EDGE, NULL, false);
 
 	//create the albedo color buffer
-	_gAlbedo = new Texture();
-	_gAlbedo->bind(GL_TEXTURE_2D);
-	_gAlbedo->init(GL_TEXTURE_2D, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT, NULL); //16-bit precision RGB texture
-	_gAlbedo->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_NONE);
+	_gAlbedo = new Texture(GL_TEXTURE_2D, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT, GL_LINEAR, GL_LINEAR, GL_CLAMP_TO_EDGE, NULL, false);
 
 	//create the emission + specular color buffer
-	_gEmissionSpec = new Texture();
-	_gEmissionSpec->bind(GL_TEXTURE_2D);
-	_gEmissionSpec->init(GL_TEXTURE_2D, GL_RG16F, Window::ScreenWidth, Window::ScreenHeight, GL_RG, GL_FLOAT, NULL); //16-bit precision RG texture
-	_gEmissionSpec->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_NONE);
+	_gEmissionSpec = new Texture(GL_TEXTURE_2D, GL_RG16F, Window::ScreenWidth, Window::ScreenHeight, GL_RG, GL_FLOAT, GL_LINEAR, GL_LINEAR, GL_NONE, NULL, false);
 
 	//init the color buffers for the normal gBuffer
 
 	//create the environment + shininess color buffer
-	_gEnvironmentShiny = new Texture();
-	_gEnvironmentShiny->bind(GL_TEXTURE_2D);
-	_gEnvironmentShiny->init(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGBA, GL_FLOAT, NULL); //16-bit precision RGBA texture
-	_gEnvironmentShiny->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_NONE);
+	_gEnvironmentShiny = new Texture(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGBA, GL_FLOAT, GL_LINEAR, GL_LINEAR, GL_NONE, NULL, false);
 
 	//init the color buffers for the PBR gBuffer
 
 	//create metallic + roughness + ambient occlusion color buffer
-	_gMetalRoughAO = new Texture();
-	_gMetalRoughAO->bind(GL_TEXTURE_2D);
-	_gMetalRoughAO->init(GL_TEXTURE_2D, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT, NULL); //16-bit precision RGB texture
-	_gMetalRoughAO->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_NONE);
+	_gMetalRoughAO = new Texture(GL_TEXTURE_2D, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT, GL_LINEAR, GL_LINEAR, GL_NONE, NULL, false);
 
 	//create the irradiance color buffer
-	_gIrradiance = new Texture();
-	_gIrradiance->bind(GL_TEXTURE_2D);
-	_gIrradiance->init(GL_TEXTURE_2D, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT, NULL); //16-bit precision RGB texture
-	_gIrradiance->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_NONE);
+	_gIrradiance = new Texture(GL_TEXTURE_2D, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT, GL_LINEAR, GL_LINEAR, GL_NONE, NULL, false);
 
 	//create the prefilter color buffer
-	_gPrefilter = new Texture();
-	_gPrefilter->bind(GL_TEXTURE_2D);
-	_gPrefilter->init(GL_TEXTURE_2D, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT, NULL); //16-bit precision RGB texture
-	_gPrefilter->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_NONE);
+	_gPrefilter = new Texture(GL_TEXTURE_2D, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT, GL_LINEAR, GL_LINEAR, GL_NONE, NULL, false);
 
 	//create the reflectance (F0) color buffer
-	_gReflectance = new Texture();
-	_gReflectance->bind(GL_TEXTURE_2D);
-	_gReflectance->init(GL_TEXTURE_2D, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT, NULL); //16-bit precision RGB texture
-	_gReflectance->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_NONE);
+	_gReflectance = new Texture(GL_TEXTURE_2D, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT, GL_LINEAR, GL_LINEAR, GL_NONE, NULL, false);
 
 	//create depth renderbuffer
 	_gRBO = new Renderbuffer();
 	_gRBO->bind();
 	_gRBO->init(GL_DEPTH_COMPONENT, Window::ScreenWidth, Window::ScreenHeight);
-	glBindRenderbuffer(GL_RENDERBUFFER, 0);
+	Renderbuffer::Unbind();
 
 	//create the gBuffer framebuffer and attach its color buffers for the deferred shading geometry pass
 	_gBuffer = new Framebuffer();
-	_gBuffer->bind(GL_FRAMEBUFFER);
+	_gBuffer->bind();
 	_gBuffer->attachTexture(GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _gPosition);
 	_gBuffer->attachTexture(GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, _gNormal);
 	_gBuffer->attachTexture(GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, _gAlbedo);
@@ -823,16 +790,14 @@ void Renderer::_initGBuffers() {
 
 	//tell OpenGL which attachments the gBuffer will use for rendering
 	unsigned int attachments[5] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3, GL_COLOR_ATTACHMENT4};
-	glDrawBuffers(5, attachments);
+	_gBuffer->setDrawBuffers(5, attachments);
 
 	//check for completion
-	if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-		std::cout << "ERROR: gBuffer framebuffer is incomplete." << std::endl;
-	}
+	_gBuffer->checkForCompletion("_gBuffer");
 
 	//create the gBuffer framebuffer and attach its color buffers for the deferred shading geometry pass
 	_gBufferPbr = new Framebuffer();
-	_gBufferPbr->bind(GL_FRAMEBUFFER);
+	_gBufferPbr->bind();
 	_gBufferPbr->attachTexture(GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _gPosition);
 	_gBufferPbr->attachTexture(GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, _gNormal);
 	_gBufferPbr->attachTexture(GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, _gAlbedo);
@@ -845,15 +810,13 @@ void Renderer::_initGBuffers() {
 
 	//tell OpenGL which attachments the gBuffer will use for rendering
 	unsigned int attachmentsPbr[8] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3, GL_COLOR_ATTACHMENT4, GL_COLOR_ATTACHMENT5, GL_COLOR_ATTACHMENT6, GL_COLOR_ATTACHMENT7};
-	glDrawBuffers(8, attachmentsPbr);
+	_gBufferPbr->setDrawBuffers(8, attachmentsPbr);
 
 	//check for completion
-	if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-		std::cout << "ERROR: gBufferPbr framebuffer is incomplete." << std::endl;
-	}
+	_gBufferPbr->checkForCompletion("gBufferPbr");
 
 	//unbind
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	Framebuffer::Unbind();
 }
 
 void Renderer::_initConversionFBO() {
@@ -861,90 +824,79 @@ void Renderer::_initConversionFBO() {
 	_conversionRBO = new Renderbuffer();
 	_conversionRBO->bind();
 	_conversionRBO->init(GL_DEPTH_COMPONENT24, RenderSettings::SkyboxWidth, RenderSettings::SkyboxHeight);
-	glBindRenderbuffer(GL_RENDERBUFFER, 0);
+	Renderbuffer::Unbind();
 
 	//init conversion FBO
 	_conversionFBO = new Framebuffer();
-	_conversionFBO->bind(GL_FRAMEBUFFER);
+	_conversionFBO->bind();
 	_conversionFBO->attachRenderbuffer(GL_DEPTH_ATTACHMENT, _conversionRBO);
 
 	//unbind
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	Framebuffer::Unbind();
 }
 
 void Renderer::_initShadowFBO() {
 	//create shadow texture
-	_shadowMap = new Texture();
-	_shadowMap->bind(GL_TEXTURE_2D);
-	_shadowMap->init(GL_TEXTURE_2D, GL_DEPTH_COMPONENT24, RenderSettings::ShadowWidth, RenderSettings::ShadowHeight, GL_DEPTH_COMPONENT, GL_FLOAT, NULL); //we only need the depth component
-	_shadowMap->filter(GL_TEXTURE_2D, GL_NEAREST, GL_NEAREST, GL_CLAMP_TO_BORDER);
+	_shadowMap = new Texture(GL_TEXTURE_2D, GL_DEPTH_COMPONENT24, RenderSettings::ShadowWidth, RenderSettings::ShadowHeight, GL_DEPTH_COMPONENT, GL_FLOAT, GL_NEAREST, GL_NEAREST, GL_CLAMP_TO_BORDER, NULL, false);
 
 	float borderColor[] = {1.0f, 1.0f, 1.0f, 1.0f};
 	glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor); //results in a shadow value of 0 when outside of the light frustum
 	
 	//create shadow framebuffer and attach the shadow map to it, so the framebuffer can render to it
 	_shadowFBO = new Framebuffer();
-	_shadowFBO->bind(GL_FRAMEBUFFER);
+	_shadowFBO->bind();
 	_shadowFBO->attachTexture(GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, _shadowMap);
-	glDrawBuffer(GL_NONE); //explicitly tell OpenGL that we are only using the depth attachments and no color attachments, otherwise the FBO will be incomplete
-	glReadBuffer(GL_NONE);
+	_shadowFBO->setDrawBuffer(GL_NONE); //explicitly tell OpenGL that we are only using the depth attachments and no color attachments, otherwise the FBO will be incomplete
+	_shadowFBO->setReadBuffer(GL_NONE);
 
 	//check for completion
-	if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-		std::cout << "ERROR: Shadow map framebuffer is incomplete." << std::endl;
-	}
+	_shadowFBO->checkForCompletion("Shadow map");
 
 	//bind back to default framebuffer
-	glBindFramebuffer(GL_FRAMEBUFFER, 0); 
+	Framebuffer::Unbind(); 
 }
 
 void Renderer::_initShadowCubeFBO() {
 	//create shadow cubemap framebuffer
 	_shadowCubeFBO = new Framebuffer();
-	_shadowCubeFBO->bind(GL_FRAMEBUFFER);
-
-	glDrawBuffer(GL_NONE);
-	glReadBuffer(GL_NONE);
+	_shadowCubeFBO->bind();
+	_shadowCubeFBO->setDrawBuffer(GL_NONE); //explicitly tell OpenGL that we are only using the depth attachments and no color attachments, otherwise the FBO will be incomplete
+	_shadowCubeFBO->setReadBuffer(GL_NONE);
 
 	//create shadow cubemap texture for each possible light
 	for(unsigned int i = 0; i < RenderSettings::MaxCubeShadows; i++) {
-		_shadowCubeMaps.push_back(new Texture()); //add to vector
+		_shadowCubeMaps.push_back(new Texture(GL_TEXTURE_CUBE_MAP)); //add to vector
 
-		_shadowCubeMaps[i]->bind(GL_TEXTURE_CUBE_MAP);
+		_shadowCubeMaps[i]->bind();
 
 		//init all cubemap faces
 		for(unsigned int j = 0; j < 6; j++) {
-			_shadowCubeMaps[i]->init(GL_TEXTURE_CUBE_MAP_POSITIVE_X + j, GL_DEPTH_COMPONENT24, RenderSettings::ShadowWidth, RenderSettings::ShadowHeight, GL_DEPTH_COMPONENT, GL_FLOAT, NULL); //we only need the depth component
+			_shadowCubeMaps[i]->initTarget(GL_TEXTURE_CUBE_MAP_POSITIVE_X + j, GL_DEPTH_COMPONENT24, RenderSettings::ShadowWidth, RenderSettings::ShadowHeight, GL_DEPTH_COMPONENT, GL_FLOAT, NULL); //we only need the depth component
 		}
 
-		_shadowCubeMaps[i]->filter(GL_TEXTURE_CUBE_MAP, GL_NEAREST, GL_NEAREST, GL_CLAMP_TO_EDGE);
+		_shadowCubeMaps[i]->filter(GL_NEAREST, GL_NEAREST, GL_CLAMP_TO_EDGE);
 	}
 
 	//bind back to default framebuffer
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	Framebuffer::Unbind();
 }
 
 void Renderer::_initDepthFBO() {
 	//create shadow texture
-	_sceneDepthBuffer = new Texture();
-	_sceneDepthBuffer->bind(GL_TEXTURE_2D);
-	_sceneDepthBuffer->init(GL_TEXTURE_2D, GL_DEPTH_COMPONENT32, Window::ScreenWidth, Window::ScreenHeight, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-	_sceneDepthBuffer->filter(GL_TEXTURE_2D, GL_NEAREST, GL_NEAREST, GL_CLAMP_TO_BORDER);
+	_sceneDepthBuffer = new Texture(GL_TEXTURE_2D, GL_DEPTH_COMPONENT32, Window::ScreenWidth, Window::ScreenHeight, GL_DEPTH_COMPONENT, GL_FLOAT, GL_NEAREST, GL_NEAREST, GL_CLAMP_TO_BORDER, NULL, false);
 
 	//create shadow framebuffer and attach the shadow map to it, so the framebuffer can render to it
 	_depthFBO = new Framebuffer();
-	_depthFBO->bind(GL_FRAMEBUFFER);
+	_depthFBO->bind();
 	_depthFBO->attachTexture(GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, _sceneDepthBuffer);
-	glDrawBuffer(GL_NONE); //explicitly tell OpenGL that we are only using the depth attachments and no color attachments, otherwise the FBO will be incomplete
-	glReadBuffer(GL_NONE);
+	_depthFBO->setDrawBuffer(GL_NONE); //explicitly tell OpenGL that we are only using the depth attachments and no color attachments, otherwise the FBO will be incomplete
+	_depthFBO->setReadBuffer(GL_NONE);
 
 	//check for completion
-	if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-		std::cout << "ERROR: Scene depth framebuffer is incomplete." << std::endl;
-	}
+	_depthFBO->checkForCompletion("Scene depth");
 
 	//bind back to default framebuffer
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	Framebuffer::Unbind();
 }
 
 void Renderer::_initEnvironmentFBO() {
@@ -952,54 +904,46 @@ void Renderer::_initEnvironmentFBO() {
 	_environmentRBO = new Renderbuffer();
 	_environmentRBO->bind();
 	_environmentRBO->init(GL_DEPTH_COMPONENT, RenderSettings::EnvironmentWidth, RenderSettings::EnvironmentHeight);
-	glBindRenderbuffer(GL_RENDERBUFFER, 0);
+	Renderbuffer::Unbind();
 
 	//create framebuffer and only attach the renderbuffer as we attach each cubemap face seperately when we render the cubemap
 	_environmentFBO = new Framebuffer();
-	_environmentFBO->bind(GL_FRAMEBUFFER);
+	_environmentFBO->bind();
 	_environmentFBO->attachRenderbuffer(GL_DEPTH_ATTACHMENT, _environmentRBO);
 
 	//bind back to default framebuffer
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	Framebuffer::Unbind();
 }
 
 void Renderer::_initHdrFBO() {
 	//create floating point color buffer
-	_sceneColorBuffer = new Texture();
-	_sceneColorBuffer->bind(GL_TEXTURE_2D);
-	_sceneColorBuffer->init(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGBA, GL_FLOAT, NULL);
-	_sceneColorBuffer->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_CLAMP_TO_BORDER);
+	_sceneColorBuffer = new Texture(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGBA, GL_FLOAT, GL_LINEAR, GL_LINEAR, GL_CLAMP_TO_BORDER, NULL, false);
 
 	//create floating point bright color buffer
-	_brightColorBuffer = new Texture();
-	_brightColorBuffer->bind(GL_TEXTURE_2D);
-	_brightColorBuffer->init(GL_TEXTURE_2D, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT, NULL);
-	_brightColorBuffer->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_CLAMP_TO_BORDER);
+	_brightColorBuffer = new Texture(GL_TEXTURE_2D, GL_RGB16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT, GL_LINEAR, GL_LINEAR, GL_CLAMP_TO_BORDER, NULL, false);
 
 	//create depth renderbuffer
 	_hdrRBO = new Renderbuffer();
 	_hdrRBO->bind();
 	_hdrRBO->init(GL_DEPTH_COMPONENT, Window::ScreenWidth, Window::ScreenHeight);
-	glBindRenderbuffer(GL_RENDERBUFFER, 0);
+	Renderbuffer::Unbind();
 
 	//create floating point framebuffer, attach color buffers and render buffer
 	_hdrFBO = new Framebuffer();
-	_hdrFBO->bind(GL_FRAMEBUFFER);
+	_hdrFBO->bind();
 	_hdrFBO->attachTexture(GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _sceneColorBuffer); //attach color buffer
 	_hdrFBO->attachTexture(GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, _brightColorBuffer); //attach bright color buffer
 	_hdrFBO->attachRenderbuffer(GL_DEPTH_ATTACHMENT, _hdrRBO); //attach depth renderbuffer
 
 	//tell OpenGL which color attachments this framebuffer will use for rendering
 	unsigned int attachments[2] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
-	glDrawBuffers(2, attachments);
+	_hdrFBO->setDrawBuffers(2, attachments);
 
 	//check for completion
-	if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-		std::cout << "ERROR: HDR framebuffer is incomplete." << std::endl;
-	}
+	_hdrFBO->checkForCompletion("HDR");
 
 	//bind back to default framebuffer
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	Framebuffer::Unbind();
 }
 
 void Renderer::_initBlurFBOs() {
@@ -1007,99 +951,79 @@ void Renderer::_initBlurFBOs() {
 	for(unsigned int i = 0; i < 2; i++) {
 		//create and bind framebuffer
 		_bloomBlurFBOs[i] = new Framebuffer();
-		_bloomBlurFBOs[i]->bind(GL_FRAMEBUFFER);
+		_bloomBlurFBOs[i]->bind();
 
 		//create texture buffers
-		_blurColorBuffers[i] = new Texture();
-		_blurColorBuffers[i]->bind(GL_TEXTURE_2D);
-		_blurColorBuffers[i]->init(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGBA, GL_FLOAT, NULL);
-		_blurColorBuffers[i]->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_CLAMP_TO_EDGE);
+		_blurColorBuffers[i] = new Texture(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGBA, GL_FLOAT, GL_LINEAR, GL_LINEAR, GL_CLAMP_TO_EDGE, NULL, false);
 
 		_bloomBlurFBOs[i]->attachTexture(GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _blurColorBuffers[i]); //attach blur colorbuffer to the blur framebuffer
 
 		//check for framebuffer completion (no need for depth buffer)
-		if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-			std::cout << "ERROR: Bloom blur framebuffer " + std::to_string(i) + " is incomplete." << std::endl;
-		}
+		_bloomBlurFBOs[i]->checkForCompletion("Bloom blur " + std::to_string(i));
 
 		//bind back to default framebuffer
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		Framebuffer::Unbind();
 	}
 }
 
 void Renderer::_initSSAOFBOs() {
 	//create ssao color buffer
-	_ssaoColorBuffer = new Texture();
-	_ssaoColorBuffer->bind(GL_TEXTURE_2D);
-	_ssaoColorBuffer->init(GL_TEXTURE_2D, GL_RED, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT, NULL);
-	_ssaoColorBuffer->filter(GL_TEXTURE_2D, GL_NEAREST, GL_NEAREST, GL_NONE);
+	_ssaoColorBuffer = new Texture(GL_TEXTURE_2D, GL_RED, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT, GL_NEAREST, GL_NEAREST, GL_NONE, NULL, false);
 
 	//create ssao framebuffer
 	_ssaoFBO = new Framebuffer();
-	_ssaoFBO->bind(GL_FRAMEBUFFER);
+	_ssaoFBO->bind();
 	_ssaoFBO->attachTexture(GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _ssaoColorBuffer); //attach buffer to fbo
 
 	//check for completion
-	if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-		std::cout << "ERROR: SSAO framebuffer is incomplete." << std::endl;
-	}
+	_ssaoFBO->checkForCompletion("SSAO");
 
 	//create ssao blur color buffer
-	_ssaoBlurColorBuffer = new Texture();
-	_ssaoBlurColorBuffer->bind(GL_TEXTURE_2D);
-	_ssaoBlurColorBuffer->init(GL_TEXTURE_2D, GL_RED, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT, NULL);
-	_ssaoBlurColorBuffer->filter(GL_TEXTURE_2D, GL_NEAREST, GL_NEAREST, GL_NONE);
+	_ssaoBlurColorBuffer = new Texture(GL_TEXTURE_2D, GL_RED, Window::ScreenWidth, Window::ScreenHeight, GL_RGB, GL_FLOAT, GL_NEAREST, GL_NEAREST, GL_NONE, NULL, false);
 
 	//create ssao blur framebuffer
 	_ssaoBlurFBO = new Framebuffer();
-	_ssaoBlurFBO->bind(GL_FRAMEBUFFER);
+	_ssaoBlurFBO->bind();
 	_ssaoBlurFBO->attachTexture(GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _ssaoBlurColorBuffer); //attach buffer to fbo
 
 	//check for completion
-	if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-		std::cout << "ERROR: SSAO blur framebuffer is incomplete." << std::endl;
-	}
+	_ssaoBlurFBO->checkForCompletion("SSAO Blur");
 
 	//bind back to default framebuffer
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	Framebuffer::Unbind();
 }
 
 void Renderer::_initSSRFBO() {
 	//create color buffer for the ssr texture
-	_ssrColorBuffer = new Texture();
-	_ssrColorBuffer->bind(GL_TEXTURE_2D);
-	_ssrColorBuffer->init(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGBA, GL_FLOAT, NULL);
-	_ssrColorBuffer->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_NONE);
+	_ssrColorBuffer = new Texture(GL_TEXTURE_2D, GL_RGBA16F, Window::ScreenWidth, Window::ScreenHeight, GL_RGBA, GL_FLOAT, GL_LINEAR, GL_LINEAR, GL_NONE, NULL, false);
 
 	//create ssr framebuffer
 	_ssrFBO = new Framebuffer();
-	_ssrFBO->bind(GL_FRAMEBUFFER);
+	_ssrFBO->bind();
 	_ssrFBO->attachTexture(GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _ssrColorBuffer);
 
 	//check for completion
-	if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-		std::cout << "ERROR: SSR blur framebuffer is incomplete." << std::endl;
-	}
+	_ssrFBO->checkForCompletion("SSR");
 
 	//bind back to default framebuffer
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	Framebuffer::Unbind();
 }
 
 Texture* Renderer::_renderEnvironmentMap(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, glm::mat4& environmentProjection, glm::vec3& renderPos, Texture* skybox, LightComponent* dirLight, bool pbr) {
 	//create environment cubemap
-	Texture* environmentMap = new Texture();
-	environmentMap->bind(GL_TEXTURE_CUBE_MAP);
+	Texture* environmentMap = new Texture(GL_TEXTURE_CUBE_MAP);
+	environmentMap->bind();
 
 	//init all cubemap faces
 	for(unsigned int i = 0; i < 6; i++) {
-		environmentMap->init(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, GL_RGB16F, RenderSettings::EnvironmentWidth, RenderSettings::EnvironmentHeight, GL_RGB, GL_FLOAT, NULL); //hdr
+		environmentMap->initTarget(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, GL_RGB16F, RenderSettings::EnvironmentWidth, RenderSettings::EnvironmentHeight, GL_RGB, GL_FLOAT, NULL); //hdr
 	}
 
 	if(pbr) {
-		environmentMap->filter(GL_TEXTURE_CUBE_MAP, GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR, GL_CLAMP_TO_EDGE);
-		environmentMap->generateMipmaps(GL_TEXTURE_CUBE_MAP);
+		environmentMap->filter(GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR, GL_CLAMP_TO_EDGE);
+		environmentMap->generateMipmaps();
 	} else {
-		environmentMap->filter(GL_TEXTURE_CUBE_MAP, GL_NEAREST, GL_NEAREST, GL_CLAMP_TO_EDGE);
+		environmentMap->filter(GL_NEAREST, GL_NEAREST, GL_CLAMP_TO_EDGE);
 	}
 
 	//view matrices for each cubemap face
@@ -1115,6 +1039,11 @@ Texture* Renderer::_renderEnvironmentMap(std::vector<std::pair<RenderComponent*,
 	glm::mat4 modelMatrix;
 	Material* material;
 	Model* model;
+
+	//bind shadow map
+	Texture::SetActiveUnit(1);
+	_shadowMap->bind();
+
 
 	for(unsigned int i = 0; i < 6; i++) {
 		//attach respective face to render to to the framebuffer
@@ -1135,10 +1064,6 @@ Texture* Renderer::_renderEnvironmentMap(std::vector<std::pair<RenderComponent*,
 
 		_environmentShader->setMat4("viewMatrix", environmentViews[i]);
 		_environmentShader->setMat4("projectionMatrix", environmentProjection);
-
-		//bind shadow map
-		glActiveTexture(GL_TEXTURE1);
-		_shadowMap->bind(GL_TEXTURE_2D);
 
 		//render each scene object
 		for(unsigned int i = 0; i < renderComponents.size(); i++) {
@@ -1161,15 +1086,15 @@ Texture* Renderer::_renderEnvironmentMap(std::vector<std::pair<RenderComponent*,
 
 Texture* Renderer::_renderIrradianceMap(Texture* environmentMap, glm::mat4& irradianceProjection) {
 	//create environment cubemap
-	Texture* irradianceMap = new Texture();
-	irradianceMap->bind(GL_TEXTURE_CUBE_MAP);
+	Texture* irradianceMap = new Texture(GL_TEXTURE_CUBE_MAP);
+	irradianceMap->bind();
 
 	//init all cubemap faces
 	for(unsigned int i = 0; i < 6; i++) {
-		irradianceMap->init(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, GL_RGB16F, RenderSettings::IrradianceWidth, RenderSettings::IrradianceHeight, GL_RGB, GL_FLOAT, NULL); //hdr
+		irradianceMap->initTarget(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, GL_RGB16F, RenderSettings::IrradianceWidth, RenderSettings::IrradianceHeight, GL_RGB, GL_FLOAT, NULL); //hdr
 	}
 
-	irradianceMap->filter(GL_TEXTURE_CUBE_MAP, GL_LINEAR, GL_LINEAR, GL_CLAMP_TO_EDGE);
+	irradianceMap->filter(GL_LINEAR, GL_LINEAR, GL_CLAMP_TO_EDGE);
 
 	//view matrices for each cubemap face
 	std::vector<glm::mat4> irradianceViews;
@@ -1184,15 +1109,15 @@ Texture* Renderer::_renderIrradianceMap(Texture* environmentMap, glm::mat4& irra
 	glViewport(0, 0, RenderSettings::IrradianceWidth, RenderSettings::IrradianceHeight);
 	_environmentRBO->bind();
 	_environmentRBO->init(GL_DEPTH_COMPONENT, RenderSettings::IrradianceWidth, RenderSettings::IrradianceHeight);
-	glBindRenderbuffer(GL_RENDERBUFFER, 0);
+	Renderbuffer::Unbind();
 
 	//set shader uniforms
 	_irradianceShader->use();
 	_irradianceShader->setMat4("projectionMatrix", irradianceProjection);
 
 	//attach environment cubemap
-	glActiveTexture(GL_TEXTURE0);
-	environmentMap->bind(GL_TEXTURE_CUBE_MAP);
+	Texture::SetActiveUnit(0);
+	environmentMap->bind();
 
 	//render each cubemap face
 	for(unsigned int i = 0; i < 6; i++) {
@@ -1205,8 +1130,8 @@ Texture* Renderer::_renderIrradianceMap(Texture* environmentMap, glm::mat4& irra
 
 		//render cube
 		_skyboxVAO->bind();
-		glDrawArrays(GL_TRIANGLES, 0, 36);
-		glBindVertexArray(0);
+		_skyboxVAO->drawArrays(GL_TRIANGLES, 0, 36);
+		VertexArray::Unbind();
 	}
 
 	return irradianceMap;
@@ -1214,16 +1139,16 @@ Texture* Renderer::_renderIrradianceMap(Texture* environmentMap, glm::mat4& irra
 
 Texture* Renderer::_renderPrefilterMap(Texture* environmentMap, glm::mat4& prefilterProjection) {
 	//create environment cubemap
-	Texture* prefilterMap = new Texture();
-	prefilterMap->bind(GL_TEXTURE_CUBE_MAP);
+	Texture* prefilterMap = new Texture(GL_TEXTURE_CUBE_MAP);
+	prefilterMap->bind();
 
 	//init all cubemap faces
 	for(unsigned int i = 0; i < 6; i++) {
-		prefilterMap->init(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, GL_RGB16F, RenderSettings::PrefilterWidth, RenderSettings::PrefilterHeight, GL_RGB, GL_FLOAT, NULL); //hdr
+		prefilterMap->initTarget(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, GL_RGBA16F, RenderSettings::PrefilterWidth, RenderSettings::PrefilterHeight, GL_RGBA, GL_FLOAT, NULL); //hdr
 	}
 
-	prefilterMap->filter(GL_TEXTURE_CUBE_MAP, GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR, GL_CLAMP_TO_EDGE);
-	prefilterMap->generateMipmaps(GL_TEXTURE_CUBE_MAP);
+	prefilterMap->filter(GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR, GL_CLAMP_TO_EDGE);
+	prefilterMap->generateMipmaps();
 
 	//view matrices for each cubemap face
 	std::vector<glm::mat4> prefilterViews;
@@ -1241,8 +1166,8 @@ Texture* Renderer::_renderPrefilterMap(Texture* environmentMap, glm::mat4& prefi
 	_prefilterShader->setFloat("resolution", (float)RenderSettings::EnvironmentHeight);
 
 	//attach environment cubemap
-	glActiveTexture(GL_TEXTURE0);
-	environmentMap->bind(GL_TEXTURE_CUBE_MAP);
+	Texture::SetActiveUnit(0);
+	environmentMap->bind();
 
 	//render each mipmap level
 	for(unsigned int mip = 0; mip < RenderSettings::MaxMipLevels; mip++) {
@@ -1253,7 +1178,7 @@ Texture* Renderer::_renderPrefilterMap(Texture* environmentMap, glm::mat4& prefi
 		glViewport(0, 0, mipWidth, mipHeight);
 		_environmentRBO->bind();
 		_environmentRBO->init(GL_DEPTH_COMPONENT, mipWidth, mipHeight);
-		glBindRenderbuffer(GL_RENDERBUFFER, 0);
+		Renderbuffer::Unbind();
 
 		//render each cubemap face
 		float roughness = (float)mip / (float)(RenderSettings::MaxMipLevels - 1);
@@ -1269,8 +1194,8 @@ Texture* Renderer::_renderPrefilterMap(Texture* environmentMap, glm::mat4& prefi
 
 			//render cube
 			_skyboxVAO->bind();
-			glDrawArrays(GL_TRIANGLES, 0, 36);
-			glBindVertexArray(0);
+			_skyboxVAO->drawArrays(GL_TRIANGLES, 0, 36);
+			VertexArray::Unbind();
 		}
 	}
 
@@ -1279,16 +1204,13 @@ Texture* Renderer::_renderPrefilterMap(Texture* environmentMap, glm::mat4& prefi
 
 void Renderer::_renderBrdfLUT() {
 	//create 2 channel lookup texture (LUT)
-	_brdfLUT = new Texture();
-	_brdfLUT->bind(GL_TEXTURE_2D);
-	_brdfLUT->init(GL_TEXTURE_2D, GL_RG16F, RenderSettings::EnvironmentWidth, RenderSettings::EnvironmentHeight, GL_RG, GL_FLOAT, NULL); //2 channel hdr
-	_brdfLUT->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_CLAMP_TO_EDGE);
+	_brdfLUT = new Texture(GL_TEXTURE_2D, GL_RG16F, RenderSettings::EnvironmentWidth, RenderSettings::EnvironmentHeight, GL_RG, GL_FLOAT, GL_LINEAR, GL_LINEAR, GL_CLAMP_TO_EDGE, NULL, false);
 
 	//rescale renderbuffer to LUT texture dimensions
 	glViewport(0, 0, RenderSettings::EnvironmentWidth, RenderSettings::EnvironmentHeight);
 	_environmentRBO->bind();
 	_environmentRBO->init(GL_DEPTH_COMPONENT, RenderSettings::EnvironmentWidth, RenderSettings::EnvironmentHeight);
-	glBindRenderbuffer(GL_RENDERBUFFER, 0);
+	Renderbuffer::Unbind();
 
 	//attach BRDF texture to framebuffer
 	_environmentFBO->attachTexture(GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _brdfLUT);
@@ -1297,14 +1219,14 @@ void Renderer::_renderBrdfLUT() {
 	//render quad
 	_brdfShader->use();
 	_screenQuadVAO->bind();
-	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-	glBindVertexArray(0);
+	_screenQuadVAO->drawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	VertexArray::Unbind();
 }
 
 void Renderer::_renderShadowMaps(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, std::vector<glm::vec3>& pointLights, glm::mat4& lightSpaceMatrix) {
 	//adjust viewport and bind to shadow framebuffer
 	glViewport(0, 0, RenderSettings::ShadowWidth, RenderSettings::ShadowHeight);
-	_shadowFBO->bind(GL_FRAMEBUFFER);
+	_shadowFBO->bind();
 	glClear(GL_DEPTH_BUFFER_BIT);
 
 	//setup shader uniforms
@@ -1349,7 +1271,7 @@ void Renderer::_renderShadowMaps(std::vector<std::pair<RenderComponent*, glm::ma
 
 	for(unsigned int i = 0; i < pointLights.size(); i++) {
 		//bind to correct cubemap shadow framebuffer
-		_shadowCubeFBO->bind(GL_FRAMEBUFFER);
+		_shadowCubeFBO->bind();
 		_shadowCubeFBO->attachCubemap(GL_DEPTH_ATTACHMENT, _shadowCubeMaps[i]); //attach the correct shadow cubemap as depth attachment to the framebuffer before rendering
 		glClear(GL_DEPTH_BUFFER_BIT);
 
@@ -1402,7 +1324,7 @@ void Renderer::_renderDepth(std::vector<std::pair<RenderComponent*, glm::mat4>>&
 	//render the depth texture seperately to enable rendering thickness maps if needed lateron
 
 	//bind to depth framebuffer
-	_depthFBO->bind(GL_FRAMEBUFFER);
+	_depthFBO->bind();
 	glClear(GL_DEPTH_BUFFER_BIT);
 
 	//setup shader uniforms
@@ -1438,8 +1360,8 @@ void Renderer::_renderDepth(std::vector<std::pair<RenderComponent*, glm::mat4>>&
 
 void Renderer::_renderGeometry(std::vector<std::pair<RenderComponent*, glm::mat4>>& solidRenderComponents, bool pbr) {
 	//bind to gBuffer framebuffer and render to buffer textures
-	if(pbr) _gBufferPbr->bind(GL_FRAMEBUFFER);
-	else _gBuffer->bind(GL_FRAMEBUFFER);
+	if(pbr) _gBufferPbr->bind();
+	else _gBuffer->bind();
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	//SSR
@@ -1463,19 +1385,18 @@ void Renderer::_renderGeometry(std::vector<std::pair<RenderComponent*, glm::mat4
 		modelMatrix = solidRenderComponents[i].second;
 		model = renderComponent->model;
 
-		//bind irradiance and prefilter map
 		if(_iblMaps.count(renderComponent)) {
-			glActiveTexture(GL_TEXTURE8);
-			_iblMaps[renderComponent].irradianceMap->bind(GL_TEXTURE_CUBE_MAP);
+			//bind irradiance and prefilter map
+			Texture::SetActiveUnit(8);
+			_iblMaps[renderComponent].irradianceMap->bind();
 
-			glActiveTexture(GL_TEXTURE9);
-			_iblMaps[renderComponent].prefilterMap->bind(GL_TEXTURE_CUBE_MAP);
-		}
+			Texture::SetActiveUnit(9);
+			_iblMaps[renderComponent].prefilterMap->bind();
+		} else if(_environmentMaps.count(renderComponent)) {
+			//bind environment map
 
-		//bind environment map
-		if(_environmentMaps.count(renderComponent)) {
-			glActiveTexture(GL_TEXTURE8);
-			_environmentMaps[renderComponent]->bind(GL_TEXTURE_CUBE_MAP);
+			Texture::SetActiveUnit(8);
+			_environmentMaps[renderComponent]->bind();
 		}
 
 		material->drawDeferred(modelMatrix); //deferred
@@ -1485,7 +1406,7 @@ void Renderer::_renderGeometry(std::vector<std::pair<RenderComponent*, glm::mat4
 
 void Renderer::_renderSSAO() {
 	//bind to ssao framebuffer
-	_ssaoFBO->bind(GL_FRAMEBUFFER);
+	_ssaoFBO->bind();
 	glClear(GL_COLOR_BUFFER_BIT);
 
 	//set ssao properties
@@ -1504,81 +1425,81 @@ void Renderer::_renderSSAO() {
 	_ssaoShader->setFloat("power", RenderSettings::SsaoPower);
 
 	//bind position color buffer
-	glActiveTexture(GL_TEXTURE0);
-	_gPosition->bind(GL_TEXTURE_2D);
+	Texture::SetActiveUnit(0);
+	_gPosition->bind();
 
 	//bind normal color buffer
-	glActiveTexture(GL_TEXTURE1);
-	_gNormal->bind(GL_TEXTURE_2D);
+	Texture::SetActiveUnit(1);
+	_gNormal->bind();
 
 	//bind noise texture
-	glActiveTexture(GL_TEXTURE2);
-	_ssaoNoiseTexture->bind(GL_TEXTURE_2D);
+	Texture::SetActiveUnit(2);
+	_ssaoNoiseTexture->bind();
 
 	//render quad
 	_screenQuadVAO->bind();
-	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-	glBindVertexArray(0);
+	_screenQuadVAO->drawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	VertexArray::Unbind();
 }
 
 void Renderer::_renderSSAOBlur() {
 	//bind to ssao blur framebuffer
-	_ssaoBlurFBO->bind(GL_FRAMEBUFFER);
+	_ssaoBlurFBO->bind();
 	glClear(GL_COLOR_BUFFER_BIT);
 
 	//bind ssao input texture
 	_ssaoBlurShader->use();
 
-	glActiveTexture(GL_TEXTURE0);
-	_ssaoColorBuffer->bind(GL_TEXTURE_2D);
+	Texture::SetActiveUnit(0);
+	_ssaoColorBuffer->bind();
 
 	//render quad
 	_screenQuadVAO->bind();
-	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-	glBindVertexArray(0);
+	_screenQuadVAO->drawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	VertexArray::Unbind();
 }
 
 void Renderer::_renderSSR(CameraComponent* cameraComponent) {
 	//bind to ssr framebuffer
-	_ssrFBO->bind(GL_FRAMEBUFFER);
+	_ssrFBO->bind();
 	glClear(GL_COLOR_BUFFER_BIT);
 
 	//setup shader uniforms
 	_ssrShader->use();
 
 	_ssrShader->setFloat("rayStepSize", RenderSettings::SsrRayStepSize);
-	_ssrShader->setFloat("maxRaySteps", (int)RenderSettings::SsrMaxRaySteps);
+	_ssrShader->setFloat("maxRaySteps", (float)RenderSettings::SsrMaxRaySteps);
 	_ssrShader->setFloat("fresnelExponent", RenderSettings::SsrFresnelExponent);
 	_ssrShader->setFloat("maxDelta", RenderSettings::SsrMaxDelta);
 
 	//bind normal color buffer
-	glActiveTexture(GL_TEXTURE0);
-	_gNormal->bind(GL_TEXTURE_2D);
+	Texture::SetActiveUnit(0);
+	_gNormal->bind();
 
 	//bind albedo color buffer 
-	glActiveTexture(GL_TEXTURE1);
-	_gEmissionSpec->bind(GL_TEXTURE_2D);
+	Texture::SetActiveUnit(1);
+	_gEmissionSpec->bind();
 
 	//bind scene texture
-	glActiveTexture(GL_TEXTURE2);
-	_sceneColorBuffer->bind(GL_TEXTURE_2D);
+	Texture::SetActiveUnit(2);
+	_sceneColorBuffer->bind();
 
 	//bind scene texture
-	glActiveTexture(GL_TEXTURE3);
-	_sceneDepthBuffer->bind(GL_TEXTURE_2D);
+	Texture::SetActiveUnit(3);
+	_sceneDepthBuffer->bind();
 
 	//render quad
 	_screenQuadVAO->bind();
-	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-	glBindVertexArray(0);
+	_screenQuadVAO->drawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	VertexArray::Unbind();
 
 	//bind back to default framebuffer
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	Framebuffer::Unbind();
 }
 
 void Renderer::_renderLighting(Texture* skybox, unsigned int pointLightCount, bool pbr) {
 	//bind to hdr framebuffer
-	_hdrFBO->bind(GL_FRAMEBUFFER);
+	_hdrFBO->bind();
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	if(pbr) {
@@ -1588,40 +1509,40 @@ void Renderer::_renderLighting(Texture* skybox, unsigned int pointLightCount, bo
 		_lightingShaderPbr->setBool("useSSAO", RenderSettings::IsEnabled(RenderSettings::SSAO));
 
 		//bind position color buffer
-		glActiveTexture(GL_TEXTURE0);
-		_gPosition->bind(GL_TEXTURE_2D);
+		Texture::SetActiveUnit(0);
+		_gPosition->bind();
 
 		//bind normal color buffer
-		glActiveTexture(GL_TEXTURE1);
-		_gNormal->bind(GL_TEXTURE_2D);
+		Texture::SetActiveUnit(1);
+		_gNormal->bind();
 
 		//bind albedo color buffer
-		glActiveTexture(GL_TEXTURE2);
-		_gAlbedo->bind(GL_TEXTURE_2D);
+		Texture::SetActiveUnit(2);
+		_gAlbedo->bind();
 
 		//bind emission + specular color buffer
-		glActiveTexture(GL_TEXTURE3);
-		_gEmissionSpec->bind(GL_TEXTURE_2D);
+		Texture::SetActiveUnit(3);
+		_gEmissionSpec->bind();
 
 		//bind metallic + roughness + ao color buffer
-		glActiveTexture(GL_TEXTURE4);
-		_gMetalRoughAO->bind(GL_TEXTURE_2D);
+		Texture::SetActiveUnit(4);
+		_gMetalRoughAO->bind();
 
 		//bind irradiance color buffer
-		glActiveTexture(GL_TEXTURE5);
-		_gIrradiance->bind(GL_TEXTURE_2D);
+		Texture::SetActiveUnit(5);
+		_gIrradiance->bind();
 
 		//bind prefilter color buffer
-		glActiveTexture(GL_TEXTURE6);
-		_gPrefilter->bind(GL_TEXTURE_2D);
+		Texture::SetActiveUnit(6);
+		_gPrefilter->bind();
 
 		//bind reflectance (F0) color buffer
-		glActiveTexture(GL_TEXTURE7);
-		_gReflectance->bind(GL_TEXTURE_2D);
+		Texture::SetActiveUnit(7);
+		_gReflectance->bind();
 
 		//bind brdf LUT
-		glActiveTexture(GL_TEXTURE9);
-		_brdfLUT->bind(GL_TEXTURE_2D);
+		Texture::SetActiveUnit(9);
+		_brdfLUT->bind();
 	} else {
 		//use lighting shader and bind textures
 		_lightingShader->use();
@@ -1629,61 +1550,61 @@ void Renderer::_renderLighting(Texture* skybox, unsigned int pointLightCount, bo
 		_lightingShader->setBool("useSSAO", RenderSettings::IsEnabled(RenderSettings::SSAO));
 
 		//bind position color buffer
-		glActiveTexture(GL_TEXTURE0);
-		_gPosition->bind(GL_TEXTURE_2D);
+		Texture::SetActiveUnit(0);
+		_gPosition->bind();
 
 		//bind normal color buffer
-		glActiveTexture(GL_TEXTURE1);
-		_gNormal->bind(GL_TEXTURE_2D);
+		Texture::SetActiveUnit(1);
+		_gNormal->bind();
 
 		//bind albedo color buffer
-		glActiveTexture(GL_TEXTURE2);
-		_gAlbedo->bind(GL_TEXTURE_2D);
+		Texture::SetActiveUnit(2);
+		_gAlbedo->bind();
 
 		//bind emission + specular color buffer
-		glActiveTexture(GL_TEXTURE3);
-		_gEmissionSpec->bind(GL_TEXTURE_2D);
+		Texture::SetActiveUnit(3);
+		_gEmissionSpec->bind();
 
 		//bind environment + shininess color buffer
-		glActiveTexture(GL_TEXTURE4);
-		_gEnvironmentShiny->bind(GL_TEXTURE_2D);
+		Texture::SetActiveUnit(4);
+		_gEnvironmentShiny->bind();
 	}
 
 	//bind ssao texture
-	glActiveTexture(GL_TEXTURE8);
-	_ssaoBlurColorBuffer->bind(GL_TEXTURE_2D);
+	Texture::SetActiveUnit(8);
+	_ssaoBlurColorBuffer->bind();
 
 	//bind shadow map
-	glActiveTexture(GL_TEXTURE11);
-	_shadowMap->bind(GL_TEXTURE_2D);
+	Texture::SetActiveUnit(11);
+	_shadowMap->bind();
 
 	//bind shadow cubemap
 	for(unsigned int i = 0; i < pointLightCount; i++) {
-		glActiveTexture(GL_TEXTURE12 + i);
-		_shadowCubeMaps[i]->bind(GL_TEXTURE_CUBE_MAP);
+		Texture::SetActiveUnit(12 + i);
+		_shadowCubeMaps[i]->bind();
 	}
 
 	//render quad
 	_screenQuadVAO->bind();
-	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-	glBindVertexArray(0);
+	_screenQuadVAO->drawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	VertexArray::Unbind();
 }
 
 void Renderer::_renderScene(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, unsigned int pointLightCount, bool useShadows, bool bindFBO) {
 	//bind to hdr framebuffer if needed and render each renderable 
 	if(bindFBO) {
-		_hdrFBO->bind(GL_FRAMEBUFFER);
+		_hdrFBO->bind();
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	}
 
 	//bind shadow maps
 	if(useShadows) {
-		glActiveTexture(GL_TEXTURE11);
-		_shadowMap->bind(GL_TEXTURE_2D);
+		Texture::SetActiveUnit(11);
+		_shadowMap->bind();
 
 		for(unsigned int i = 0; i < pointLightCount; i++) {
-			glActiveTexture(GL_TEXTURE12 + i);
-			_shadowCubeMaps[i]->bind(GL_TEXTURE_CUBE_MAP);
+			Texture::SetActiveUnit(12 + i);
+			_shadowCubeMaps[i]->bind();
 		}
 	}
 
@@ -1705,23 +1626,22 @@ void Renderer::_renderScene(std::vector<std::pair<RenderComponent*, glm::mat4>>&
 		model = renderComponent->model;
 		modelMatrix = renderComponents[i].second;
 
-
-		//bind irradiance cubemap, prefilter cubemap and brdfLUT
 		if(_iblMaps.count(renderComponent)) {
-			glActiveTexture(GL_TEXTURE8);
-			_iblMaps[renderComponent].irradianceMap->bind(GL_TEXTURE_CUBE_MAP);
+			//bind irradiance cubemap, prefilter cubemap and brdfLUT
 
-			glActiveTexture(GL_TEXTURE9);
-			_iblMaps[renderComponent].prefilterMap->bind(GL_TEXTURE_CUBE_MAP);
+			Texture::SetActiveUnit(8);
+			_iblMaps[renderComponent].irradianceMap->bind();
 
-			glActiveTexture(GL_TEXTURE10);
-			_brdfLUT->bind(GL_TEXTURE_2D);
-		}
+			Texture::SetActiveUnit(9);
+			_iblMaps[renderComponent].prefilterMap->bind();
 
-		//bind environment cubemap
-		if(_environmentMaps.count(renderComponent)) {
-			glActiveTexture(GL_TEXTURE8);
-			_environmentMaps[renderComponent]->bind(GL_TEXTURE_CUBE_MAP);
+			Texture::SetActiveUnit(10);
+			_brdfLUT->bind();
+		} else if(_environmentMaps.count(renderComponent)) {
+			//bind environment cubemap
+
+			Texture::SetActiveUnit(8);
+			_environmentMaps[renderComponent]->bind();
 		}
 
 		material->drawForward(modelMatrix); //forward
@@ -1747,11 +1667,11 @@ void Renderer::_renderSkybox(glm::mat4& viewMatrix, glm::mat4& projectionMatrix,
 	glDepthFunc(GL_LEQUAL); //set depth funtion to less than AND equal for skybox depth trick
 	_skyboxVAO->bind();
 
-	glActiveTexture(GL_TEXTURE0);
-	skybox->bind(GL_TEXTURE_CUBE_MAP);
+	Texture::SetActiveUnit(0);
+	skybox->bind();
 
-	glDrawArrays(GL_TRIANGLES, 0, 36);
-	glBindVertexArray(0);
+	_skyboxVAO->drawArrays(GL_TRIANGLES, 0, 36);
+	VertexArray::Unbind();
 	glDepthFunc(GL_LESS); //depth function set back to default
 }
 
@@ -1764,19 +1684,19 @@ void Renderer::_renderPostProcessingQuad() {
 
 	//we will just use the quad and the first active texture, so we can just bind both once
 	_screenQuadVAO->bind();
-	glActiveTexture(GL_TEXTURE0);
+	Texture::SetActiveUnit(0);
 
 	for(unsigned int i = 0; i < RenderSettings::BloomBlurAmount; i++) {
-		_bloomBlurFBOs[horizontal]->bind(GL_FRAMEBUFFER);
+		_bloomBlurFBOs[horizontal]->bind();
 
 		_bloomBlurShader->setInt("horizontal", horizontal);
 
 		//bind texture of other framebuffer (or scene if first iteration)
-		if(firstIteration) _brightColorBuffer->bind(GL_TEXTURE_2D);
-		else _blurColorBuffers[!horizontal]->bind(GL_TEXTURE_2D);
+		if(firstIteration) _brightColorBuffer->bind();
+		else _blurColorBuffers[!horizontal]->bind();
 
 		//render quad
-		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+		_screenQuadVAO->drawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
 		horizontal = !horizontal;
 
@@ -1784,7 +1704,7 @@ void Renderer::_renderPostProcessingQuad() {
 	}
 
 	//bind back to default framebuffer and render screen quad with the post processing effects
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	Framebuffer::Unbind();
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -1810,21 +1730,21 @@ void Renderer::_renderPostProcessingQuad() {
 	_postProcessingShader->setFloat("fxaaReduceMul", RenderSettings::FxaaReduceMul);
 
 	//bind textures
-	glActiveTexture(GL_TEXTURE0);
-	_sceneColorBuffer->bind(GL_TEXTURE_2D); //bind screen texture
+	Texture::SetActiveUnit(0);
+	_sceneColorBuffer->bind(); //bind screen texture
 
-	glActiveTexture(GL_TEXTURE1);
-	_sceneDepthBuffer->bind(GL_TEXTURE_2D); //bind scene depth texture
+	Texture::SetActiveUnit(1);
+	_sceneDepthBuffer->bind(); //bind scene depth texture
 
-	glActiveTexture(GL_TEXTURE2);
-	_blurColorBuffers[!horizontal]->bind(GL_TEXTURE_2D); //bind blurred bloom texture
+	Texture::SetActiveUnit(2);
+	_blurColorBuffers[!horizontal]->bind(); //bind blurred bloom texture
 
-	glActiveTexture(GL_TEXTURE3);
-	_ssrColorBuffer->bind(GL_TEXTURE_2D); //bind the ssr reflection texture
+	Texture::SetActiveUnit(3);
+	_ssrColorBuffer->bind(); //bind the ssr reflection texture
 
 	//render texture to the screen and tone map and gamma correct
-	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-	glBindVertexArray(0);
+	_screenQuadVAO->drawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	VertexArray::Unbind();
 }
 
 void Renderer::_getSortedRenderComponents(std::vector<Node*>& renderables, glm::vec3& cameraPos, std::vector<std::pair<RenderComponent*, glm::mat4>>& solidRenderables, std::vector<std::pair<RenderComponent*, glm::mat4>>& blendRenderables) {
@@ -1906,28 +1826,28 @@ std::vector<glm::vec3> Renderer::_getClosestPointLights(glm::vec3 cameraPos, std
 
 void Renderer::_fillUniformBuffers(glm::mat4& viewMatrix, glm::mat4& projectionMatrix, glm::mat4& previousViewProjection, glm::mat4& lightSpaceMatrix, glm::vec3& cameraPos, glm::vec3& directionalLightPos, bool useShadows, std::vector<glm::vec3>& pointLightPositions) {
 	//store the matrices in the matrices uniform buffer
-	_matricesUBO->bind(GL_UNIFORM_BUFFER);
-	_matricesUBO->bufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(viewMatrix)); //buffer view matrix
-	_matricesUBO->bufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(projectionMatrix)); //buffer projection matrix
-	_matricesUBO->bufferSubData(GL_UNIFORM_BUFFER, 2 * sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(previousViewProjection)); //previous view projection matrix matrix
-	_matricesUBO->bufferSubData(GL_UNIFORM_BUFFER, 3 * sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(lightSpaceMatrix)); //buffer light space matrix
+	_matricesUBO->bind();
+	_matricesUBO->bufferSubData(0, sizeof(glm::mat4), glm::value_ptr(viewMatrix)); //buffer view matrix
+	_matricesUBO->bufferSubData(sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(projectionMatrix)); //buffer projection matrix
+	_matricesUBO->bufferSubData(2 * sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(previousViewProjection)); //previous view projection matrix matrix
+	_matricesUBO->bufferSubData(3 * sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(lightSpaceMatrix)); //buffer light space matrix
 
 	//store the data in the data uniform buffer
 	unsigned int pointLightCount = pointLightPositions.size();
 
-	_dataUBO->bind(GL_UNIFORM_BUFFER);
-	_dataUBO->bufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(GLint), &useShadows); //buffer use shadows bool
-	_dataUBO->bufferSubData(GL_UNIFORM_BUFFER, 4, sizeof(GLint), &pointLightCount); //buffer point light amount
-	_dataUBO->bufferSubData(GL_UNIFORM_BUFFER, 8, sizeof(GLfloat), &RenderSettings::CubeFarPlane); //buffer cube map far plane
+	_dataUBO->bind();
+	_dataUBO->bufferSubData(0, sizeof(GLint), &useShadows); //buffer use shadows bool
+	_dataUBO->bufferSubData(4, sizeof(GLint), &pointLightCount); //buffer point light amount
+	_dataUBO->bufferSubData(8, sizeof(GLfloat), &RenderSettings::CubeFarPlane); //buffer cube map far plane
 
-	_dataUBO->bufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::vec4), sizeof(glm::vec4), glm::value_ptr(cameraPos)); //buffer cameraPos
-	_dataUBO->bufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::vec4) * 2, sizeof(glm::vec4), glm::value_ptr(directionalLightPos)); //buffer directional light pos
+	_dataUBO->bufferSubData(sizeof(glm::vec4), sizeof(glm::vec4), glm::value_ptr(cameraPos)); //buffer cameraPos
+	_dataUBO->bufferSubData(sizeof(glm::vec4) * 2, sizeof(glm::vec4), glm::value_ptr(directionalLightPos)); //buffer directional light pos
 
 	for(unsigned int i = 0; i < pointLightCount; i++) {
-		_dataUBO->bufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::vec4) * 3 + sizeof(glm::vec4) * i, sizeof(glm::vec4), glm::value_ptr(pointLightPositions[i])); //buffer point light positions
+		_dataUBO->bufferSubData(sizeof(glm::vec4) * 3 + sizeof(glm::vec4) * i, sizeof(glm::vec4), glm::value_ptr(pointLightPositions[i])); //buffer point light positions
 	}
 
-	glBindBuffer(GL_UNIFORM_BUFFER, 0); //unbind
+	Buffer::Unbind(GL_UNIFORM_BUFFER); //unbind
 }
 
 void Renderer::_fillShaderStorageBuffers(std::vector<std::pair<LightComponent*, glm::vec3>>& lightComponents) {
@@ -1939,9 +1859,9 @@ void Renderer::_fillShaderStorageBuffers(std::vector<std::pair<LightComponent*, 
 	unsigned int usedLights = lightComponents.size();
 	if(usedLights > RenderSettings::MaxLights) usedLights = RenderSettings::MaxLights; //limit the amount of possible lights
 
-	_lightsSSBO->bind(GL_SHADER_STORAGE_BUFFER);
+	_lightsSSBO->bind();
 
-	_dataUBO->bufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(GLint), &usedLights); //buffer used light amount
+	_lightsSSBO->bufferSubData(0, sizeof(GLint), &usedLights); //buffer used light amount
 
 	for(unsigned int i = 0; i < usedLights; i++) {
 		currentLight = lightComponents[i].first;
@@ -1949,10 +1869,10 @@ void Renderer::_fillShaderStorageBuffers(std::vector<std::pair<LightComponent*, 
 
 		GLLight light = currentLight->toGLLight(currentLightPos); //convert current light component to a light struct GLSL can understand
 
-		_dataUBO->bufferSubData(GL_SHADER_STORAGE_BUFFER, sizeof(glm::vec4) + sizeof(GLLight) * i, sizeof(GLLight), &light); //buffer light struct (padded to the size of a vec4)
+		_lightsSSBO->bufferSubData(sizeof(glm::vec4) + sizeof(GLLight) * i, sizeof(GLLight), &light); //buffer light struct (padded to the size of a vec4)
 	}
 
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0); //unbind
+	Buffer::Unbind(GL_SHADER_STORAGE_BUFFER); //unbind
 }
 
 void Renderer::_generateSSAOKernel() {
@@ -1988,13 +1908,8 @@ void Renderer::_generateNoiseTexture() {
 	}
 
 	//generate small 4x4 noise texture
-	_ssaoNoiseTexture = new Texture();
-	_ssaoNoiseTexture->bind(GL_TEXTURE_2D);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, 4, 4, 0, GL_RGB, GL_FLOAT, &ssaoNoise[0]);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	_ssaoNoiseTexture = new Texture(GL_TEXTURE_2D, GL_RGB32F, 4, 4, GL_RGB, GL_FLOAT, GL_NEAREST, GL_NEAREST, GL_REPEAT, &ssaoNoise[0], false);
+	_ssaoNoiseTexture->bind();
 }
 
 void Renderer::_blitGDepthToHDR(bool pbr) {

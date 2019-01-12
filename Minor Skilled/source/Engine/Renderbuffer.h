@@ -15,10 +15,10 @@ class Renderbuffer {
 		void init(GLenum format, unsigned int width, unsigned int height);
 		void initMultisample(unsigned int samples, GLenum format, unsigned int width, unsigned int height);
 
+		static void Unbind();
+
 	private:
 		unsigned int _id;
-
-		void _generate();
 };
 
 #endif

@@ -1,10 +1,12 @@
 #include "Framebuffer.h"
 
+#include <iostream>
+
 #include "../Engine/Texture.h"
 #include "../Engine/Renderbuffer.h"
 
 Framebuffer::Framebuffer() {
-	_generate();
+	glGenFramebuffers(1, &_id);
 }
 
 Framebuffer::~Framebuffer() {
@@ -31,6 +33,24 @@ void Framebuffer::attachRenderbuffer(GLenum attachment, Renderbuffer* renderbuff
 	glFramebufferRenderbuffer(GL_FRAMEBUFFER, attachment, GL_RENDERBUFFER, renderbuffer->getID());
 }
 
-void Framebuffer::_generate() {
-	glGenFramebuffers(1, &_id);
+void Framebuffer::setDrawBuffers(unsigned int amount, const GLenum* buffers) {
+	glDrawBuffers(amount, buffers);
+}
+
+void Framebuffer::setReadBuffer(GLenum target) {
+	glReadBuffer(target);
+}
+
+void Framebuffer::setDrawBuffer(GLenum target) {
+	glDrawBuffer(target);
+}
+
+void Framebuffer::checkForCompletion(std::string fboName) {
+	if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+		std::cout << "ERROR: " + fboName + " framebuffer is incomplete." << std::endl;
+	}
+}
+
+void Framebuffer::Unbind(GLenum target) {
+	glBindFramebuffer(target, 0);
 }

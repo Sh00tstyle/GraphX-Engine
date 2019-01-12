@@ -107,7 +107,7 @@ void main() {
     vec3 albedo = texture(gAlbedo, texCoord).rgb;
     float metallic = texture(gMetalRoughAO, texCoord).r;
     float roughness = texture(gMetalRoughAO, texCoord).g;
-    float ao = texture(gMetalRoughAO, texCoord).b + texture(ssao, texCoord).r; //add material AO and SSAO
+    float ao = texture(gMetalRoughAO, texCoord).b; //add material AO and SSAO
 
     if(ao > 1.0f) ao = 1.0f;
 

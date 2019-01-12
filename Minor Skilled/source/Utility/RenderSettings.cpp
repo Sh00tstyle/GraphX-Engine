@@ -11,7 +11,7 @@ const unsigned int RenderSettings::SSR = 1 << 6; //deferred only
 const unsigned int RenderSettings::PBR = 1 << 7; //deferred only
 
 //active render modes
-unsigned int RenderSettings::Options = RenderSettings::Deferred | RenderSettings::SSR;
+unsigned int RenderSettings::Options = 0;
 
 //v-sync
 bool RenderSettings::VSync = false;
@@ -57,7 +57,7 @@ int RenderSettings::SsrMaxRaySteps = 50;
 float RenderSettings::SsrFresnelExponent = 5.0f;
 float RenderSettings::SsrMaxDelta = 0.03f;
 
-bool RenderSettings::SsrDebug = true;
+bool RenderSettings::SsrDebug = false;
 
 //lighting configurations
 const unsigned int RenderSettings::MaxLights = 16;
@@ -69,7 +69,7 @@ float RenderSettings::Gamma = 2.2f;
 float RenderSettings::Exposure = 1.0f;
 
 int RenderSettings::MotionBlurSamples = 10;
-float RenderSettings::VelocityScale = 0.15f;
+float RenderSettings::VelocityScale = 0.05f;
 
 //FXAA bias configurations
 float RenderSettings::FxaaSpanMax = 6.0f;

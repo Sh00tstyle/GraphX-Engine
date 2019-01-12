@@ -114,8 +114,8 @@ void PBRMaterial::drawSimple(Shader * shader) {
 	//set environment shader properties
 	shader->setBool("useTexture", true);
 
-	glActiveTexture(GL_TEXTURE0);
-	_albedoMap->bind(GL_TEXTURE_2D);
+	Texture::SetActiveUnit(0);
+	_albedoMap->bind();
 }
 
 void PBRMaterial::drawForward(glm::mat4& modelMatrix) {
@@ -125,70 +125,72 @@ void PBRMaterial::drawForward(glm::mat4& modelMatrix) {
 	_ForwardShader->setMat4("modelMatrix", modelMatrix);
 
 	//set material textures and bools
-	glActiveTexture(GL_TEXTURE0); //albedo
+	Texture::SetActiveUnit(0); //albedo
 
 	if(_albedoMap != nullptr) {
-		_albedoMap->bind(GL_TEXTURE_2D);
+		_albedoMap->bind();
 	} else {
-		glBindTexture(GL_TEXTURE_2D, 0);
+		Texture::Unbind(GL_TEXTURE_2D);
 		std::cout << "ERROR: Albedo map in PBR shader is missing" << std::endl;
 	}
 
-	glActiveTexture(GL_TEXTURE1); //normal
+	Texture::SetActiveUnit(1); //normal
 
 	if(_normalMap != nullptr) {
-		_normalMap->bind(GL_TEXTURE_2D);
+		_normalMap->bind();
 	} else {
-		glBindTexture(GL_TEXTURE_2D, 0);
+		Texture::Unbind(GL_TEXTURE_2D);
 		std::cout << "ERROR: Normal map in PBR shader is missing" << std::endl;
 	}
 
-	glActiveTexture(GL_TEXTURE2); //metallic
+	Texture::SetActiveUnit(2); //metallic
 
 	if(_metallicMap != nullptr) {
-		_metallicMap->bind(GL_TEXTURE_2D);
+		_metallicMap->bind();
 	} else {
-		glBindTexture(GL_TEXTURE_2D, 0);
+		Texture::Unbind(GL_TEXTURE_2D);
 		std::cout << "ERROR: Metallic map in PBR shader is missing" << std::endl;
 	}
 
-	glActiveTexture(GL_TEXTURE3); //roughness
+	Texture::SetActiveUnit(3); //roughness
 
 	if(_roughnessMap != nullptr) {
-		_roughnessMap->bind(GL_TEXTURE_2D);
+		_roughnessMap->bind();
 	} else {
-		glBindTexture(GL_TEXTURE_2D, 0);
+		Texture::Unbind(GL_TEXTURE_2D);
 		std::cout << "ERROR: Roughness map in PBR shader is missing" << std::endl;
 	}
 
-	glActiveTexture(GL_TEXTURE4); //ao
+	Texture::SetActiveUnit(4); //ao
 
 	if(_aoMap != nullptr) {
-		_aoMap->bind(GL_TEXTURE_2D);
+		_aoMap->bind();
 	} else {
-		glBindTexture(GL_TEXTURE_2D, 0);
+		Texture::Unbind(GL_TEXTURE_2D);
 		std::cout << "ERROR: AO map in PBR shader is missing" << std::endl;
 	}
 
-	glActiveTexture(GL_TEXTURE5); //emission
+	Texture::SetActiveUnit(5); //emission
 
 	if(_emissionMap != nullptr) {
-		_emissionMap->bind(GL_TEXTURE_2D);
+		_emissionMap->bind();
 	} else {
-		glBindTexture(GL_TEXTURE_2D, 0);
+		Texture::Unbind(GL_TEXTURE_2D);
 	}
 
-	glActiveTexture(GL_TEXTURE6); //height
+	Texture::SetActiveUnit(6); //height
 
 	if(_heightMap != nullptr) {
-		_heightMap->bind(GL_TEXTURE_2D);
+		_heightMap->bind();
 		_ForwardShader->setBool("material.hasHeight", true);
 	} else {
-		glBindTexture(GL_TEXTURE_2D, 0);
+		Texture::Unbind(GL_TEXTURE_2D);
 		_ForwardShader->setBool("material.hasHeight", false);
 	}
 
 	//set material properties
+	_ForwardShader->setVec3("material.F0", _F0);
+
 	_ForwardShader->setFloat("material.refractionFactor", _refractionFactor);
 	_ForwardShader->setFloat("material.heightScale", _heightScale);
 	_ForwardShader->setInt("material.blendMode", _blendMode);
@@ -203,70 +205,72 @@ void PBRMaterial::drawDeferred(glm::mat4 & modelMatrix) {
 	_DeferredShader->setMat4("modelMatrix", modelMatrix);
 
 	//set material textures and bools
-	glActiveTexture(GL_TEXTURE0); //albedo
+	Texture::SetActiveUnit(0); //albedo
 
 	if(_albedoMap != nullptr) {
-		_albedoMap->bind(GL_TEXTURE_2D);
+		_albedoMap->bind();
 	} else {
-		glBindTexture(GL_TEXTURE_2D, 0);
+		Texture::Unbind(GL_TEXTURE_2D);
 		std::cout << "ERROR: Albedo map in PBR shader is missing" << std::endl;
 	}
 
-	glActiveTexture(GL_TEXTURE1); //normal
+	Texture::SetActiveUnit(1); //normal
 
 	if(_normalMap != nullptr) {
-		_normalMap->bind(GL_TEXTURE_2D);
+		_normalMap->bind();
 	} else {
-		glBindTexture(GL_TEXTURE_2D, 0);
+		Texture::Unbind(GL_TEXTURE_2D);
 		std::cout << "ERROR: Normal map in PBR shader is missing" << std::endl;
 	}
 
-	glActiveTexture(GL_TEXTURE2); //metallic
+	Texture::SetActiveUnit(2); //metallic
 
 	if(_metallicMap != nullptr) {
-		_metallicMap->bind(GL_TEXTURE_2D);
+		_metallicMap->bind();
 	} else {
-		glBindTexture(GL_TEXTURE_2D, 0);
+		Texture::Unbind(GL_TEXTURE_2D);
 		std::cout << "ERROR: Metallic map in PBR shader is missing" << std::endl;
 	}
 
-	glActiveTexture(GL_TEXTURE3); //roughness
+	Texture::SetActiveUnit(3); //roughness
 
 	if(_roughnessMap != nullptr) {
-		_roughnessMap->bind(GL_TEXTURE_2D);
+		_roughnessMap->bind();
 	} else {
-		glBindTexture(GL_TEXTURE_2D, 0);
+		Texture::Unbind(GL_TEXTURE_2D);
 		std::cout << "ERROR: Roughness map in PBR shader is missing" << std::endl;
 	}
 
-	glActiveTexture(GL_TEXTURE4); //ao
+	Texture::SetActiveUnit(4); //ao
 
 	if(_aoMap != nullptr) {
-		_aoMap->bind(GL_TEXTURE_2D);
+		_aoMap->bind();
 	} else {
-		glBindTexture(GL_TEXTURE_2D, 0);
+		Texture::Unbind(GL_TEXTURE_2D);
 		std::cout << "ERROR: AO map in PBR shader is missing" << std::endl;
 	}
 
-	glActiveTexture(GL_TEXTURE5); //emission
+	Texture::SetActiveUnit(5); //emission
 
 	if(_emissionMap != nullptr) {
-		_emissionMap->bind(GL_TEXTURE_2D);
+		_emissionMap->bind();
 	} else {
-		glBindTexture(GL_TEXTURE_2D, 0);
+		Texture::Unbind(GL_TEXTURE_2D);
 	}
 
-	glActiveTexture(GL_TEXTURE6); //height
+	Texture::SetActiveUnit(6); //height
 
 	if(_heightMap != nullptr) {
-		_heightMap->bind(GL_TEXTURE_2D);
+		_heightMap->bind();
 		_DeferredShader->setBool("material.hasHeight", true);
 	} else {
-		glBindTexture(GL_TEXTURE_2D, 0);
+		Texture::Unbind(GL_TEXTURE_2D);
 		_DeferredShader->setBool("material.hasHeight", false);
 	}
 
 	//set material properties
+	_DeferredShader->setVec3("material.F0", _F0);
+
 	_DeferredShader->setFloat("material.specular", _specular);
 	_DeferredShader->setFloat("material.refractionFactor", _refractionFactor);
 	_DeferredShader->setFloat("material.heightScale", _heightScale);

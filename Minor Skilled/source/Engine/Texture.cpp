@@ -9,8 +9,21 @@
 
 #include "../Utility/Filepath.h"
 
-Texture::Texture() {
-	_generate();
+Texture::Texture(GLenum target, GLenum internalFormat, unsigned int width, unsigned int height, GLenum format, GLenum type, GLenum minFilter, GLenum magFilter, GLenum wrap, const void* pixels, bool genMipmaps):
+ _target(target){
+
+	glGenTextures(1, &_id);
+
+	bind();
+
+	init(internalFormat, width, height, format, type, pixels);
+	filter(minFilter, magFilter, wrap);
+
+	if(genMipmaps) generateMipmaps();
+}
+
+Texture::Texture(GLenum target): _target(target) {
+	glGenTextures(1, &_id);
 }
 
 Texture::~Texture() {
@@ -21,27 +34,31 @@ unsigned int& Texture::getID() {
 	return _id;
 }
 
-void Texture::bind(GLenum target) {
-	glBindTexture(target, _id); //bind texture to target
+void Texture::bind() {
+	glBindTexture(_target, _id); //bind texture to target
 }
 
-void Texture::generateMipmaps(GLenum target) {
-	glGenerateMipmap(target);
+void Texture::generateMipmaps() {
+	glGenerateMipmap(_target);
 }
 
-void Texture::init(GLenum target, GLenum internalFormat, unsigned int width, unsigned int height, GLenum format, GLenum type, const void* pixels) {
+void Texture::init(GLenum internalFormat, unsigned int width, unsigned int height, GLenum format, GLenum type, const void* pixels) {
+	glTexImage2D(_target, 0, internalFormat, width, height, 0, format, type, pixels);
+}
+
+void Texture::initTarget(GLenum target, GLenum internalFormat, unsigned int width, unsigned int height, GLenum format, GLenum type, const void * pixels) {
 	glTexImage2D(target, 0, internalFormat, width, height, 0, format, type, pixels);
 }
 
-void Texture::filter(GLenum target, GLenum minFilter, GLenum magFilter, GLenum wrap) {
-	glTexParameteri(target, GL_TEXTURE_MIN_FILTER, minFilter);
-	glTexParameteri(target, GL_TEXTURE_MAG_FILTER, magFilter);
+void Texture::filter(GLenum minFilter, GLenum magFilter, GLenum wrap) {
+	glTexParameteri(_target, GL_TEXTURE_MIN_FILTER, minFilter);
+	glTexParameteri(_target, GL_TEXTURE_MAG_FILTER, magFilter);
 
 	if(wrap != GL_NONE) {
-		glTexParameteri(target, GL_TEXTURE_WRAP_S, wrap);
-		glTexParameteri(target, GL_TEXTURE_WRAP_T, wrap);
+		glTexParameteri(_target, GL_TEXTURE_WRAP_S, wrap);
+		glTexParameteri(_target, GL_TEXTURE_WRAP_T, wrap);
 
-		if(target == GL_TEXTURE_CUBE_MAP) glTexParameteri(target, GL_TEXTURE_WRAP_R, wrap);
+		if(_target == GL_TEXTURE_CUBE_MAP) glTexParameteri(_target, GL_TEXTURE_WRAP_R, wrap);
 	}
 }
 
@@ -51,7 +68,7 @@ Texture * Texture::LoadTexture(std::string path, TextureFilter filter, bool sRGB
 	//diffuse and color textures are almost always in sRGB space - specular map, normals maps, etc. are almost always in linear space
 
 	//create opengl texture object
-	Texture* texture = new Texture();
+	Texture* texture = new Texture(GL_TEXTURE_2D);
 
 	texture->filepath = path;
 
@@ -75,18 +92,18 @@ Texture * Texture::LoadTexture(std::string path, TextureFilter filter, bool sRGB
 		}
 
 		//load texture into opengl
-		texture->bind(GL_TEXTURE_2D);
-		texture->init(GL_TEXTURE_2D, internalFormat, width, height, dataFormat, GL_UNSIGNED_BYTE, textureData);
-		texture->generateMipmaps(GL_TEXTURE_2D);
+		texture->bind();
+		texture->init(internalFormat, width, height, dataFormat, GL_UNSIGNED_BYTE, textureData);
+		texture->generateMipmaps();
 
 		//set texture filter options
 		switch(filter) {
 			case TextureFilter::Repeat:
-				texture->filter(GL_TEXTURE_2D, GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR, GL_REPEAT);
+				texture->filter(GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR, GL_REPEAT);
 				break;
 
 			case TextureFilter::ClampToEdge:
-				texture->filter(GL_TEXTURE_2D, GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR, GL_CLAMP_TO_EDGE);
+				texture->filter(GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR, GL_CLAMP_TO_EDGE);
 				break;
 		}
 
@@ -99,12 +116,12 @@ Texture * Texture::LoadTexture(std::string path, TextureFilter filter, bool sRGB
 		return nullptr;
 	}
 
-	return texture; //texture id
+	return texture;
 }
 
 Texture * Texture::LoadCubemap(std::vector<std::string>& faces, bool sRGB) {
-	Texture* texture = new Texture();
-	texture->bind(GL_TEXTURE_CUBE_MAP);
+	Texture* texture = new Texture(GL_TEXTURE_CUBE_MAP);
+	texture->bind();
 
 	texture->filepath = Filepath::SkyboxPath + faces[0];
 
@@ -117,7 +134,7 @@ Texture * Texture::LoadCubemap(std::vector<std::string>& faces, bool sRGB) {
 
 		unsigned char *data = stbi_load(filename.c_str(), &width, &height, &nrChannels, 0);
 		if(data) {
-			texture->init(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, internalFormat, width, height, GL_RGB, GL_UNSIGNED_BYTE, data);
+			texture->initTarget(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, internalFormat, width, height, GL_RGB, GL_UNSIGNED_BYTE, data);
 			stbi_image_free(data);
 		} else {
 			std::cout << "Cubemap texture failed to load at path: " + faces[i] << std::endl;
@@ -127,7 +144,7 @@ Texture * Texture::LoadCubemap(std::vector<std::string>& faces, bool sRGB) {
 		}
 	}
 
-	texture->filter(GL_TEXTURE_CUBE_MAP, GL_LINEAR, GL_LINEAR, GL_CLAMP_TO_EDGE);
+	texture->filter(GL_LINEAR, GL_LINEAR, GL_CLAMP_TO_EDGE);
 
 	return texture;
 }
@@ -138,11 +155,11 @@ Texture* Texture::LoadHDR(std::string path) {
 	float *data = stbi_loadf(path.c_str(), &width, &height, &nrComponents, 0);
 
 	if(data) {
-		Texture* texture = new Texture();
-		texture->bind(GL_TEXTURE_2D);
-		texture->init(GL_TEXTURE_2D, GL_RGB16F, width, height, GL_RGB, GL_FLOAT, data);
+		Texture* texture = new Texture(GL_TEXTURE_2D);
+		texture->bind();
+		texture->init(GL_RGB16F, width, height, GL_RGB, GL_FLOAT, data);
 
-		texture->filter(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_CLAMP_TO_EDGE);
+		texture->filter(GL_LINEAR, GL_LINEAR, GL_CLAMP_TO_EDGE);
 
 		texture->filepath = path;
 
@@ -156,6 +173,11 @@ Texture* Texture::LoadHDR(std::string path) {
 	}
 }
 
-void Texture::_generate() {
-	glGenTextures(1, &_id);
+void Texture::Unbind(GLenum target) {
+	//static helper method to unbind textures from targets since textures can potentially be nullptr
+	glBindTexture(target, 0);
+}
+
+void Texture::SetActiveUnit(unsigned int unit) {
+	glActiveTexture(GL_TEXTURE0 + unit);
 }

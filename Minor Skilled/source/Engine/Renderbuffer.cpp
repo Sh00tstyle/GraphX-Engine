@@ -1,7 +1,7 @@
 #include "Renderbuffer.h"
 
 Renderbuffer::Renderbuffer() {
-	_generate();
+	glGenRenderbuffers(1, &_id);
 }
 
 Renderbuffer::~Renderbuffer() {
@@ -24,6 +24,6 @@ void Renderbuffer::initMultisample(unsigned int samples, GLenum format, unsigned
 	glRenderbufferStorageMultisample(GL_RENDERBUFFER, samples, format, width, height);
 }
 
-void Renderbuffer::_generate() {
-	glGenRenderbuffers(1, &_id);
+void Renderbuffer::Unbind() {
+	glBindRenderbuffer(GL_RENDERBUFFER, 0);
 }

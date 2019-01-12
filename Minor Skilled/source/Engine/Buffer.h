@@ -10,23 +10,23 @@
 
 class Buffer {
 	public:
-		Buffer();
+		Buffer(GLenum target);
 		~Buffer();
 
 		unsigned int& getID();
 
-		void bind(GLenum target);
+		void bind();
 
-		void allocateMemory(GLenum target, unsigned int memory);
-		void bufferData(GLenum target, const void* data, unsigned int memory);
-		void bufferSubData(GLenum target, unsigned int offset, unsigned int memory, const void * data);
-		void bindBufferRange(GLenum target, unsigned int index, unsigned int memory);
+		void allocateMemory(unsigned int memory);
+		void bufferData(const void* data, unsigned int memory);
+		void bufferSubData(unsigned int offset, unsigned int memory, const void * data);
+		void bindBufferRange(unsigned int index, unsigned int memory);
+
+		static void Unbind(GLenum target);
 
 	private:
 		unsigned int _id;
-
-		void _generate();
-
+		GLenum _target;
 };
 
 #endif

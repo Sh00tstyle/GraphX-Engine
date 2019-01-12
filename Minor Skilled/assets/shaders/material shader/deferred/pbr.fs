@@ -63,7 +63,8 @@ void main() {
     vec2 texCoord = ParallaxMapping();
     if(material.hasHeight && (texCoord.x > 1.0f || texCoord.y > 1.0f || texCoord.x < 0.0f || texCoord.y < 0.0f)) discard; //cutoff edges to avoid artifacts when using parallax mapping
 
-    vec3 normal = GetNormal(texCoord);
+    vec3 normal = GetNormal(texCoord); //view space normal
+
     float roughness = texture(material.roughness, texCoord).r;
 
     vec3 R;
@@ -95,7 +96,7 @@ void main() {
 
     gPrefilter.rgb = textureLod(prefilterMap, R, roughness * maxReflectionLod).rgb;
 
-    gReflectance.rgb = material.F0;
+    gReflectance.rgb = material.F0.rgb;
 }
 
 vec3 GetNormal(vec2 texCoord) {
