@@ -15,6 +15,7 @@
 #include "../../dependencies/imgui/imgui_impl_opengl3.h"
 #include "../../dependencies/imgui/imgui_impl_glfw.h"
 
+#include "../Engine/SceneManager.h"
 #include "../Engine/Window.h"
 #include "../Engine/Debug.h"
 #include "../Engine/World.h"
@@ -35,7 +36,7 @@
 #include "../Utility/RenderSettings.h"
 #include "../Utility/Input.h"
 
-OverlayUI::OverlayUI(Window* window, Debug* profiler) : _renderUI(true), _profiler(profiler), _activeNode(nullptr) {
+OverlayUI::OverlayUI(SceneManager* sceneManager, Window* window, Debug* profiler) : _renderUI(true), _profiler(profiler), _sceneManager(sceneManager), _activeNode(nullptr) {
 	_initImgui(window);
 }
 
@@ -61,6 +62,7 @@ void OverlayUI::setupFrame(World* world) {
 		_setupInspector();
 		_setupSettings();
 		_setupHierarchy(world);
+		_setupSceneSelection();
 	}
 }
 
@@ -237,8 +239,8 @@ void OverlayUI::_setupSettings() {
 void OverlayUI::_setupHierarchy(World* world) {
 	//setup hierarchy window
 	ImGui::Begin("Hierarchy", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse);
-	ImGui::SetWindowPos(ImVec2(0, 0));
-	ImGui::SetWindowSize(ImVec2(Window::ScreenWidth * 1.0f / 6.0f, Window::ScreenHeight * 4.8f / 6.0f));
+	ImGui::SetWindowPos(ImVec2(0, 64.0f));
+	ImGui::SetWindowSize(ImVec2(Window::ScreenWidth * 1.0f / 6.0f, Window::ScreenHeight * 4.8f / 6.0f - 64.0f));
 
 	//draw all children and their children onto the UI
 	Node* currentNode;
@@ -506,6 +508,43 @@ void OverlayUI::_setupInspector() {
 				}
 			}
 		}
+	}
+
+	ImGui::End();
+}
+
+void OverlayUI::_setupSceneSelection() {
+	//setup profiler window
+	ImGui::Begin("Scene Selection", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse);
+	ImGui::SetWindowPos(ImVec2(0, 0));
+	ImGui::SetWindowSize(ImVec2(Window::ScreenWidth * 1.0f / 6.0f, 64.0f));
+
+	if(ImGui::Button("Scene 1")) {
+		_sceneManager->queueScene(0);
+	}
+
+	ImGui::SameLine();
+
+	if(ImGui::Button("Scene 2")) {
+		_sceneManager->queueScene(1);
+	}
+
+	ImGui::SameLine();
+
+	if(ImGui::Button("Scene 3")) {
+		_sceneManager->queueScene(2);
+	}
+
+	ImGui::SameLine();
+
+	if(ImGui::Button("Scene 4")) {
+		_sceneManager->queueScene(3);
+	}
+
+	ImGui::SameLine();
+
+	if(ImGui::Button("Scene 5")) {
+		_sceneManager->queueScene(4);
 	}
 
 	ImGui::End();

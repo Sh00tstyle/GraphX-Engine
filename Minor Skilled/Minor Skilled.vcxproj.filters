@@ -55,18 +55,15 @@
     <Filter Include="shaders\material shader\forward">
       <UniqueIdentifier>{1869fd92-21a9-4e34-8e06-644fd56710e7}</UniqueIdentifier>
     </Filter>
+    <Filter Include="source\Scenes">
+      <UniqueIdentifier>{2ca960dc-f5af-4ece-82c7-1c876cfd75b4}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\Engine\Shader.cpp">
       <Filter>source\Engine</Filter>
     </ClCompile>
     <ClCompile Include="source\Application\main.cpp">
-      <Filter>source\Application</Filter>
-    </ClCompile>
-    <ClCompile Include="source\Engine\Scene.cpp">
-      <Filter>source\Engine</Filter>
-    </ClCompile>
-    <ClCompile Include="source\Application\DemoScene.cpp">
       <Filter>source\Application</Filter>
     </ClCompile>
     <ClCompile Include="source\Engine\Window.cpp">
@@ -171,16 +168,31 @@
     <ClCompile Include="source\Engine\Debug.cpp">
       <Filter>source\Engine</Filter>
     </ClCompile>
+    <ClCompile Include="source\Engine\SceneManager.cpp">
+      <Filter>source\Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Engine\Scene.cpp">
+      <Filter>source\Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Scenes\DemoScene2.cpp">
+      <Filter>source\Scenes</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Scenes\DemoScene1.cpp">
+      <Filter>source\Scenes</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Scenes\DemoScene3.cpp">
+      <Filter>source\Scenes</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Scenes\DemoScene4.cpp">
+      <Filter>source\Scenes</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Scenes\DemoScene5.cpp">
+      <Filter>source\Scenes</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="source\Engine\Shader.h">
       <Filter>source\Engine</Filter>
-    </ClInclude>
-    <ClInclude Include="source\Engine\Scene.h">
-      <Filter>source\Engine</Filter>
-    </ClInclude>
-    <ClInclude Include="source\Application\DemoScene.h">
-      <Filter>source\Application</Filter>
     </ClInclude>
     <ClInclude Include="source\Engine\Window.h">
       <Filter>source\Engine</Filter>
@@ -325,6 +337,27 @@
     </ClInclude>
     <ClInclude Include="source\Engine\Debug.h">
       <Filter>source\Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Engine\SceneManager.h">
+      <Filter>source\Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Engine\Scene.h">
+      <Filter>source\Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Scenes\DemoScene2.h">
+      <Filter>source\Scenes</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Scenes\DemoScene1.h">
+      <Filter>source\Scenes</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Scenes\DemoScene3.h">
+      <Filter>source\Scenes</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Scenes\DemoScene4.h">
+      <Filter>source\Scenes</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Scenes\DemoScene5.h">
+      <Filter>source\Scenes</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

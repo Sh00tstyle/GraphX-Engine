@@ -67,6 +67,8 @@ Texture * Texture::LoadTexture(std::string path, TextureFilter filter, bool sRGB
 	//when setting the sRGB parameter to true, OpenGL transform the texture from gamma corrected/sRGB color space back to linear color space so that they can/have to be gamma corrected in the shaders
 	//diffuse and color textures are almost always in sRGB space - specular map, normals maps, etc. are almost always in linear space
 
+	stbi_set_flip_vertically_on_load(false);
+
 	//create opengl texture object
 	Texture* texture = new Texture(GL_TEXTURE_2D);
 
@@ -120,6 +122,8 @@ Texture * Texture::LoadTexture(std::string path, TextureFilter filter, bool sRGB
 }
 
 Texture * Texture::LoadCubemap(std::vector<std::string>& faces, bool sRGB) {
+	stbi_set_flip_vertically_on_load(false);
+
 	Texture* texture = new Texture(GL_TEXTURE_CUBE_MAP);
 	texture->bind();
 

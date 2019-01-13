@@ -6,9 +6,7 @@ World::World() {
 }
 
 World::~World() {
-	for(unsigned int i = 0; i < _children.size(); i++) {
-		delete _children[i];
-	}
+	erase();
 }
 
 std::vector<Node*>* World::getChildren() {
@@ -42,4 +40,14 @@ void World::update(std::vector<Node*>& renderables, std::vector<Node*>& lights) 
 	for(unsigned int i = 0; i < _children.size(); i++) {
 		_children[i]->update(worldModel,  renderables, lights);
 	}
+}
+
+void World::erase() {
+	//remove all nodes from the world
+
+	for(unsigned int i = 0; i < _children.size(); i++) {
+		delete _children[i];
+	}
+
+	_children.clear();
 }

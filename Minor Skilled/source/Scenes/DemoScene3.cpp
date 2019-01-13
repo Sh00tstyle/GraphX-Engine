@@ -1,10 +1,11 @@
-#include "DemoScene.h"
+#include "DemoScene3.h"
 
 #include <iostream>
 
 #include <glm\glm.hpp>
 #include <glm\gtc\matrix_transform.hpp>
 
+#include "../Engine/SceneManager.h"
 #include "../Engine/Window.h"
 #include "../Engine/Node.h"
 #include "../Engine/World.h"
@@ -26,13 +27,13 @@
 #include "../Utility/LightType.h"
 #include "../Utility/BlendMode.h"
 
-DemoScene::DemoScene():Scene() {
+DemoScene3::DemoScene3():Scene() {
 }
 
-DemoScene::~DemoScene() {
+DemoScene3::~DemoScene3() {
 }
 
-void DemoScene::_initializeScene() {
+void DemoScene3::initializeScene(World* world, SceneManager* manager) {
 	std::cout << "Initializing Scene" << std::endl;
 
 	//create scene objects which represent graph nodes
@@ -106,7 +107,7 @@ void DemoScene::_initializeScene() {
 	//load skybox
 	std::cout << "Loading skybox..." << std::endl;
 
-	/**
+	/**/
 	std::vector<std::string> cubemapFaces{
 		"ocean/right.jpg",
 		"ocean/left.jpg",
@@ -117,10 +118,13 @@ void DemoScene::_initializeScene() {
 	};
 
 	Texture* skybox = Texture::LoadCubemap(cubemapFaces, true); //load skyboxes in linear space
-	/**/
+
+	/**
 
 	Texture* skybox = Texture::LoadHDR(Filepath::SkyboxPath + "Milkyway/Milkyway_Small.hdr"); //low res
 	//Texture* skybox = Texture::LoadHDR(Filepath::SkyboxPath + "Milkyway/Milkyway_BG.jpg"); //high res
+
+	/**/
 
 	//create materials
 	TextureMaterial* textureMaterial = new TextureMaterial(cyborgDiffuse, cyborgSpecular, cyborgNormal, BlendMode::Opaque);
@@ -201,21 +205,21 @@ void DemoScene::_initializeScene() {
 	//mainCamera->addChild(cube);
 
 	//add nodes to the world
-	_world->addChild(mainCamera);
-	_world->addChild(directionalLight);
-	_world->addChild(cyborg);
-	_world->addChild(plane);
-	_world->addChild(sphereReflect);
-	_world->addChild(sphereLight);
-	_world->addChild(cube);
-	_world->addChild(glass);
-	_world->addChild(bricks);
-	_world->addChild(pbrSphere);
+	world->addChild(mainCamera);
+	world->addChild(directionalLight);
+	world->addChild(cyborg);
+	world->addChild(plane);
+	world->addChild(sphereReflect);
+	world->addChild(sphereLight);
+	world->addChild(cube);
+	world->addChild(glass);
+	world->addChild(bricks);
+	world->addChild(pbrSphere);
 
 	//set main camera, (main) directional light and skybox
-	_setMainCamera(mainCamera);
-	_setDirectionalLight(directionalLight);
-	_setSkybox(skybox, true);
+	manager->setMainCamera(mainCamera);
+	manager->setDirectionalLight(directionalLight);
+	manager->setSkybox(skybox, false);
 
 	std::cout << "Scene initialized" << std::endl;
 }

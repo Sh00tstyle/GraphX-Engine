@@ -20,6 +20,8 @@ PBRMaterial::~PBRMaterial() {
 	delete _metallicMap;
 	delete _roughnessMap;
 	delete _aoMap;
+	delete _emissionMap;
+	delete _heightMap;
 }
 
 Texture * PBRMaterial::getAlbedoMap() {

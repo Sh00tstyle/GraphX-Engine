@@ -392,6 +392,7 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 
 void Renderer::renderEnvironmentMaps(std::vector<Node*>& renderables, Node* directionalLight, Texture* skybox) {
 	//obtain all render components and their model matrices from the renderables vector
+	_iblMaps.clear();
 	std::vector<std::pair<RenderComponent*, glm::mat4>> renderComponents;
 
 	for(unsigned int i = 0; i < renderables.size(); i++) {

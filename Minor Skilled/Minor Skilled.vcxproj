@@ -26,7 +26,6 @@
     <ClCompile Include="dependencies\imgui\imgui_impl_glfw.cpp" />
     <ClCompile Include="dependencies\imgui\imgui_impl_opengl3.cpp" />
     <ClCompile Include="dependencies\imgui\imgui_widgets.cpp" />
-    <ClCompile Include="source\Application\DemoScene.cpp" />
     <ClCompile Include="source\Application\main.cpp" />
     <ClCompile Include="source\Components\CameraComponent.cpp" />
     <ClCompile Include="source\Components\LightComponent.cpp" />
@@ -41,6 +40,7 @@
     <ClCompile Include="source\Engine\Renderbuffer.cpp" />
     <ClCompile Include="source\Engine\Renderer.cpp" />
     <ClCompile Include="source\Engine\Scene.cpp" />
+    <ClCompile Include="source\Engine\SceneManager.cpp" />
     <ClCompile Include="source\Engine\Shader.cpp" />
     <ClCompile Include="source\Engine\Texture.cpp" />
     <ClCompile Include="source\Engine\Transform.cpp" />
@@ -51,6 +51,11 @@
     <ClCompile Include="source\Materials\ColorMaterial.cpp" />
     <ClCompile Include="source\Materials\PBRMaterial.cpp" />
     <ClCompile Include="source\Materials\TextureMaterial.cpp" />
+    <ClCompile Include="source\Scenes\DemoScene1.cpp" />
+    <ClCompile Include="source\Scenes\DemoScene2.cpp" />
+    <ClCompile Include="source\Scenes\DemoScene3.cpp" />
+    <ClCompile Include="source\Scenes\DemoScene4.cpp" />
+    <ClCompile Include="source\Scenes\DemoScene5.cpp" />
     <ClCompile Include="source\UI\OverlayUI.cpp" />
     <ClCompile Include="source\Utility\Filepath.cpp" />
     <ClCompile Include="source\Utility\Input.cpp" />
@@ -69,7 +74,6 @@
     <ClInclude Include="dependencies\imgui\imstb_truetype.h" />
     <ClInclude Include="dependencies\stb_image\stb_image.h" />
     <ClInclude Include="dependencies\stb_image\stb_image_write.h" />
-    <ClInclude Include="source\Application\DemoScene.h" />
     <ClInclude Include="source\Components\CameraComponent.h" />
     <ClInclude Include="source\Components\LightComponent.h" />
     <ClInclude Include="source\Components\RenderComponent.h" />
@@ -85,6 +89,7 @@
     <ClInclude Include="source\Engine\Renderbuffer.h" />
     <ClInclude Include="source\Engine\Renderer.h" />
     <ClInclude Include="source\Engine\Scene.h" />
+    <ClInclude Include="source\Engine\SceneManager.h" />
     <ClInclude Include="source\Engine\Shader.h" />
     <ClInclude Include="source\Engine\Texture.h" />
     <ClInclude Include="source\Engine\Transform.h" />
@@ -96,6 +101,11 @@
     <ClInclude Include="source\Materials\ColorMaterial.h" />
     <ClInclude Include="source\Materials\PBRMaterial.h" />
     <ClInclude Include="source\Materials\TextureMaterial.h" />
+    <ClInclude Include="source\Scenes\DemoScene1.h" />
+    <ClInclude Include="source\Scenes\DemoScene2.h" />
+    <ClInclude Include="source\Scenes\DemoScene3.h" />
+    <ClInclude Include="source\Scenes\DemoScene4.h" />
+    <ClInclude Include="source\Scenes\DemoScene5.h" />
     <ClInclude Include="source\UI\OverlayUI.h" />
     <ClInclude Include="source\Utility\BlendMode.h" />
     <ClInclude Include="source\Utility\ComponentType.h" />

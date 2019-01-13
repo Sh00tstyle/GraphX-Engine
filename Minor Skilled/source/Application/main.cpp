@@ -1,12 +1,29 @@
 #include <iostream>
 #include <string>
 
-#include "../Application/DemoScene.h"
+#include "../Scenes/DemoScene1.h"
+#include "../Scenes/DemoScene2.h"
+#include "../Scenes/DemoScene3.h"
+#include "../Scenes/DemoScene4.h"
+#include "../Scenes/DemoScene5.h"
+
+#include "../Engine/SceneManager.h"
 
 int main() {
-	Scene* scene = new DemoScene();
-	scene->initialize();
-	scene->run();
+	SceneManager* sceneManager = new SceneManager();
+
+	//add all scenes to the manager
+	sceneManager->addScene(new DemoScene1());
+	sceneManager->addScene(new DemoScene2());
+	sceneManager->addScene(new DemoScene3());
+	sceneManager->addScene(new DemoScene4());
+	sceneManager->addScene(new DemoScene5());
+
+	//initialize manager with scene 0
+	sceneManager->initialize(0);
+	sceneManager->run();
+
+	delete sceneManager;
 
 	return 0;
 }

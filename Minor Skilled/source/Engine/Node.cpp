@@ -1,5 +1,7 @@
 #include "Node.h"
 
+#include <iterator>
+
 #include "../Engine/Component.h"
 #include "../Engine/Transform.h"
 
@@ -9,7 +11,16 @@ Node::Node(glm::vec3 localPosition, std::string name):_transform(new Transform(l
 }
 
 Node::~Node() {
-	for(unsigned int i = 0; _children.size(); i++) {
+	//delete transform
+	delete _transform;
+
+	//delete components
+	for(std::map<ComponentType, Component*>::iterator it = _components.begin(); it != _components.end(); it++) {
+		delete it->second;
+	}
+
+	//delete children
+	for(unsigned int i = 0; i < _children.size(); i++) {
 		delete _children[i];
 	}
 }

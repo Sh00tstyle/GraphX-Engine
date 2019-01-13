@@ -7,6 +7,7 @@
 #include <glm\glm.hpp>
 #include <glm\gtc\matrix_transform.hpp>
 
+class SceneManager;
 class Window;
 class Debug;
 class World;
@@ -14,14 +15,16 @@ class Node;
 
 class OverlayUI {
 	public:
-		OverlayUI(Window* window, Debug* profiler);
+		OverlayUI(SceneManager* sceneManager, Window* window, Debug* profiler);
 		~OverlayUI();
 
 		void setupFrame(World* world);
 		void render();
 
 	private:
-		Debug * _profiler;
+		Debug* _profiler;
+		SceneManager* _sceneManager;
+
 		Node* _activeNode;
 
 		bool _renderUI;
@@ -35,6 +38,7 @@ class OverlayUI {
 		void _setupSettings();
 		void _setupHierarchy(World* world);
 		void _setupInspector();
+		void _setupSceneSelection();
 
 		void _drawHierarchyNodes(Node* node, unsigned int depth);
 
