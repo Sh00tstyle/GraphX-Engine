@@ -39,7 +39,6 @@ void DemoScene2::initializeScene(World* world, SceneManager* manager) {
 	//create scene objects which represent graph nodes
 	Node* mainCamera = new Node(glm::vec3(0.0f, 1.0f, 3.5f), "mainCamera");
 	Node* directionalLight = new Node(glm::vec3(0.0f, 0.0f, 0.0f), "directionalLight");
-	Node* cyborg = new Node(glm::vec3(0.0f, 0.0f, 0.0f), "cyborg");
 	Node* plane = new Node(glm::vec3(0.0f, -0.01f, 0.0f), "plane");
 	Node* sphereReflect = new Node(glm::vec3(2.0f, 0.8f, -1.0f), "sphereReflect");
 	Node* sphereLight = new Node(glm::vec3(-2.0f, 1.0f, 0.0f), "sphereLight");
@@ -49,9 +48,13 @@ void DemoScene2::initializeScene(World* world, SceneManager* manager) {
 	Node* bricks = new Node(glm::vec3(-2.5f, 0.5f, 2.5f), "bricks");
 	Node* pbrSphere = new Node(glm::vec3(-2.5f, 0.5, -1.5f), "pbrSphere");
 
+	Node* nyra = new Node(glm::vec3(0.0f, 0.16f, 0.0f), "nyra");
+	Node* head = new Node(glm::vec3(0.0f), "head");
+	Node* body = new Node(glm::vec3(0.0f), "body");
+
 	//adjust transforms
-	Transform* transform = cyborg->getTransform();
-	transform->scale(glm::vec3(0.5f));
+	Transform* transform = nyra->getTransform();
+	transform->scale(glm::vec3(0.05f));
 
 	transform = plane->getTransform();
 	transform->scale(glm::vec3(4.0f, 1.0f, 4.0f));
@@ -79,7 +82,8 @@ void DemoScene2::initializeScene(World* world, SceneManager* manager) {
 	//load models
 	std::cout << "Loading models..." << std::endl;
 
-	Model* cyborgModel = Model::LoadModel(Filepath::ModelPath + "cyborg/cyborg.obj");
+	Model* nyraHead = Model::LoadModel(Filepath::ModelPath + "nyra/nyra head.obj");
+	Model* nyraBody = Model::LoadModel(Filepath::ModelPath + "nyra/nyra body.obj");
 	Model* planeModel = Model::LoadModel(Filepath::ModelPath + "plane.obj");
 	Model* sphereModel = Model::LoadModel(Filepath::ModelPath + "sphere_smooth.obj");
 	Model* cubeModel = Model::LoadModel(Filepath::ModelPath + "cube_smooth.obj");
@@ -87,10 +91,13 @@ void DemoScene2::initializeScene(World* world, SceneManager* manager) {
 	//load textures
 	std::cout << "Loading textures..." << std::endl;
 
-	Texture* cyborgDiffuse = Texture::LoadTexture(Filepath::ModelPath + "cyborg/cyborg_diffuse.png", TextureFilter::Repeat, true); //load diffuse textures in linear space
-	Texture* cyborgSpecular = Texture::LoadTexture(Filepath::ModelPath + "cyborg/cyborg_specular.png");
-	Texture* cyborgNormal = Texture::LoadTexture(Filepath::ModelPath + "cyborg/cyborg_normal.png");
-	Texture* cyborgEmission = Texture::LoadTexture(Filepath::ModelPath + "cyborg/cyborg_emission.png", TextureFilter::Repeat, true); //load emission textures in linear space
+	Texture* headDiffuse = Texture::LoadTexture(Filepath::ModelPath + "nyra/head_d.png", TextureFilter::Repeat, true);
+	Texture* headNormal = Texture::LoadTexture(Filepath::ModelPath + "nyra/head_n.png", TextureFilter::Repeat);
+	Texture* headSpecular = Texture::LoadTexture(Filepath::ModelPath + "nyra/head_s.png", TextureFilter::Repeat);
+
+	Texture* bodyDiffuse = Texture::LoadTexture(Filepath::ModelPath + "nyra/body_d.png", TextureFilter::Repeat, true);
+	Texture* bodyNormal = Texture::LoadTexture(Filepath::ModelPath + "nyra/body_n.png", TextureFilter::Repeat);
+	Texture* bodySpecular = Texture::LoadTexture(Filepath::ModelPath + "nyra/body_s.png", TextureFilter::Repeat);
 
 	Texture* reflectionMap = Texture::LoadTexture(Filepath::TexturePath + "reflection.png");
 	Texture* blendTexture = Texture::LoadTexture(Filepath::TexturePath + "window.png", TextureFilter::Repeat, true); //load diffuse textures in linear space
@@ -107,7 +114,6 @@ void DemoScene2::initializeScene(World* world, SceneManager* manager) {
 	//load skybox
 	std::cout << "Loading skybox..." << std::endl;
 
-	/**/
 	std::vector<std::string> cubemapFaces{
 		"ocean/right.jpg",
 		"ocean/left.jpg",
@@ -119,23 +125,15 @@ void DemoScene2::initializeScene(World* world, SceneManager* manager) {
 
 	Texture* skybox = Texture::LoadCubemap(cubemapFaces, true); //load skyboxes in linear space
 
-	/**
-
-	Texture* skybox = Texture::LoadHDR(Filepath::SkyboxPath + "Milkyway/Milkyway_Small.hdr"); //low res
-	//Texture* skybox = Texture::LoadHDR(Filepath::SkyboxPath + "Milkyway/Milkyway_BG.jpg"); //high res
-
-	/**/
-
 	//create materials
-	TextureMaterial* textureMaterial = new TextureMaterial(cyborgDiffuse, cyborgSpecular, cyborgNormal, BlendMode::Opaque);
-	textureMaterial->setEmissionMap(cyborgEmission);
+	TextureMaterial* nyraHeadMat = new TextureMaterial(headDiffuse, headSpecular, headNormal, BlendMode::Cutout);
+	TextureMaterial* nyraBodyMat = new TextureMaterial(bodyDiffuse, bodySpecular, bodyNormal, BlendMode::Opaque);
 
 	TextureMaterial* reflectionMaterial = new TextureMaterial(reflectionMap, BlendMode::Opaque);
 	reflectionMaterial->setReflectionMap(reflectionMap);
 	reflectionMaterial->setRefractionFactor(1.52f);
 
-	TextureMaterial* blendMaterial = new TextureMaterial(blendTexture, BlendMode::Opaque);
-	blendMaterial->setBlendMode(BlendMode::Transparent);
+	TextureMaterial* blendMaterial = new TextureMaterial(blendTexture, BlendMode::Transparent);
 
 	TextureMaterial* heightMaterial = new TextureMaterial(brickTexture, BlendMode::Opaque);
 	heightMaterial->setNormalMap(brickNormal);
@@ -150,7 +148,8 @@ void DemoScene2::initializeScene(World* world, SceneManager* manager) {
 	//pbrMaterial->setRefractionFactor(1.52f);
 
 	//create components for each node and fill with data
-	RenderComponent* cyborgRenderComponent = new RenderComponent(cyborgModel, textureMaterial);
+	RenderComponent* nyraHeadRenderComponent = new RenderComponent(nyraHead, nyraHeadMat);
+	RenderComponent* nyraBodyRenderComponent = new RenderComponent(nyraBody, nyraBodyMat);
 	RenderComponent* planeRenderComponent = new RenderComponent(planeModel, colorMaterial);
 	RenderComponent* sphereRenderComponent = new RenderComponent(sphereModel, reflectionMaterial);
 	RenderComponent* sphereLightRenderComponent = new RenderComponent(sphereModel, sphereMaterial);
@@ -193,7 +192,8 @@ void DemoScene2::initializeScene(World* world, SceneManager* manager) {
 	sphereLight->addComponent(sphereLightRenderComponent);
 	sphereLight->addComponent(pointLightComponent);
 
-	cyborg->addComponent(cyborgRenderComponent);
+	head->addComponent(nyraHeadRenderComponent);
+	body->addComponent(nyraBodyRenderComponent);
 	plane->addComponent(planeRenderComponent);
 	sphereReflect->addComponent(sphereRenderComponent);
 	cube->addComponent(cubeRenderComponent);
@@ -202,12 +202,13 @@ void DemoScene2::initializeScene(World* world, SceneManager* manager) {
 	pbrSphere->addComponent(pbrRenderComponent);
 
 	//set children
-	//mainCamera->addChild(cube);
+	nyra->addChild(head);
+	nyra->addChild(body);
 
 	//add nodes to the world
 	world->addChild(mainCamera);
 	world->addChild(directionalLight);
-	world->addChild(cyborg);
+	world->addChild(nyra);
 	world->addChild(plane);
 	world->addChild(sphereReflect);
 	world->addChild(sphereLight);

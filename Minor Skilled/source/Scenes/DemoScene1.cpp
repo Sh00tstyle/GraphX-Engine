@@ -107,19 +107,6 @@ void DemoScene1::initializeScene(World* world, SceneManager* manager) {
 	//load skybox
 	std::cout << "Loading skybox..." << std::endl;
 
-	/**
-	std::vector<std::string> cubemapFaces{
-		"ocean/right.jpg",
-		"ocean/left.jpg",
-		"ocean/top.jpg",
-		"ocean/bottom.jpg",
-		"ocean/front.jpg",
-		"ocean/back.jpg",
-	};
-
-	Texture* skybox = Texture::LoadCubemap(cubemapFaces, true); //load skyboxes in linear space
-	/**/
-
 	Texture* skybox = Texture::LoadHDR(Filepath::SkyboxPath + "Milkyway/Milkyway_Small.hdr"); //low res
 	//Texture* skybox = Texture::LoadHDR(Filepath::SkyboxPath + "Milkyway/Milkyway_BG.jpg"); //high res
 
