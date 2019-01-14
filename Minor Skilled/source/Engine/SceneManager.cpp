@@ -34,6 +34,10 @@ SceneManager::~SceneManager() {
 	delete _renderer;
 	delete _profiler;
 	delete _ui;
+
+	for(unsigned int i = 0; i < _scenes.size(); i++) {
+		delete _scenes[i];
+	}
 }
 
 void SceneManager::queueScene(int index) {
