@@ -519,32 +519,28 @@ void OverlayUI::_setupSceneSelection() {
 	ImGui::SetWindowPos(ImVec2(0, 0));
 	ImGui::SetWindowSize(ImVec2(Window::ScreenWidth * 1.0f / 6.0f, 64.0f));
 
-	if(ImGui::Button("Scene 1")) {
+	if(ImGui::Button("Day Demo")) {
 		_sceneManager->queueScene(0);
 	}
 
 	ImGui::SameLine();
 
-	if(ImGui::Button("Scene 2")) {
+	ImGui::Text("\t");
+
+	ImGui::SameLine();
+
+	if(ImGui::Button("Night Demo")) {
 		_sceneManager->queueScene(1);
 	}
 
 	ImGui::SameLine();
 
-	if(ImGui::Button("Scene 3")) {
+	ImGui::Text("\t");
+
+	ImGui::SameLine();
+
+	if(ImGui::Button("PBR Demo")) {
 		_sceneManager->queueScene(2);
-	}
-
-	ImGui::SameLine();
-
-	if(ImGui::Button("Scene 4")) {
-		_sceneManager->queueScene(3);
-	}
-
-	ImGui::SameLine();
-
-	if(ImGui::Button("Scene 5")) {
-		_sceneManager->queueScene(4);
 	}
 
 	ImGui::End();

@@ -4,8 +4,6 @@
 #include "../Scenes/DemoScene1.h"
 #include "../Scenes/DemoScene2.h"
 #include "../Scenes/DemoScene3.h"
-#include "../Scenes/DemoScene4.h"
-#include "../Scenes/DemoScene5.h"
 
 #include "../Engine/SceneManager.h"
 
@@ -16,11 +14,9 @@ int main() {
 	sceneManager->addScene(new DemoScene1());
 	sceneManager->addScene(new DemoScene2());
 	sceneManager->addScene(new DemoScene3());
-	sceneManager->addScene(new DemoScene4());
-	sceneManager->addScene(new DemoScene5());
 
 	//initialize manager with scene 0
-	sceneManager->initialize(1);
+	sceneManager->initialize(0);
 	sceneManager->run();
 
 	delete sceneManager;
