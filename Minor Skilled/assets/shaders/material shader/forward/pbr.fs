@@ -127,7 +127,7 @@ void main() {
 
     //parallax mapping
     vec2 texCoord = ParallaxMapping();
-    if(material.hasHeight && (texCoord.x > 1.0f || texCoord.y > 1.0f || texCoord.x < 0.0f || texCoord.y < 0.0f)) discard; //cutoff edges to avoid artifacts when using parallax mapping
+    //if(material.hasHeight && (texCoord.x > 1.0f || texCoord.y > 1.0f || texCoord.x < 0.0f || texCoord.y < 0.0f)) discard; //cutoff edges to avoid artifacts when using parallax mapping
 
     //get values
     vec3 albedo = texture(material.albedo, texCoord).rgb; //texture should be loaded in linear space

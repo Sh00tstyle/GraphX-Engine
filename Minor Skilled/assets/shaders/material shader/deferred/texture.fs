@@ -64,7 +64,7 @@ void main() {
 
     //parallax mapping
     vec2 texCoord = ParallaxMapping(viewDirection);
-    if(material.hasHeight && (texCoord.x > 1.0f || texCoord.y > 1.0f || texCoord.x < 0.0f || texCoord.y < 0.0f)) discard; //cutoff edges to avoid artifacts when using parallax mapping
+    //if(material.hasHeight && (texCoord.x > 1.0f || texCoord.y > 1.0f || texCoord.x < 0.0f || texCoord.y < 0.0f)) discard; //cutoff edges to avoid artifacts when using parallax mapping
 
     //store the data in the gBuffer
     gPosition.rgb = fs_in.fragPosView;

@@ -166,6 +166,9 @@ void SceneManager::_loadScene() {
 	_mainCamera = nullptr;
 	_directionalLight = nullptr;
 
+	_renderables.clear();
+	_lights.clear();
+
 	//load new scene
 	std::cout << "Loading Scene " + std::to_string(_queuedSceneIndex + 1) + "..." << std::endl;
 

@@ -80,6 +80,8 @@ void OverlayUI::_initImgui(Window* window) {
 
 	ImGui::StyleColorsDark();
 
+	//ImGui::GetIO().IniFilename = NULL; //disable saving to an ini file
+
 	std::cout << "Initialized ImGui Overlay" << std::endl;
 }
 
@@ -270,7 +272,7 @@ void OverlayUI::_setupInspector() {
 		unsigned int indentions = 6;
 
 		for(unsigned int i = 0; i < indentions; i++) ImGui::Indent();
-		ImGui::Text((_activeNode->getName()).c_str()); //draw name with intentions
+		ImGui::Text((_activeNode->getName()).c_str()); //draw name with indentions
 		for(unsigned int i = 0; i < indentions; i++) ImGui::Unindent();
 
 		//draw transform when the node has no camera component
@@ -520,26 +522,21 @@ void OverlayUI::_setupSceneSelection() {
 	ImGui::SetWindowSize(ImVec2(Window::ScreenWidth * 1.0f / 6.0f, 64.0f));
 
 	if(ImGui::Button("Day Demo")) {
+		_activeNode = nullptr;
 		_sceneManager->queueScene(0);
 	}
 
 	ImGui::SameLine();
 
-	ImGui::Text("\t");
-
-	ImGui::SameLine();
-
 	if(ImGui::Button("Night Demo")) {
+		_activeNode = nullptr;
 		_sceneManager->queueScene(1);
 	}
 
 	ImGui::SameLine();
 
-	ImGui::Text("\t");
-
-	ImGui::SameLine();
-
 	if(ImGui::Button("PBR Demo")) {
+		_activeNode = nullptr;
 		_sceneManager->queueScene(2);
 	}
 

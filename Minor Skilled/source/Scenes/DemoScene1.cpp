@@ -37,132 +37,175 @@ void DemoScene1::initializeScene(World* world, SceneManager* manager) {
 	std::cout << "Initializing Scene" << std::endl;
 
 	//create scene objects which represent graph nodes
-	Node* mainCamera = new Node(glm::vec3(0.0f, 1.0f, 3.5f), "mainCamera");
+	Node* mainCamera = new Node(glm::vec3(0.2f, 2.5f, 7.0f), "mainCamera");
 	Node* directionalLight = new Node(glm::vec3(0.0f, 0.0f, 0.0f), "directionalLight");
-	Node* cyborg = new Node(glm::vec3(0.0f, 0.0f, 0.0f), "cyborg");
-	Node* plane = new Node(glm::vec3(0.0f, -0.01f, 0.0f), "plane");
-	Node* sphereReflect = new Node(glm::vec3(2.0f, 0.8f, -1.0f), "sphereReflect");
-	Node* sphereLight = new Node(glm::vec3(-2.0f, 1.0f, 0.0f), "sphereLight");
-	Node* cube = new Node(glm::vec3(2.0f, 0.3f, 1.0f), "cube");
-	//Node* cube = new Node(glm::vec3(0.0f, -1.0f, 0.0f), "cube");
-	Node* glass = new Node(glm::vec3(3.0f, 0.3f, 3.0f), "glass");
-	Node* bricks = new Node(glm::vec3(-2.5f, 0.5f, 2.5f), "bricks");
-	Node* pbrSphere = new Node(glm::vec3(-2.5f, 0.5, -1.5f), "pbrSphere");
+
+	Node* ground = new Node(glm::vec3(0.0f), "ground");
+
+	Node* nyra = new Node(glm::vec3(0.0f, 0.17f, 0.0f), "nyra");
+	Node* head = new Node(glm::vec3(0.0f), "head");
+	Node* body = new Node(glm::vec3(0.0f), "body");
+
+	Node* fern1 = new Node(glm::vec3(5.5f, 0.0f, 4.0f), "fern1");
+	Node* fern2 = new Node(glm::vec3(1.0f, 0.0f, -5.0f), "fern2");
+	Node* fern3 = new Node(glm::vec3(1.5f, 0.0f, 6.0f), "fern3");
+
+	Node* grass1 = new Node(glm::vec3(-5.0f, 0.0f, 2.0f), "grass1");
+	Node* grass2 = new Node(glm::vec3(6.0f, 0.0f, -1.0f), "grass2");
+	Node* grass3 = new Node(glm::vec3(-0.2f, 0.0f, -3.5f), "grass3");
+	Node* grass4 = new Node(glm::vec3(3.0f, 0.0f, 2.0f), "grass4");
+	Node* grass5 = new Node(glm::vec3(-2.0f, 0.0f, -2.0f), "grass5");
+	Node* grass6 = new Node(glm::vec3(0.0f, 0.0f, 6.0f), "grass6");
+
+	Node* rock = new Node(glm::vec3(4.5f, 0.0f, -3.5f), "rock");
+	Node* bench = new Node(glm::vec3(-5.0f, 0.0f, 0.0f), "bench");
+	Node* stump = new Node(glm::vec3(3.5f, 0.0f, 6.0f), "stump");
+	Node* log = new Node(glm::vec3(-3.5f, 0.0f, 5.0f), "log");
+
+	Node* bricks = new Node(glm::vec3(-3.0f, 1.0f, -5.0f), "bricks");
 
 	//adjust transforms
-	Transform* transform = cyborg->getTransform();
-	transform->scale(glm::vec3(0.5f));
+	Transform* transform = mainCamera->getTransform();
+	transform->setEulerRotation(-10.0f, 0.0f, 0.0f);
 
-	transform = plane->getTransform();
-	transform->scale(glm::vec3(4.0f, 1.0f, 4.0f));
+	transform = nyra->getTransform();
+	transform->scale(glm::vec3(0.1f));
 
-	transform = sphereReflect->getTransform();
-	transform->scale(glm::vec3(0.2f));
+	transform = fern1->getTransform();
+	transform->scale(glm::vec3(0.015f));
 
-	transform = sphereLight->getTransform();
-	transform->scale(glm::vec3(0.2f));
+	transform = fern2->getTransform();
+	transform->scale(glm::vec3(0.01f));
+	transform->setEulerRotation(0.0f, 45.0f, 0.0f);
 
-	transform = cube->getTransform();
-	transform->scale(glm::vec3(0.3f));
+	transform = fern3->getTransform();
+	transform->scale(glm::vec3(0.01f));
+	transform->setEulerRotation(0.0f, 225.0f, 0.0f);
 
-	transform = glass->getTransform();
-	transform->scale(glm::vec3(0.3f));
-	transform->setEulerRotation(90.0f, 0.0f, 0.0f);
+	transform = grass1->getTransform();
+	transform->scale(glm::vec3(0.01f));
+
+	transform = grass2->getTransform();
+	transform->scale(glm::vec3(0.01f));
+	transform->setEulerRotation(0.0f, 45.0f, 0.0f);
+
+	transform = grass3->getTransform();
+	transform->scale(glm::vec3(0.01f));
+	transform->setEulerRotation(0.0f, 225.0f, 0.0f);
+
+	transform = grass4->getTransform();
+	transform->scale(glm::vec3(0.01f));
+
+	transform = grass5->getTransform();
+	transform->scale(glm::vec3(0.01f));
+	transform->setEulerRotation(0.0f, 45.0f, 0.0f);
+
+	transform = grass6->getTransform();
+	transform->scale(glm::vec3(0.01f));
+	transform->setEulerRotation(0.0f, 225.0f, 0.0f);
+
+	transform = rock->getTransform();
+	transform->scale(glm::vec3(0.8f));
+
+	transform = bench->getTransform();
+	transform->scale(glm::vec3(0.012f));
+
+	transform = stump->getTransform();
+	transform->scale(glm::vec3(0.03f));
+
+	transform = log->getTransform();
+	transform->scale(glm::vec3(0.01f));
+	transform->setEulerRotation(0.0f, 45.0f, 0.0f);
 
 	transform = bricks->getTransform();
-	transform->scale(glm::vec3(0.3f));
-	transform->setEulerRotation(45.0f, 0.0f, 45.0f);
-
-	transform = pbrSphere->getTransform();
-	transform->scale(glm::vec3(0.2f));
+	transform->setEulerRotation(90.0f, 0.0f, 0.0f);
 
 	//load models
 	std::cout << "Loading models..." << std::endl;
 
-	Model* cyborgModel = Model::LoadModel(Filepath::ModelPath + "cyborg/cyborg.obj");
 	Model* planeModel = Model::LoadModel(Filepath::ModelPath + "plane.obj");
-	Model* sphereModel = Model::LoadModel(Filepath::ModelPath + "sphere_smooth.obj");
-	Model* cubeModel = Model::LoadModel(Filepath::ModelPath + "cube_smooth.obj");
+
+	Model* nyraHead = Model::LoadModel(Filepath::ModelPath + "nyra/nyra head.obj");
+	Model* nyraBody = Model::LoadModel(Filepath::ModelPath + "nyra/nyra body.obj");
+
+	Model* fernModel = Model::LoadModel(Filepath::ModelPath + "plants/FernBranch001.obj");
+	Model* grassModel1 = Model::LoadModel(Filepath::ModelPath + "plants/GrassBlade001.obj");
+	Model* grassModel2 = Model::LoadModel(Filepath::ModelPath + "plants/GrassBlade002.obj");
+
+	Model* rockModel = Model::LoadModel(Filepath::ModelPath + "rock/rock.obj");
+	Model* benchModel = Model::LoadModel(Filepath::ModelPath + "bench/bench.obj");
+	Model* stumpModel = Model::LoadModel(Filepath::ModelPath + "stump/stump.obj");
+	Model* logModel = Model::LoadModel(Filepath::ModelPath + "log/log.obj");
 
 	//load textures
 	std::cout << "Loading textures..." << std::endl;
 
-	Texture* cyborgDiffuse = Texture::LoadTexture(Filepath::ModelPath + "cyborg/cyborg_diffuse.png", TextureFilter::Repeat, true); //load diffuse textures in linear space
-	Texture* cyborgSpecular = Texture::LoadTexture(Filepath::ModelPath + "cyborg/cyborg_specular.png");
-	Texture* cyborgNormal = Texture::LoadTexture(Filepath::ModelPath + "cyborg/cyborg_normal.png");
-	Texture* cyborgEmission = Texture::LoadTexture(Filepath::ModelPath + "cyborg/cyborg_emission.png", TextureFilter::Repeat, true); //load emission textures in linear space
+	Texture* planeDiffuse = Texture::LoadTexture(Filepath::TexturePath + "pbr/grass/albedo.png", TextureFilter::Repeat, true);
+	Texture* planeNormal = Texture::LoadTexture(Filepath::TexturePath + "pbr/grass/normal.png", TextureFilter::Repeat);
 
-	Texture* reflectionMap = Texture::LoadTexture(Filepath::TexturePath + "reflection.png");
-	Texture* blendTexture = Texture::LoadTexture(Filepath::TexturePath + "window.png", TextureFilter::Repeat, true); //load diffuse textures in linear space
-	Texture* brickTexture = Texture::LoadTexture(Filepath::TexturePath + "bricks2.jpg", TextureFilter::Repeat, true); //load diffuse textures in linear space
-	Texture* brickNormal = Texture::LoadTexture(Filepath::TexturePath + "bricks2_normal.jpg", TextureFilter::Repeat);
-	Texture* heightTexture = Texture::LoadTexture(Filepath::TexturePath + "bricks2_disp.jpg", TextureFilter::Repeat);
+	Texture* headDiffuse = Texture::LoadTexture(Filepath::ModelPath + "nyra/head_d.png", TextureFilter::Repeat, true);
+	Texture* headSpecular = Texture::LoadTexture(Filepath::ModelPath + "nyra/head_s.png", TextureFilter::Repeat);
+	Texture* headNormal = Texture::LoadTexture(Filepath::ModelPath + "nyra/head_n.png", TextureFilter::Repeat);
 
-	Texture* albedo = Texture::LoadTexture(Filepath::TexturePath + "pbr/gold/albedo.png", TextureFilter::Repeat, true); //load albedo textures in linear space
-	Texture* normal = Texture::LoadTexture(Filepath::TexturePath + "pbr/gold/normal.png", TextureFilter::Repeat);
-	Texture* metallic = Texture::LoadTexture(Filepath::TexturePath + "pbr/gold/metallic.png", TextureFilter::Repeat);
-	Texture* roughness = Texture::LoadTexture(Filepath::TexturePath + "pbr/gold/roughness.png", TextureFilter::Repeat);
-	Texture* ao = Texture::LoadTexture(Filepath::TexturePath + "pbr/gold/ao.png", TextureFilter::Repeat);
+	Texture* bodyDiffuse = Texture::LoadTexture(Filepath::ModelPath + "nyra/body_d.png", TextureFilter::Repeat, true);
+	Texture* bodySpecular = Texture::LoadTexture(Filepath::ModelPath + "nyra/body_s.png", TextureFilter::Repeat);
+	Texture* bodyNormal = Texture::LoadTexture(Filepath::ModelPath + "nyra/body_n.png", TextureFilter::Repeat);
+
+	Texture* fernDiffuse = Texture::LoadTexture(Filepath::ModelPath + "plants/FernBranch001_COL_1K.png", TextureFilter::Repeat, true);
+	Texture* grass1Diffuse = Texture::LoadTexture(Filepath::ModelPath + "plants/GrassBlades001_COL_1K.png", TextureFilter::Repeat, true);
+	Texture* grass2Diffuse = Texture::LoadTexture(Filepath::ModelPath + "plants/GrassBlades002_COL_1K.png", TextureFilter::Repeat, true);
+
+	Texture* rockDiffuse = Texture::LoadTexture(Filepath::ModelPath + "rock/Rock-Texture-Surface.jpg", TextureFilter::Repeat, true);
+
+	Texture* benchDiffuse = Texture::LoadTexture(Filepath::ModelPath + "bench/MexicanDoors_BaseColor.png", TextureFilter::Repeat, true);
+	Texture* benchSpecular = Texture::LoadTexture(Filepath::ModelPath + "bench/MexicanDoors_Glossiness.png");
+	Texture* benchNormal = Texture::LoadTexture(Filepath::ModelPath + "bench/MexicanDoors_Normal.png");
+
+	Texture* stumpDiffuse = Texture::LoadTexture(Filepath::ModelPath + "stump/Birch stump_D.png", TextureFilter::Repeat, true);
+	Texture* stumpNormal = Texture::LoadTexture(Filepath::ModelPath + "stump/Birch stump_N.png");
+
+	Texture* logDiffuse = Texture::LoadTexture(Filepath::ModelPath + "log/log_diffuse.png", TextureFilter::Repeat, true);
+	Texture* logNormal = Texture::LoadTexture(Filepath::ModelPath + "log/log_normal.png");
+
+	Texture* brickDiffuse = Texture::LoadTexture(Filepath::TexturePath + "bricks2.jpg", TextureFilter::Repeat, true);
+	Texture* brickNormal = Texture::LoadTexture(Filepath::TexturePath + "bricks2_normal.jpg");
+	Texture* brickHeight = Texture::LoadTexture(Filepath::TexturePath + "bricks2_disp.jpg");
 
 	//load skybox
 	std::cout << "Loading skybox..." << std::endl;
 
-	Texture* skybox = Texture::LoadHDR(Filepath::SkyboxPath + "Milkyway/Milkyway_Small.hdr"); //low res
-	//Texture* skybox = Texture::LoadHDR(Filepath::SkyboxPath + "Milkyway/Milkyway_BG.jpg"); //high res
+	std::vector<std::string> cubemapFaces{
+		"ocean/right.jpg",
+		"ocean/left.jpg",
+		"ocean/top.jpg",
+		"ocean/bottom.jpg",
+		"ocean/front.jpg",
+		"ocean/back.jpg",
+	};
+
+	Texture* skybox = Texture::LoadCubemap(cubemapFaces, true); //load skyboxes in linear space
 
 	//create materials
-	TextureMaterial* textureMaterial = new TextureMaterial(cyborgDiffuse, cyborgSpecular, cyborgNormal, BlendMode::Opaque);
-	textureMaterial->setEmissionMap(cyborgEmission);
+	TextureMaterial* planeMat = new TextureMaterial(planeDiffuse, nullptr, planeNormal, BlendMode::Opaque);
 
-	TextureMaterial* reflectionMaterial = new TextureMaterial(reflectionMap, BlendMode::Opaque);
-	reflectionMaterial->setReflectionMap(reflectionMap);
-	reflectionMaterial->setRefractionFactor(1.52f);
+	TextureMaterial* nyraHeadMat = new TextureMaterial(headDiffuse, headSpecular, headNormal, BlendMode::Cutout);
+	TextureMaterial* nyraBodyMat = new TextureMaterial(bodyDiffuse, bodySpecular, bodyNormal, BlendMode::Opaque);
 
-	TextureMaterial* blendMaterial = new TextureMaterial(blendTexture, BlendMode::Opaque);
-	blendMaterial->setBlendMode(BlendMode::Transparent);
+	TextureMaterial* fernMat = new TextureMaterial(fernDiffuse, BlendMode::Cutout);
+	TextureMaterial* grassMat1 = new TextureMaterial(grass1Diffuse, BlendMode::Cutout);
+	TextureMaterial* grassMat2 = new TextureMaterial(grass2Diffuse, BlendMode::Cutout);
 
-	TextureMaterial* heightMaterial = new TextureMaterial(brickTexture, BlendMode::Opaque);
-	heightMaterial->setNormalMap(brickNormal);
-	heightMaterial->setHeightMap(heightTexture);
-	heightMaterial->setHeightScale(0.15f);
+	TextureMaterial* rockMat = new TextureMaterial(rockDiffuse, BlendMode::Opaque);
+	TextureMaterial* benchMat = new TextureMaterial(benchDiffuse, benchSpecular, benchNormal, BlendMode::Opaque);
+	TextureMaterial* stumpMat = new TextureMaterial(stumpDiffuse, nullptr, stumpNormal, BlendMode::Opaque);
+	TextureMaterial* logMat = new TextureMaterial(logDiffuse,nullptr, logNormal, BlendMode::Opaque);
 
-	ColorMaterial* colorMaterial = new ColorMaterial(glm::vec3(1.0f), glm::vec3(0.5f), 1.0f, 32.0f);
-	ColorMaterial* cubeMaterial = new ColorMaterial(glm::vec3(0.1f), glm::vec3(0.5f), 0.0f, 32.0f);
-	ColorMaterial* sphereMaterial = new ColorMaterial(glm::vec3(1.5f, 1.5f, 0.0f), glm::vec3(1.5f, 1.5f, 0.0f), 0.0f);
-
-	PBRMaterial* pbrMaterial = new PBRMaterial(albedo, normal, metallic, roughness, ao, BlendMode::Opaque);
-	//pbrMaterial->setRefractionFactor(1.52f);
+	TextureMaterial* brickMat = new TextureMaterial(brickDiffuse, nullptr, brickNormal, BlendMode::Opaque);
+	brickMat->setHeightMap(brickHeight);
+	brickMat->setHeightScale(0.1f);
 
 	//create components for each node and fill with data
-	RenderComponent* cyborgRenderComponent = new RenderComponent(cyborgModel, textureMaterial);
-	RenderComponent* planeRenderComponent = new RenderComponent(planeModel, colorMaterial);
-	RenderComponent* sphereRenderComponent = new RenderComponent(sphereModel, reflectionMaterial);
-	RenderComponent* sphereLightRenderComponent = new RenderComponent(sphereModel, sphereMaterial);
-	RenderComponent* cubeRenderComponent = new RenderComponent(cubeModel, cubeMaterial);
-	RenderComponent* glassRenderComponent = new RenderComponent(planeModel, blendMaterial);
-	RenderComponent* brickRenderComponent = new RenderComponent(planeModel, heightMaterial);
-	RenderComponent* pbrRenderComponent = new RenderComponent(sphereModel, pbrMaterial);
-
 	CameraComponent* cameraComponent = new CameraComponent(glm::perspective(glm::radians(45.0f), (float)Window::ScreenWidth / (float)Window::ScreenHeight, 0.1f, 100.0f), 45.0f, 0.1f, 100.0f, 5.0f, 25.0f);
-	LightComponent* spotLightComponent = new LightComponent(LightType::Spot);
-	spotLightComponent->lightAmbient = glm::vec3(0.1f);
-	spotLightComponent->lightDiffuse = glm::vec3(0.5f, 0.0f, 0.0f);
-	//spotLightComponent->lightDiffuse = glm::vec3(1.0f);
-	spotLightComponent->lightSpecular = glm::vec3(0.8f);
-	spotLightComponent->constantAttenuation = 1.0f;
-	spotLightComponent->linearAttenuation = 0.09f;
-	spotLightComponent->quadraticAttenuation = 0.032f;
-	spotLightComponent->innerCutoff = glm::cos(glm::radians(15.0f));
-	spotLightComponent->outerCutoff = glm::cos(glm::radians(20.0f));
-
-	LightComponent* pointLightComponent = new LightComponent(LightType::Point);
-	pointLightComponent->lightAmbient = glm::vec3(0.1f);
-	pointLightComponent->lightDiffuse = glm::vec3(0.5f, 0.5f, 0.0f);
-	//pointLightComponent->lightDiffuse = glm::vec3(1.0f);
-	pointLightComponent->lightSpecular = glm::vec3(0.8f);
-	pointLightComponent->constantAttenuation = 1.0f;
-	pointLightComponent->linearAttenuation = 0.09f;
-	pointLightComponent->quadraticAttenuation = 0.032f;
 
 	LightComponent* directionalLightComponent = new LightComponent(LightType::Directional);
 	directionalLightComponent->lightAmbient = glm::vec3(0.1f);
@@ -170,40 +213,102 @@ void DemoScene1::initializeScene(World* world, SceneManager* manager) {
 	directionalLightComponent->lightSpecular = glm::vec3(0.1f);
 	directionalLightComponent->lightDirection = glm::vec3(1.0f, -2.0f, -1.0f);
 
+	RenderComponent* nyraHeadRenderComponent = new RenderComponent(nyraHead, nyraHeadMat);
+	RenderComponent* nyraBodyRenderComponent = new RenderComponent(nyraBody, nyraBodyMat);
+
+	RenderComponent* fern1RenderComponent = new RenderComponent(fernModel, fernMat);
+	RenderComponent* fern2RenderComponent = new RenderComponent(fernModel, fernMat);
+	RenderComponent* fern3RenderComponent = new RenderComponent(fernModel, fernMat);
+
+	RenderComponent* grass1RenderComponent = new RenderComponent(grassModel1, grassMat1);
+	RenderComponent* grass2RenderComponent = new RenderComponent(grassModel1, grassMat1);
+	RenderComponent* grass3RenderComponent = new RenderComponent(grassModel1, grassMat1);
+	RenderComponent* grass4RenderComponent = new RenderComponent(grassModel2, grassMat2);
+	RenderComponent* grass5RenderComponent = new RenderComponent(grassModel2, grassMat2);
+	RenderComponent* grass6RenderComponent = new RenderComponent(grassModel2, grassMat2);
+
+	RenderComponent* rockRenderComponent = new RenderComponent(rockModel, rockMat);
+	RenderComponent* benchRenderComponent = new RenderComponent(benchModel, benchMat);
+	RenderComponent* stumpRenderComponent = new RenderComponent(stumpModel, stumpMat);
+	RenderComponent* logRenderComponent = new RenderComponent(logModel, logMat);
+
+	RenderComponent* brickRenderComponent = new RenderComponent(planeModel, brickMat);
+
 	//add components to their respective nodes
 	mainCamera->addComponent(cameraComponent);
-	mainCamera->addComponent(spotLightComponent);
 	directionalLight->addComponent(directionalLightComponent);
-	sphereLight->addComponent(sphereLightRenderComponent);
-	sphereLight->addComponent(pointLightComponent);
 
-	cyborg->addComponent(cyborgRenderComponent);
-	plane->addComponent(planeRenderComponent);
-	sphereReflect->addComponent(sphereRenderComponent);
-	cube->addComponent(cubeRenderComponent);
-	glass->addComponent(glassRenderComponent);
+	head->addComponent(nyraHeadRenderComponent);
+	body->addComponent(nyraBodyRenderComponent);
+
+	fern1->addComponent(fern1RenderComponent);
+	fern2->addComponent(fern2RenderComponent);
+	fern3->addComponent(fern3RenderComponent);
+
+	grass1->addComponent(grass1RenderComponent);
+	grass2->addComponent(grass2RenderComponent);
+	grass3->addComponent(grass3RenderComponent);
+	grass4->addComponent(grass4RenderComponent);
+	grass5->addComponent(grass5RenderComponent);
+	grass6->addComponent(grass6RenderComponent);
+
+	rock->addComponent(rockRenderComponent);
+	bench->addComponent(benchRenderComponent);
+	stump->addComponent(stumpRenderComponent);
+	log->addComponent(logRenderComponent);
+
 	bricks->addComponent(brickRenderComponent);
-	pbrSphere->addComponent(pbrRenderComponent);
-
-	//set children
-	//mainCamera->addChild(cube);
 
 	//add nodes to the world
 	world->addChild(mainCamera);
 	world->addChild(directionalLight);
-	world->addChild(cyborg);
-	world->addChild(plane);
-	world->addChild(sphereReflect);
-	world->addChild(sphereLight);
-	world->addChild(cube);
-	world->addChild(glass);
+
+	nyra->addChild(head);
+	nyra->addChild(body);
+	world->addChild(nyra);
+
+	world->addChild(fern1);
+	world->addChild(fern2);
+	world->addChild(fern3);
+
+	world->addChild(grass1);
+	world->addChild(grass2);
+	world->addChild(grass3);
+	world->addChild(grass4);
+	world->addChild(grass5);
+	world->addChild(grass6);
+
+	world->addChild(rock);
+	world->addChild(bench);
+	world->addChild(stump);
+	world->addChild(log);
+
 	world->addChild(bricks);
-	world->addChild(pbrSphere);
+
+	//add the ground
+	const unsigned int rows = 7;
+	const unsigned int cols = 7;
+
+	Node* plane;
+	RenderComponent* planeRenderComponent;
+
+	for(unsigned int i = 0; i < rows; i++) {
+		for(unsigned int j = 0; j < cols; j++) {
+			plane = new Node(glm::vec3(2.0f * i - cols / 2.0f - 2.0f, 0.0f, 2.0f * j - rows / 2.0f - 2.0f), "plane " + std::to_string(cols * i + j));
+			planeRenderComponent = new RenderComponent(planeModel, planeMat);
+
+			plane->addComponent(planeRenderComponent);
+
+			ground->addChild(plane);
+		}
+	}
+
+	world->addChild(ground);
 
 	//set main camera, (main) directional light and skybox
 	manager->setMainCamera(mainCamera);
 	manager->setDirectionalLight(directionalLight);
-	manager->setSkybox(skybox, true);
+	manager->setSkybox(skybox, false);
 
 	std::cout << "Scene initialized" << std::endl;
 }

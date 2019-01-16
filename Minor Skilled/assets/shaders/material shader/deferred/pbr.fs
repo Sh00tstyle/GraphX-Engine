@@ -61,7 +61,7 @@ void main() {
 
     //parallax mapping
     vec2 texCoord = ParallaxMapping();
-    if(material.hasHeight && (texCoord.x > 1.0f || texCoord.y > 1.0f || texCoord.x < 0.0f || texCoord.y < 0.0f)) discard; //cutoff edges to avoid artifacts when using parallax mapping
+    //if(material.hasHeight && (texCoord.x > 1.0f || texCoord.y > 1.0f || texCoord.x < 0.0f || texCoord.y < 0.0f)) discard; //cutoff edges to avoid artifacts when using parallax mapping
 
     vec3 normal = GetNormal(texCoord); //view space normal
 

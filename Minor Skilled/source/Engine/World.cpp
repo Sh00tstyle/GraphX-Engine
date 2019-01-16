@@ -38,7 +38,7 @@ void World::update(std::vector<Node*>& renderables, std::vector<Node*>& lights) 
 	glm::mat4 worldModel = glm::mat4(1.0f);
 
 	for(unsigned int i = 0; i < _children.size(); i++) {
-		_children[i]->update(worldModel,  renderables, lights);
+		_children[i]->update(worldModel, renderables, lights);
 	}
 }
 

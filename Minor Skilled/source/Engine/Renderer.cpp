@@ -296,10 +296,15 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 	bool useShadows = RenderSettings::IsEnabled(RenderSettings::Shadows);
 
 	if(directionalLight != nullptr) {
-		LightComponent* directionalLightComponent = (LightComponent*)directionalLight->getComponent(ComponentType::Light);
-		directionalLightPos = glm::normalize(directionalLightComponent->lightDirection) * -4.0f; //offset light position 4 units in the opposite direction of the light direction
+		const float size = 15.0f;
+		const float nearPlane = 1.0f;
+		const float farPlane = 10.0f;
+		const float lightOffset = 6.0f;
 
-		lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 1.0f, 7.5f);
+		LightComponent* directionalLightComponent = (LightComponent*)directionalLight->getComponent(ComponentType::Light);
+		directionalLightPos = glm::normalize(directionalLightComponent->lightDirection) * -lightOffset; //offset light position 4 units in the opposite direction of the light direction
+
+		lightProjection = glm::ortho(-size, size, -size, size, nearPlane, farPlane);
 		lightView = glm::lookAt(directionalLightPos, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 		lightSpaceMatrix = lightProjection * lightView;
 	} else if(useShadows) {

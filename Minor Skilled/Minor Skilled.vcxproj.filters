@@ -43,9 +43,6 @@
     <Filter Include="dependencies\stb_image">
       <UniqueIdentifier>{b6fd85fd-1ba0-4206-a182-a95454f93f2c}</UniqueIdentifier>
     </Filter>
-    <Filter Include="shaders\shadow shader">
-      <UniqueIdentifier>{177049c7-7bf3-4677-8b3b-e06355b4eb39}</UniqueIdentifier>
-    </Filter>
     <Filter Include="shaders\skybox shader">
       <UniqueIdentifier>{cd534051-9e67-480f-a9cc-2b7fa3a907b4}</UniqueIdentifier>
     </Filter>
@@ -57,6 +54,9 @@
     </Filter>
     <Filter Include="source\Scenes">
       <UniqueIdentifier>{2ca960dc-f5af-4ece-82c7-1c876cfd75b4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="shaders\depth shader">
+      <UniqueIdentifier>{177049c7-7bf3-4677-8b3b-e06355b4eb39}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -371,19 +371,19 @@
       <Filter>shaders\post processing shader</Filter>
     </None>
     <None Include="assets\shaders\shadow shader\shadow.fs">
-      <Filter>shaders\shadow shader</Filter>
+      <Filter>shaders\depth shader</Filter>
     </None>
     <None Include="assets\shaders\shadow shader\shadow.vs">
-      <Filter>shaders\shadow shader</Filter>
+      <Filter>shaders\depth shader</Filter>
     </None>
     <None Include="assets\shaders\shadow shader\shadowCube.fs">
-      <Filter>shaders\shadow shader</Filter>
+      <Filter>shaders\depth shader</Filter>
     </None>
     <None Include="assets\shaders\shadow shader\shadowCube.gs">
-      <Filter>shaders\shadow shader</Filter>
+      <Filter>shaders\depth shader</Filter>
     </None>
     <None Include="assets\shaders\shadow shader\shadowCube.vs">
-      <Filter>shaders\shadow shader</Filter>
+      <Filter>shaders\depth shader</Filter>
     </None>
     <None Include="assets\shaders\skybox shader\brdf.fs">
       <Filter>shaders\skybox shader</Filter>
@@ -450,6 +450,15 @@
     </None>
     <None Include="assets\shaders\skybox shader\cube.vs">
       <Filter>shaders\skybox shader</Filter>
+    </None>
+    <None Include="assets\shaders\post processing shader\ssr.fs">
+      <Filter>shaders\post processing shader</Filter>
+    </None>
+    <None Include="assets\shaders\depth shader\depth.fs">
+      <Filter>shaders\depth shader</Filter>
+    </None>
+    <None Include="assets\shaders\depth shader\depth.vs">
+      <Filter>shaders\depth shader</Filter>
     </None>
   </ItemGroup>
 </Project>
