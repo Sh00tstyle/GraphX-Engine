@@ -531,7 +531,6 @@ void OverlayUI::_setupInspector() {
 						ImGui::Text(blendModeString.c_str());
 						ImGui::Checkbox("Flip Normals", &pbrMaterial->getFlipNormals());
 						ImGui::Checkbox("Casts shadows", &pbrMaterial->getCastsShadows());
-						ImGui::InputFloat("Specular", &pbrMaterial->getSpecular());
 						ImGui::InputFloat("Refraction", &pbrMaterial->getRefractionFactor());
 						ImGui::ColorEdit3("F0 Color", &pbrMaterial->getF0().x);
 						ImGui::Text("");
@@ -576,14 +575,14 @@ void OverlayUI::_setupSceneSelection() {
 	ImGui::SetWindowPos(ImVec2(0, 0));
 	ImGui::SetWindowSize(ImVec2(Window::ScreenWidth * 1.0f / 6.0f, 64.0f));
 
-	if(ImGui::Button("Day Demo")) {
+	if(ImGui::Button("Out Demo")) {
 		_activeNode = nullptr;
 		_sceneManager->queueScene(0);
 	}
 
 	ImGui::SameLine();
 
-	if(ImGui::Button("Night Demo")) {
+	if(ImGui::Button("In Demo")) {
 		_activeNode = nullptr;
 		_sceneManager->queueScene(1);
 	}

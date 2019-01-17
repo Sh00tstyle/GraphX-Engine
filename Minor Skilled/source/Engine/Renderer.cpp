@@ -401,8 +401,15 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 }
 
 void Renderer::renderEnvironmentMaps(std::vector<Node*>& renderables, Node* directionalLight, Texture* skybox) {
-	//obtain all render components and their model matrices from the renderables vector
+	for(std::map<RenderComponent*, IBLMaps>::iterator it = _iblMaps.begin(); it != _iblMaps.end(); it++) {
+		delete it->second.environmentMap;
+		delete it->second.irradianceMap;
+		delete it->second.prefilterMap;
+	}
+
 	_iblMaps.clear();
+
+	//obtain all render components and their model matrices from the renderables vector
 	std::vector<std::pair<RenderComponent*, glm::mat4>> renderComponents;
 
 	for(unsigned int i = 0; i < renderables.size(); i++) {
@@ -872,18 +879,19 @@ void Renderer::_initShadowCubeFBO() {
 	_shadowCubeFBO->setDrawBuffer(GL_NONE); //explicitly tell OpenGL that we are only using the depth attachments and no color attachments, otherwise the FBO will be incomplete
 	_shadowCubeFBO->setReadBuffer(GL_NONE);
 
+	float borderColor[] = {1.0f, 1.0f, 1.0f, 1.0f};
+
 	//create shadow cubemap texture for each possible light
 	for(unsigned int i = 0; i < RenderSettings::MaxCubeShadows; i++) {
 		_shadowCubeMaps.push_back(new Texture(GL_TEXTURE_CUBE_MAP)); //add to vector
 
 		_shadowCubeMaps[i]->bind();
+		_shadowCubeMaps[i]->filter(GL_NEAREST, GL_NEAREST, GL_CLAMP_TO_EDGE);
 
 		//init all cubemap faces
 		for(unsigned int j = 0; j < 6; j++) {
 			_shadowCubeMaps[i]->initTarget(GL_TEXTURE_CUBE_MAP_POSITIVE_X + j, GL_DEPTH_COMPONENT24, RenderSettings::ShadowWidth, RenderSettings::ShadowHeight, GL_DEPTH_COMPONENT, GL_FLOAT, NULL); //we only need the depth component
 		}
-
-		_shadowCubeMaps[i]->filter(GL_NEAREST, GL_NEAREST, GL_CLAMP_TO_EDGE);
 	}
 
 	//bind back to default framebuffer
@@ -1301,7 +1309,7 @@ void Renderer::_renderShadowMaps(std::vector<std::pair<RenderComponent*, glm::ma
 			_shadowCubeShader->setMat4("shadowMatrices[" + std::to_string(i) + "]", shadowTransforms[i]);
 		}
 
-		_shadowCubeShader->setFloat("farPlane", RenderSettings::EnvironmentFarPlane);
+		_shadowCubeShader->setFloat("farPlane", RenderSettings::CubeShadowFarPlane);
 		_shadowCubeShader->setVec3("lightPos", lightPos);
 
 		//render all models' depth into the shadow cubemap from the lights perspective
@@ -1847,7 +1855,7 @@ void Renderer::_fillUniformBuffers(glm::mat4& viewMatrix, glm::mat4& projectionM
 	_dataUBO->bind();
 	_dataUBO->bufferSubData(0, sizeof(GLint), &dirShadows); //buffer use shadows bool
 	_dataUBO->bufferSubData(4, sizeof(GLint), &pointLightCount); //buffer point light amount
-	_dataUBO->bufferSubData(8, sizeof(GLfloat), &RenderSettings::EnvironmentFarPlane); //buffer cube map far plane
+	_dataUBO->bufferSubData(8, sizeof(GLfloat), &RenderSettings::CubeShadowFarPlane); //buffer cube map far plane
 
 	_dataUBO->bufferSubData(sizeof(glm::vec4), sizeof(glm::vec4), glm::value_ptr(cameraPos)); //buffer cameraPos
 	_dataUBO->bufferSubData(sizeof(glm::vec4) * 2, sizeof(glm::vec4), glm::value_ptr(directionalLightPos)); //buffer directional light pos

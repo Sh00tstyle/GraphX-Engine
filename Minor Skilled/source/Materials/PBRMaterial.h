@@ -19,7 +19,6 @@ class PBRMaterial : public Material {
 		Texture* getEmissionMap();
 		Texture* getHeightMap();
 		glm::vec3& getF0();
-		float& getSpecular();
 		float& getRefractionFactor();
 		float& getHeightScale();
 		bool& getFlipNormals();
@@ -32,7 +31,6 @@ class PBRMaterial : public Material {
 		void setEmissionMap(Texture* emissionMap);
 		void setHeightMap(Texture* heightMap);
 		void setF0(glm::vec3 F0);
-		void setSpecular(float specular);
 		void setRefractionFactor(float refractionFactor);
 		void setHeightScale(float heightScale);
 		void setFlipNormals(bool value);
@@ -53,7 +51,6 @@ class PBRMaterial : public Material {
 		Texture* _emissionMap;
 		Texture* _heightMap;
 		glm::vec3 _F0;
-		float _specular;
 		float _refractionFactor;
 		float _heightScale;
 		bool _flipNormals;

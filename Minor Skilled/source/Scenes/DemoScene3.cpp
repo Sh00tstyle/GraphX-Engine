@@ -92,7 +92,7 @@ void DemoScene3::initializeScene(World* world, SceneManager* manager) {
 	Texture* cyborgNormal = Texture::LoadTexture(Filepath::ModelPath + "cyborg/cyborg_normal.png");
 	Texture* cyborgEmission = Texture::LoadTexture(Filepath::ModelPath + "cyborg/cyborg_emission.png", TextureFilter::Repeat, true); //load emission textures in linear space
 
-	Texture* reflectionMap = Texture::LoadTexture(Filepath::TexturePath + "reflection.png");
+	Texture* reflectionMap = Texture::LoadTexture(Filepath::TexturePath + "white.png");
 	Texture* blendTexture = Texture::LoadTexture(Filepath::TexturePath + "window.png", TextureFilter::Repeat, true); //load diffuse textures in linear space
 	Texture* brickTexture = Texture::LoadTexture(Filepath::TexturePath + "bricks2.jpg", TextureFilter::Repeat, true); //load diffuse textures in linear space
 	Texture* brickNormal = Texture::LoadTexture(Filepath::TexturePath + "bricks2_normal.jpg", TextureFilter::Repeat);

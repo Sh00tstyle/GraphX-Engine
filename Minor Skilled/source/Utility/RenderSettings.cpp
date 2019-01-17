@@ -29,7 +29,7 @@ bool RenderSettings::ShowDirectionalShadows = true;
 bool RenderSettings::ShowCubeShadows = true;
 
 float RenderSettings::CubeShadowNearPlane = 0.5f;
-float RenderSettings::CubeShadowFarPlane = 7.5f;
+float RenderSettings::CubeShadowFarPlane = 12.0f;
 const unsigned int RenderSettings::MaxCubeShadows = 5;
 
 float RenderSettings::DirectionalShadowNearPlane = 1.0f;
@@ -39,7 +39,7 @@ float RenderSettings::DirectionalLightOffset = 6.0f;
 
 //cubemap render configurations
 const float RenderSettings::EnvironmentNearPlane = 0.5f;
-const float RenderSettings::EnvironmentFarPlane = 7.5f;
+const float RenderSettings::EnvironmentFarPlane = 10.0f;
 
 //equirectangular to cubemap configurations
 const unsigned int RenderSettings::SkyboxHeight = 512;

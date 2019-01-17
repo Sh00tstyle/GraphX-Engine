@@ -11,7 +11,6 @@ struct Material {
 
     vec3 F0;
 
-    float specular;
     float refractionFactor;
     float heightScale;
     bool flipNormals;
@@ -66,6 +65,7 @@ void main() {
 
     vec3 normal = GetNormal(texCoord); //view space normal
 
+    float metallic = texture(material.metallic, texCoord).r;
     float roughness = texture(material.roughness, texCoord).r;
 
     vec3 R;
@@ -87,9 +87,9 @@ void main() {
     gAlbedo.rgb = texture(material.albedo, texCoord).rgb;
 
     gEmissionSpec.r = texture(material.emission, texCoord).r;
-    gEmissionSpec.g = material.specular;
+    gEmissionSpec.g = metallic; //treat metallic as specular since only metallic parts reflect in pbr
 
-    gMetalRoughAO.r = texture(material.metallic, texCoord).r;
+    gMetalRoughAO.r = metallic;
     gMetalRoughAO.g = roughness;
     gMetalRoughAO.b = texture(material.ao, texCoord).r;
 

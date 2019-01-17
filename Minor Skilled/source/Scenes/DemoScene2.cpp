@@ -38,43 +38,56 @@ void DemoScene2::initializeScene(World* world, SceneManager* manager) {
 
 	//create scene objects which represent graph nodes
 	Node* mainCamera = new Node(glm::vec3(0.0f, 1.0f, 3.5f), "mainCamera");
-	Node* directionalLight = new Node(glm::vec3(0.0f, 0.0f, 0.0f), "directionalLight");
+	Node* pointLight = new Node(glm::vec3(0.0f, 5.8f, 0.0f), "pointLight");
+
 	Node* cyborg = new Node(glm::vec3(0.0f, 0.0f, 0.0f), "cyborg");
-	Node* plane = new Node(glm::vec3(0.0f, -0.01f, 0.0f), "plane");
-	Node* sphereReflect = new Node(glm::vec3(2.0f, 0.8f, -1.0f), "sphereReflect");
-	Node* sphereLight = new Node(glm::vec3(-2.0f, 1.0f, 0.0f), "sphereLight");
-	Node* cube = new Node(glm::vec3(2.0f, 0.3f, 1.0f), "cube");
-	//Node* cube = new Node(glm::vec3(0.0f, -1.0f, 0.0f), "cube");
-	Node* glass = new Node(glm::vec3(3.0f, 0.3f, 3.0f), "glass");
-	Node* bricks = new Node(glm::vec3(-2.5f, 0.5f, 2.5f), "bricks");
-	Node* pbrSphere = new Node(glm::vec3(-2.5f, 0.5, -1.5f), "pbrSphere");
+
+	Node* ground = new Node(glm::vec3(0.0f, 0.0f, 0.0f), "ground");
+	Node* leftWall = new Node(glm::vec3(-5.0f, 3.0f, 0.0f), "leftWall");
+	Node* rightWall = new Node(glm::vec3(5.0f, 3.0f, 0.0f), "rightWall");
+	Node* roof = new Node(glm::vec3(0.0f, 6.0f, 0.0f), "roof");
+
+	Node* mirror = new Node(glm::vec3(2.0f, 1.0f, 2.5f), "mirror");
+	Node* glass = new Node(glm::vec3(-3.0f, 0.5f, -2.0f), "glass");
+
+	Node* windowFront = new Node(glm::vec3(0.0f, 3.0f, 5.0f), "windowFront");
+	Node* windowBack = new Node(glm::vec3(0.0f, 3.0f, -5.0f), "windowBack");
 
 	//adjust transforms
-	Transform* transform = cyborg->getTransform();
+	Transform* transform = pointLight->getTransform();
+	transform->scale(glm::vec3(0.4f));
+
+	transform = cyborg->getTransform();
 	transform->scale(glm::vec3(0.5f));
 
-	transform = plane->getTransform();
-	transform->scale(glm::vec3(4.0f, 1.0f, 4.0f));
+	transform = ground->getTransform();
+	transform->scale(glm::vec3(5.0f, 1.0f, 5.0f));
 
-	transform = sphereReflect->getTransform();
-	transform->scale(glm::vec3(0.2f));
+	transform = leftWall->getTransform();
+	transform->setEulerRotation(90.0f, 90.0f, 0.0f);
+	transform->scale(glm::vec3(5.0f, 1.0f, 3.0f));
 
-	transform = sphereLight->getTransform();
-	transform->scale(glm::vec3(0.2f));
+	transform = rightWall->getTransform();
+	transform->setEulerRotation(90.0f, 270.0f, 0.0f);
+	transform->scale(glm::vec3(5.0f, 1.0f, 3.0f));
 
-	transform = cube->getTransform();
-	transform->scale(glm::vec3(0.3f));
+	transform = roof->getTransform();
+	transform->setEulerRotation(0.0f, 0.0f, 180.0f);
+	transform->scale(glm::vec3(5.0f, 1.0f, 5.0f));
+
+	transform = mirror->getTransform();
+	transform->scale(glm::vec3(0.25f));
 
 	transform = glass->getTransform();
-	transform->scale(glm::vec3(0.3f));
+	transform->scale(glm::vec3(0.25f));
+
+	transform = windowFront->getTransform();
 	transform->setEulerRotation(90.0f, 0.0f, 0.0f);
+	transform->scale(glm::vec3(5.0f, 1.0f, 3.0f));
 
-	transform = bricks->getTransform();
-	transform->scale(glm::vec3(0.3f));
-	transform->setEulerRotation(45.0f, 0.0f, 45.0f);
-
-	transform = pbrSphere->getTransform();
-	transform->scale(glm::vec3(0.2f));
+	transform = windowBack->getTransform();
+	transform->setEulerRotation(90.0f, 0.0f, 0.0f);
+	transform->scale(glm::vec3(5.0f, 1.0f, 3.0f));
 
 	//load models
 	std::cout << "Loading models..." << std::endl;
@@ -82,7 +95,7 @@ void DemoScene2::initializeScene(World* world, SceneManager* manager) {
 	Model* cyborgModel = Model::LoadModel(Filepath::ModelPath + "cyborg/cyborg.obj");
 	Model* planeModel = Model::LoadModel(Filepath::ModelPath + "plane.obj");
 	Model* sphereModel = Model::LoadModel(Filepath::ModelPath + "sphere_smooth.obj");
-	Model* cubeModel = Model::LoadModel(Filepath::ModelPath + "cube_smooth.obj");
+	Model* suzannaModel = Model::LoadModel(Filepath::ModelPath + "suzanna_smooth.obj");
 
 	//load textures
 	std::cout << "Loading textures..." << std::endl;
@@ -90,65 +103,51 @@ void DemoScene2::initializeScene(World* world, SceneManager* manager) {
 	Texture* cyborgDiffuse = Texture::LoadTexture(Filepath::ModelPath + "cyborg/cyborg_diffuse.png", TextureFilter::Repeat, true); //load diffuse textures in linear space
 	Texture* cyborgSpecular = Texture::LoadTexture(Filepath::ModelPath + "cyborg/cyborg_specular.png");
 	Texture* cyborgNormal = Texture::LoadTexture(Filepath::ModelPath + "cyborg/cyborg_normal.png");
-	Texture* cyborgEmission = Texture::LoadTexture(Filepath::ModelPath + "cyborg/cyborg_emission.png", TextureFilter::Repeat, true); //load emission textures in linear space
+	Texture* cyborgEmission = Texture::LoadTexture(Filepath::ModelPath + "cyborg/cyborg_emission.png");
 
-	Texture* reflectionMap = Texture::LoadTexture(Filepath::TexturePath + "reflection.png");
-	Texture* blendTexture = Texture::LoadTexture(Filepath::TexturePath + "window.png", TextureFilter::Repeat, true); //load diffuse textures in linear space
-	Texture* brickTexture = Texture::LoadTexture(Filepath::TexturePath + "bricks2.jpg", TextureFilter::Repeat, true); //load diffuse textures in linear space
-	Texture* brickNormal = Texture::LoadTexture(Filepath::TexturePath + "bricks2_normal.jpg", TextureFilter::Repeat);
-	Texture* heightTexture = Texture::LoadTexture(Filepath::TexturePath + "bricks2_disp.jpg", TextureFilter::Repeat);
+	Texture* whiteTexture = Texture::LoadTexture(Filepath::TexturePath + "white.png");
 
-	Texture* albedo = Texture::LoadTexture(Filepath::TexturePath + "pbr/gold/albedo.png", TextureFilter::Repeat, true); //load albedo textures in linear space
-	Texture* normal = Texture::LoadTexture(Filepath::TexturePath + "pbr/gold/normal.png", TextureFilter::Repeat);
-	Texture* metallic = Texture::LoadTexture(Filepath::TexturePath + "pbr/gold/metallic.png", TextureFilter::Repeat);
-	Texture* roughness = Texture::LoadTexture(Filepath::TexturePath + "pbr/gold/roughness.png", TextureFilter::Repeat);
-	Texture* ao = Texture::LoadTexture(Filepath::TexturePath + "pbr/gold/ao.png", TextureFilter::Repeat);
+	Texture* groundDiffuse = Texture::LoadTexture(Filepath::TexturePath + "wood.png", TextureFilter::Repeat, true);
+
+	Texture* brickDiffuse = Texture::LoadTexture(Filepath::TexturePath + "brickwall.jpg", TextureFilter::Repeat, true);
+	Texture* brickNormal = Texture::LoadTexture(Filepath::TexturePath + "brickwall_normal.jpg");
+
+	Texture* window1Diffuse = Texture::LoadTexture(Filepath::TexturePath + "window.png", TextureFilter::Repeat, true);
+	Texture* window2Diffuse = Texture::LoadTexture(Filepath::TexturePath + "window2.png", TextureFilter::Repeat, true);
 
 	//load skybox
 	std::cout << "Loading skybox..." << std::endl;
 
 	Texture* skybox = Texture::LoadHDR(Filepath::SkyboxPath + "Milkyway/Milkyway_Small.hdr"); //low res
-																							  //Texture* skybox = Texture::LoadHDR(Filepath::SkyboxPath + "Milkyway/Milkyway_BG.jpg"); //high res
 
-																							  //create materials
-	TextureMaterial* textureMaterial = new TextureMaterial(cyborgDiffuse, cyborgSpecular, cyborgNormal, BlendMode::Opaque);
-	textureMaterial->setEmissionMap(cyborgEmission);
+	//create materials
+	ColorMaterial* pointLightMat = new ColorMaterial(glm::vec3(1.5f, 1.5f, 0.0f), glm::vec3(1.5f, 1.5f, 0.0f), 0.0f);
 
-	TextureMaterial* reflectionMaterial = new TextureMaterial(reflectionMap, BlendMode::Opaque);
-	reflectionMaterial->setReflectionMap(reflectionMap);
-	reflectionMaterial->setRefractionFactor(1.52f);
+	TextureMaterial* cyborgMat = new TextureMaterial(cyborgDiffuse, cyborgSpecular, cyborgNormal, BlendMode::Opaque);
+	cyborgMat->setEmissionMap(cyborgEmission);
 
-	TextureMaterial* blendMaterial = new TextureMaterial(blendTexture, BlendMode::Opaque);
-	blendMaterial->setBlendMode(BlendMode::Transparent);
+	TextureMaterial* groundMat = new TextureMaterial(groundDiffuse, whiteTexture, nullptr, BlendMode::Opaque);
+	groundMat->setShininess(64.0f);
 
-	TextureMaterial* heightMaterial = new TextureMaterial(brickTexture, BlendMode::Opaque);
-	heightMaterial->setNormalMap(brickNormal);
-	heightMaterial->setHeightMap(heightTexture);
-	heightMaterial->setHeightScale(0.15f);
+	TextureMaterial* brickMat = new TextureMaterial(brickDiffuse, nullptr, brickNormal, BlendMode::Opaque);
 
-	ColorMaterial* colorMaterial = new ColorMaterial(glm::vec3(1.0f), glm::vec3(0.5f), 1.0f, 32.0f);
-	ColorMaterial* cubeMaterial = new ColorMaterial(glm::vec3(0.1f), glm::vec3(0.5f), 0.0f, 32.0f);
-	ColorMaterial* sphereMaterial = new ColorMaterial(glm::vec3(1.5f, 1.5f, 0.0f), glm::vec3(1.5f, 1.5f, 0.0f), 0.0f);
+	TextureMaterial* mirrorMat = new TextureMaterial(whiteTexture, BlendMode::Opaque);
+	mirrorMat->setReflectionMap(whiteTexture);
 
-	PBRMaterial* pbrMaterial = new PBRMaterial(albedo, normal, metallic, roughness, ao, BlendMode::Opaque);
-	//pbrMaterial->setRefractionFactor(1.52f);
+	TextureMaterial* glassMat = new TextureMaterial(whiteTexture, BlendMode::Opaque);
+	glassMat->setReflectionMap(whiteTexture);
+	glassMat->setRefractionFactor(1.52f);
+
+	TextureMaterial* window1Mat = new TextureMaterial(window1Diffuse, BlendMode::Transparent);
+	TextureMaterial* window2Mat = new TextureMaterial(window2Diffuse, BlendMode::Transparent);
 
 	//create components for each node and fill with data
-	RenderComponent* cyborgRenderComponent = new RenderComponent(cyborgModel, textureMaterial);
-	RenderComponent* planeRenderComponent = new RenderComponent(planeModel, colorMaterial);
-	RenderComponent* sphereRenderComponent = new RenderComponent(sphereModel, reflectionMaterial);
-	RenderComponent* sphereLightRenderComponent = new RenderComponent(sphereModel, sphereMaterial);
-	RenderComponent* cubeRenderComponent = new RenderComponent(cubeModel, cubeMaterial);
-	RenderComponent* glassRenderComponent = new RenderComponent(planeModel, blendMaterial);
-	RenderComponent* brickRenderComponent = new RenderComponent(planeModel, heightMaterial);
-	RenderComponent* pbrRenderComponent = new RenderComponent(sphereModel, pbrMaterial);
-
 	CameraComponent* cameraComponent = new CameraComponent(glm::perspective(glm::radians(45.0f), (float)Window::ScreenWidth / (float)Window::ScreenHeight, 0.1f, 100.0f), 45.0f, 0.1f, 100.0f, 5.0f, 25.0f);
+
 	LightComponent* spotLightComponent = new LightComponent(LightType::Spot);
-	spotLightComponent->lightAmbient = glm::vec3(0.1f);
-	spotLightComponent->lightDiffuse = glm::vec3(0.5f, 0.0f, 0.0f);
-	//spotLightComponent->lightDiffuse = glm::vec3(1.0f);
-	spotLightComponent->lightSpecular = glm::vec3(0.8f);
+	spotLightComponent->lightAmbient = glm::vec3(1.0f);
+	spotLightComponent->lightDiffuse = glm::vec3(1.0f);
+	spotLightComponent->lightSpecular = glm::vec3(1.0f);
 	spotLightComponent->constantAttenuation = 1.0f;
 	spotLightComponent->linearAttenuation = 0.09f;
 	spotLightComponent->quadraticAttenuation = 0.032f;
@@ -158,51 +157,73 @@ void DemoScene2::initializeScene(World* world, SceneManager* manager) {
 	LightComponent* pointLightComponent = new LightComponent(LightType::Point);
 	pointLightComponent->lightAmbient = glm::vec3(0.1f);
 	pointLightComponent->lightDiffuse = glm::vec3(0.5f, 0.5f, 0.0f);
-	//pointLightComponent->lightDiffuse = glm::vec3(1.0f);
 	pointLightComponent->lightSpecular = glm::vec3(0.8f);
 	pointLightComponent->constantAttenuation = 1.0f;
 	pointLightComponent->linearAttenuation = 0.09f;
 	pointLightComponent->quadraticAttenuation = 0.032f;
 
-	LightComponent* directionalLightComponent = new LightComponent(LightType::Directional);
-	directionalLightComponent->lightAmbient = glm::vec3(0.1f);
-	directionalLightComponent->lightDiffuse = glm::vec3(0.5f);
-	directionalLightComponent->lightSpecular = glm::vec3(0.1f);
-	directionalLightComponent->lightDirection = glm::vec3(1.0f, -2.0f, -1.0f);
+	LightComponent* point2LightComponent = new LightComponent(LightType::Point);
+	point2LightComponent->lightAmbient = glm::vec3(0.1f);
+	point2LightComponent->lightDiffuse = glm::vec3(0.0f, 0.0f, 0.5f);
+	point2LightComponent->lightSpecular = glm::vec3(0.8f);
+	point2LightComponent->constantAttenuation = 1.0f;
+	point2LightComponent->linearAttenuation = 0.09f;
+	point2LightComponent->quadraticAttenuation = 0.032f;
+
+	RenderComponent* pointLightRenderComponent = new RenderComponent(sphereModel, pointLightMat);
+
+	RenderComponent* cyborgRenderComponent = new RenderComponent(cyborgModel, cyborgMat);
+
+	RenderComponent* planeRenderComponent = new RenderComponent(planeModel, groundMat);
+	RenderComponent* leftWallRenderComponent = new RenderComponent(planeModel, brickMat);
+	RenderComponent* rightWallRenderComponent = new RenderComponent(planeModel, brickMat);
+	RenderComponent* roofRenderComponent = new RenderComponent(planeModel, brickMat);
+
+	RenderComponent* mirrorRenderComponent = new RenderComponent(sphereModel, mirrorMat);
+	RenderComponent* glassRenderComponent = new RenderComponent(suzannaModel, glassMat);
+
+	RenderComponent* windowFrontRenderComponent = new RenderComponent(planeModel, window1Mat);
+	RenderComponent* windowBackRenderComponent = new RenderComponent(planeModel, window2Mat);
 
 	//add components to their respective nodes
 	mainCamera->addComponent(cameraComponent);
 	mainCamera->addComponent(spotLightComponent);
-	directionalLight->addComponent(directionalLightComponent);
-	sphereLight->addComponent(sphereLightRenderComponent);
-	sphereLight->addComponent(pointLightComponent);
+
+	pointLight->addComponent(pointLightRenderComponent);
+	pointLight->addComponent(pointLightComponent);
 
 	cyborg->addComponent(cyborgRenderComponent);
-	plane->addComponent(planeRenderComponent);
-	sphereReflect->addComponent(sphereRenderComponent);
-	cube->addComponent(cubeRenderComponent);
-	glass->addComponent(glassRenderComponent);
-	bricks->addComponent(brickRenderComponent);
-	pbrSphere->addComponent(pbrRenderComponent);
+	ground->addComponent(planeRenderComponent);
+	leftWall->addComponent(leftWallRenderComponent);
+	rightWall->addComponent(rightWallRenderComponent);
+	roof->addComponent(roofRenderComponent);
 
-	//set children
-	//mainCamera->addChild(cube);
+	mirror->addComponent(mirrorRenderComponent);
+	mirror->addComponent(point2LightComponent);
+	glass->addComponent(glassRenderComponent);
+
+	windowFront->addComponent(windowFrontRenderComponent);
+	windowBack->addComponent(windowBackRenderComponent);
 
 	//add nodes to the world
 	world->addChild(mainCamera);
-	world->addChild(directionalLight);
+	world->addChild(pointLight);
+
 	world->addChild(cyborg);
-	world->addChild(plane);
-	world->addChild(sphereReflect);
-	world->addChild(sphereLight);
-	world->addChild(cube);
+
+	world->addChild(ground);
+	world->addChild(leftWall);
+	world->addChild(rightWall);
+	world->addChild(roof);
+
+	world->addChild(mirror);
 	world->addChild(glass);
-	world->addChild(bricks);
-	world->addChild(pbrSphere);
+
+	world->addChild(windowFront);
+	world->addChild(windowBack);
 
 	//set main camera, (main) directional light and skybox
 	manager->setMainCamera(mainCamera);
-	manager->setDirectionalLight(directionalLight);
 	manager->setSkybox(skybox, true);
 
 	std::cout << "Scene initialized" << std::endl;
