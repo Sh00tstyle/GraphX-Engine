@@ -17,14 +17,31 @@ class RenderSettings {
 
 		static unsigned int Options;
 
-		static bool VSync;
+		//face culling options
+		static const unsigned int CullNone;
+		static const unsigned int CullFront;
+		static const unsigned int CullBack;
+
+		static unsigned int CullMode;
 
 		//configurations
-		static const unsigned int MaxCubeShadows;
 		static const unsigned int ShadowWidth;
 		static const unsigned int ShadowHeight;
-		static const float CubeNearPlane;
-		static const float CubeFarPlane;
+
+		static bool ShowDirectionalShadows;
+		static bool ShowCubeShadows;
+
+		static float CubeShadowNearPlane;
+		static float CubeShadowFarPlane;
+		static const unsigned int MaxCubeShadows;
+
+		static float DirectionalShadowNearPlane;
+		static float DirectionalShadowFarPlane;
+		static float DirectionalShadowSize;
+		static float DirectionalLightOffset;
+
+		static const float EnvironmentNearPlane;
+		static const float EnvironmentFarPlane;
 
 		static const unsigned int SkyboxWidth;
 		static const unsigned int SkyboxHeight;

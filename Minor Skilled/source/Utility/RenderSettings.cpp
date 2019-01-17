@@ -13,18 +13,32 @@ const unsigned int RenderSettings::PBR = 1 << 7; //deferred only
 //active render modes
 unsigned int RenderSettings::Options = 0;
 
-//v-sync
-bool RenderSettings::VSync = false;
+//face culling options
+const unsigned int RenderSettings::CullNone = 0;
+const unsigned int RenderSettings::CullFront = 1;
+const unsigned int RenderSettings::CullBack = 2;
+
+unsigned int RenderSettings::CullMode = CullNone;
 
 //shadow configurations
-const unsigned int RenderSettings::MaxCubeShadows = 5; 
-
 const unsigned int RenderSettings::ShadowWidth = 1024;
 const unsigned int RenderSettings::ShadowHeight = 1024;
 
+bool RenderSettings::ShowDirectionalShadows = true;
+bool RenderSettings::ShowCubeShadows = true;
+
+float RenderSettings::CubeShadowNearPlane = 0.5f;
+float RenderSettings::CubeShadowFarPlane = 7.5f;
+const unsigned int RenderSettings::MaxCubeShadows = 5;
+
+float RenderSettings::DirectionalShadowNearPlane = 1.0f;
+float RenderSettings::DirectionalShadowFarPlane = 10.0f;
+float RenderSettings::DirectionalShadowSize = 15.0f;
+float RenderSettings::DirectionalLightOffset = 6.0f;
+
 //cubemap render configurations
-const float RenderSettings::CubeNearPlane = 0.5f;
-const float RenderSettings::CubeFarPlane = 7.5f;
+const float RenderSettings::EnvironmentNearPlane = 0.5f;
+const float RenderSettings::EnvironmentFarPlane = 7.5f;
 
 //equirectangular to cubemap configurations
 const unsigned int RenderSettings::SkyboxHeight = 512;

@@ -48,7 +48,7 @@ in VS_OUT {
 } fs_in;
 
 layout (std140) uniform dataBlock {
-    bool useShadows;
+    bool dirShadows;
     int usedCubeShadows;
     float farPlane;
 
@@ -196,7 +196,7 @@ vec3 CalculateSpotLight(Light light, vec3 normal, vec3 viewDirection, float shad
 }
 
 float CalculateShadow(vec3 normal) {
-    if(!useShadows) return 0.0f; //no shadows
+    if(!dirShadows) return 0.0f; //no shadows
 
     //perform perspective divide
     vec3 projectedCoords = fs_in.lightSpaceFragPos.xyz / fs_in.lightSpaceFragPos.w;
@@ -233,8 +233,6 @@ float CalculateShadow(vec3 normal) {
 }
 
 float CalculateCubemapShadow(vec3 normal, vec3 fragPos, int index) {
-    if(!useShadows) return 0.0f; //no shadows
-
     vec3 lightPos = pointLightPositions[index];
 
     //get vector between fragment position and light position

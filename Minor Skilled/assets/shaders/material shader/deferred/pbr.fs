@@ -28,7 +28,7 @@ in VS_OUT {
 } fs_in;
 
 layout (std140) uniform dataBlock {
-    bool useShadows;
+    bool dirShadows;
     int usedCubeShadows;
     float farPlane;
 

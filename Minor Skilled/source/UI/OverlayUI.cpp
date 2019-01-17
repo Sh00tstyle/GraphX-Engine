@@ -80,7 +80,7 @@ void OverlayUI::_initImgui(Window* window) {
 
 	ImGui::StyleColorsDark();
 
-	//ImGui::GetIO().IniFilename = NULL; //disable saving to an ini file
+	ImGui::GetIO().IniFilename = NULL; //disable saving to an ini file
 
 	std::cout << "Initialized ImGui Overlay" << std::endl;
 }
@@ -192,7 +192,6 @@ void OverlayUI::_setupSettings() {
 	ImGui::CheckboxFlags("Bloom", &RenderSettings::Options, RenderSettings::Bloom);
 	ImGui::CheckboxFlags("FXAA", &RenderSettings::Options, RenderSettings::FXAA);
 	ImGui::CheckboxFlags("Motion Blur", &RenderSettings::Options, RenderSettings::MotionBlur);
-	ImGui::Checkbox("vSync", &RenderSettings::VSync);
 	ImGui::CheckboxFlags("Deferred", &RenderSettings::Options, RenderSettings::Deferred);
 
 	ImGui::Indent();
@@ -201,29 +200,82 @@ void OverlayUI::_setupSettings() {
 	ImGui::CheckboxFlags("PBR", &RenderSettings::Options, RenderSettings::PBR);
 	ImGui::Unindent();
 
+	ImGui::Text("\nFace Culling Settings");
+	
+	if(ImGui::Button("None")) {
+		RenderSettings::CullMode = RenderSettings::CullNone;
+	}
+
+	ImGui::SameLine();
+
+	if(ImGui::Button("Back")) {
+		RenderSettings::CullMode = RenderSettings::CullBack;
+	}
+
+	ImGui::SameLine();
+
+	if(ImGui::Button("Front")) {
+		RenderSettings::CullMode = RenderSettings::CullFront;
+	}
+
+	ImGui::Text("\nShadow Settings");
+	ImGui::Checkbox("Use Directional Shadows", &RenderSettings::ShowDirectionalShadows);
+	ImGui::Checkbox("Use Point Shadows", &RenderSettings::ShowCubeShadows);
+	ImGui::Text("");
+
+	if(ImGui::CollapsingHeader("Directional Shadows")) {
+		ImGui::InputFloat("Dir Near Plane", &RenderSettings::DirectionalShadowNearPlane);
+		ImGui::InputFloat("Dir Far Plane", &RenderSettings::DirectionalShadowFarPlane);
+		ImGui::InputFloat("Projection Size", &RenderSettings::DirectionalShadowSize);
+		ImGui::InputFloat("Light Offset", &RenderSettings::DirectionalLightOffset);
+		ImGui::Text("");
+	}
+
+	if(ImGui::CollapsingHeader("Point Shadows")) {
+		ImGui::InputFloat("Point Near Plane", &RenderSettings::CubeShadowNearPlane);
+		ImGui::InputFloat("Point Far Plane", &RenderSettings::CubeShadowFarPlane);
+	}
+
 	ImGui::Text("\nPost Processing Settings");
-	ImGui::InputFloat("Gamma", &RenderSettings::Gamma);
-	ImGui::InputFloat("Exposure", &RenderSettings::Exposure);
-	ImGui::InputInt("Bloom Blur", &bloomBlur);
-	ImGui::InputInt("Motion Blur Samples", &RenderSettings::MotionBlurSamples);
-	ImGui::InputFloat("Velocity Scale", &RenderSettings::VelocityScale);
 
-	ImGui::Text("\nSSAO Settings");
-	ImGui::InputFloat("Radius", &RenderSettings::SsaoRadius);
-	ImGui::InputFloat("Bias", &RenderSettings::SsaoBias);
-	ImGui::InputFloat("Power", &RenderSettings::SsaoPower);
+	if(ImGui::CollapsingHeader("Image Correction Settings")) {
+		ImGui::InputFloat("Gamma", &RenderSettings::Gamma);
+		ImGui::InputFloat("Exposure", &RenderSettings::Exposure);
+		ImGui::Text("");
+	}
 
-	ImGui::Text("\nSSR Settings");
-	ImGui::InputFloat("Step Size", &RenderSettings::SsrRayStepSize);
-	ImGui::InputInt("Max Steps", &RenderSettings::SsrMaxRaySteps);
-	ImGui::InputFloat("Fresnel Exponent", &RenderSettings::SsrFresnelExponent);
-	ImGui::InputFloat("Max Delta", &RenderSettings::SsrMaxDelta);
-	ImGui::Checkbox("Show Debug", &RenderSettings::SsrDebug);
+	if(ImGui::CollapsingHeader("Bloom Settings")) {
+		ImGui::InputInt("Blur Amount", &bloomBlur);
+		ImGui::Text("");
+	}
 
-	ImGui::Text("\nFXAA Settings");
-	ImGui::InputFloat("Max Spam", &RenderSettings::FxaaSpanMax);
-	ImGui::InputFloat("Min Reduce", &RenderSettings::FxaaReduceMin);
-	ImGui::InputFloat("Mul Reduce", &RenderSettings::FxaaReduceMul);
+	if(ImGui::CollapsingHeader("Motion Blur Settings")) {
+		ImGui::InputInt("Samples", &RenderSettings::MotionBlurSamples);
+		ImGui::InputFloat("Velocity Scale", &RenderSettings::VelocityScale);
+		ImGui::Text("");
+	}
+
+	if(ImGui::CollapsingHeader("SSAO Settings")) {
+		ImGui::InputFloat("Radius", &RenderSettings::SsaoRadius);
+		ImGui::InputFloat("Bias", &RenderSettings::SsaoBias);
+		ImGui::InputFloat("Power", &RenderSettings::SsaoPower);
+		ImGui::Text("");
+	}
+
+	if(ImGui::CollapsingHeader("SSR Settings")) {
+		ImGui::InputFloat("Step Size", &RenderSettings::SsrRayStepSize);
+		ImGui::InputInt("Max Steps", &RenderSettings::SsrMaxRaySteps);
+		ImGui::InputFloat("Fresnel Exponent", &RenderSettings::SsrFresnelExponent);
+		ImGui::InputFloat("Max Delta", &RenderSettings::SsrMaxDelta);
+		ImGui::Checkbox("Reflections Only", &RenderSettings::SsrDebug);
+		ImGui::Text("");
+	}
+
+	if(ImGui::CollapsingHeader("FXAA Settings")) {
+		ImGui::InputFloat("Blur Range", &RenderSettings::FxaaSpanMax);
+		ImGui::InputFloat("Min Reduce", &RenderSettings::FxaaReduceMin);
+		ImGui::InputFloat("Mul Reduce", &RenderSettings::FxaaReduceMul);
+	}
 
 	//disable deferred only settings if we are forward rendering
 	if(!RenderSettings::IsEnabled(RenderSettings::Deferred)) {

@@ -98,20 +98,13 @@ Renderer::Renderer(Debug* profiler) : _profiler(profiler) {
 
     //glEnable(GL_STENCIL_TEST); //enable the stencil buffer
 
-	//glEnable(GL_CULL_FACE); //enable face culling
-	//glCullFace(GL_BACK); //cull backfaces
-
 	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS); //enable seamless cubemap sampling for lower mip map levels in the pre filter map
+
+	glDisable(GL_CULL_FACE); //disable face culling
 
 	//glEnable(GL_MULTISAMPLE); //enable MSAA (only works in forward rendering and on the default framebuffer)
 
-	if(RenderSettings::VSync) {
-		glfwSwapInterval(1); //enable vsync
-		_vSync = true;
-	} else {
-		glfwSwapInterval(0); //disable vysnc
-		_vSync = false;
-	}
+	glfwSwapInterval(0); //disable vsync
 
 	//shaders
 	_initShaders();
@@ -246,9 +239,8 @@ Renderer::~Renderer() {
 }
 
 void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& lights, Node* mainCamera, Node* directionalLight, Texture* skybox) {
-	//update dimensions if needed
+	//update texture and framebuffer dimensions if needed
 	_updateDimensions();
-	_updateVSync();
 
 	//render from main camera
 	if(mainCamera == nullptr) {
@@ -257,12 +249,11 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 	}
 
 	CameraComponent* mainCameraComponent = (CameraComponent*)mainCamera->getComponent(ComponentType::Camera);
-	Transform* mainCameraTransform = mainCamera->getTransform();
 
 	glm::mat4 projectionMatrix = mainCameraComponent->getProjectionMatrix();
 	glm::mat4 viewMatrix = mainCameraComponent->getViewMatrix();
 	glm::mat4 previousViewProjectionMatrix = mainCameraComponent->getPreviousViewProjectionMatrix();
-	glm::vec3 cameraPos = mainCameraTransform->getWorldPosition();
+	glm::vec3 cameraPos = mainCamera->getTransform()->getWorldPosition();
 
 	//create vectors of pairs to match components to their model matrices/positions
 	std::vector<std::pair<RenderComponent*, glm::mat4>> solidRenderComponents;
@@ -293,32 +284,28 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 	glm::mat4 lightView;
 	glm::mat4 lightSpaceMatrix;
 
-	bool useShadows = RenderSettings::IsEnabled(RenderSettings::Shadows);
+	bool dirShadows = RenderSettings::IsEnabled(RenderSettings::Shadows) && RenderSettings::ShowDirectionalShadows;
+	bool cubeShadows = RenderSettings::IsEnabled(RenderSettings::Shadows) && RenderSettings::ShowCubeShadows;
 
-	if(directionalLight != nullptr) {
-		const float size = 15.0f;
-		const float nearPlane = 1.0f;
-		const float farPlane = 10.0f;
-		const float lightOffset = 6.0f;
-
+	if(dirShadows && directionalLight != nullptr) {
 		LightComponent* directionalLightComponent = (LightComponent*)directionalLight->getComponent(ComponentType::Light);
-		directionalLightPos = glm::normalize(directionalLightComponent->lightDirection) * -lightOffset; //offset light position 4 units in the opposite direction of the light direction
+		directionalLightPos = glm::normalize(directionalLightComponent->lightDirection) * -RenderSettings::DirectionalLightOffset; //offset light position in the opposite direction of the light direction
 
-		lightProjection = glm::ortho(-size, size, -size, size, nearPlane, farPlane);
+		float size = RenderSettings::DirectionalShadowSize;
+
+		lightProjection = glm::ortho(-size, size, -size, size, RenderSettings::DirectionalShadowNearPlane, RenderSettings::DirectionalShadowFarPlane);
 		lightView = glm::lookAt(directionalLightPos, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 		lightSpaceMatrix = lightProjection * lightView;
-	} else if(useShadows) {
-		useShadows = false;
-
-		std::cout << "WARNING: No directional light assigned. Unable to render shadowmap." << std::endl;
+	} else if(dirShadows) {
+		dirShadows = false; //disable using directional shadows when there is no directional light
 	}
 
 	//get closest point lights
-	if(useShadows) pointLightPositions = _getClosestPointLights(cameraPos, lightComponents);
+	if(cubeShadows) pointLightPositions = _getClosestPointLights(cameraPos, lightComponents); //get closest point lights if the setting is enabled and there are point lights in the scene
 	pointLightCount = pointLightPositions.size();
 
 	//store the matrices and the vectors in the uniform buffer
-	_fillUniformBuffers(viewMatrix, projectionMatrix, previousViewProjectionMatrix, lightSpaceMatrix, cameraPos, directionalLightPos, useShadows, pointLightPositions);
+	_fillUniformBuffers(viewMatrix, projectionMatrix, previousViewProjectionMatrix, lightSpaceMatrix, cameraPos, directionalLightPos, dirShadows, pointLightPositions);
 	_fillShaderStorageBuffers(lightComponents);
 
 	//clear screen in light grey
@@ -326,7 +313,7 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 	_profiler->startQuery(QueryType::Rendering);
 
 	//render shadow map
-	if(useShadows) {
+	if(dirShadows || cubeShadows) {
 		_profiler->startQuery(QueryType::Shadow);
 		_renderShadowMaps(renderComponents, pointLightPositions, lightSpaceMatrix);
 		_profiler->endQuery(QueryType::Shadow);
@@ -342,10 +329,16 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 	bool deferred = RenderSettings::IsEnabled(RenderSettings::Deferred);
 
 	if(deferred) {
+		//enable face culling if wanted
+		_applyCullMode();
+
 		//render the geometry of the scene (deferred shading)
 		_profiler->startQuery(QueryType::Geometry);
 		_renderGeometry(solidRenderComponents, pbr);
 		_profiler->endQuery(QueryType::Geometry);
+
+		//disable faceculling again to avoid culling the skybox and the screen quad
+		glDisable(GL_CULL_FACE);
 
 		if(RenderSettings::IsEnabled(RenderSettings::SSAO)) {
 			_profiler->startQuery(QueryType::SSAO);
@@ -361,25 +354,37 @@ void Renderer::render(std::vector<Node*>& renderables, std::vector<Node*>& light
 
 		//render lighting of the scene (deferred shading)
 		_profiler->startQuery(QueryType::Lighting);
-		_renderLighting(skybox, pointLightCount, pbr);
+		_renderLighting(skybox, pointLightCount, dirShadows, pbr);
 		_profiler->endQuery(QueryType::Lighting);
 
 		//blit gBuffer depth buffer into the hdr framebuffer depth buffer to enable forward rendering into the deferred scene
 		_blitGDepthToHDR(pbr);
 	} else {
+		//enable face culling if wanted
+		_applyCullMode();
+
 		//render and light the scene (forward shading)
-		_renderScene(solidRenderComponents, pointLightCount, useShadows, true); //bind the hdr here and clear buffer bits
+		_renderScene(solidRenderComponents, pointLightCount, dirShadows, true); //bind the hdr here and clear buffer bits
+
+		//disable face culling again to avoid culling the skybox and the screen quad
+		glDisable(GL_CULL_FACE);
 	}
 
 	//render skybox
 	_renderSkybox(viewMatrix, projectionMatrix, skybox);
 
+	//enable face culling if wanted
+	_applyCullMode();
+
 	//render blend objects (forward shading)
 	glEnable(GL_BLEND);
 	_profiler->startQuery(QueryType::Blending);
-	_renderScene(blendRenderComponents, pointLightCount, useShadows, false); //do not bind the hbr here and clear buffer bits since the solid objects are needed in the fbo
+	_renderScene(blendRenderComponents, pointLightCount, dirShadows, false); //do not bind the hbr here and clear buffer bits since the solid objects are needed in the fbo
 	_profiler->endQuery(QueryType::Blending);
 	glDisable(GL_BLEND);
+
+	//disable face culling again to avoid culling the screen quad
+	glDisable(GL_CULL_FACE);
 
 	//render the screen space reflection texture after the scene was rendered to use the final frame (deferred shading)
 	if(deferred && RenderSettings::IsEnabled(RenderSettings::SSR)) {
@@ -417,7 +422,7 @@ void Renderer::renderEnvironmentMaps(std::vector<Node*>& renderables, Node* dire
 	//render all environment maps for all texture materials with reflection map
 	std::cout << "Rendering environment maps..." << std::endl;
 
-	glm::mat4 environmentProjection = glm::perspective(glm::radians(90.0f), (float)RenderSettings::EnvironmentWidth / (float)RenderSettings::EnvironmentHeight, RenderSettings::CubeNearPlane, RenderSettings::CubeFarPlane);
+	glm::mat4 environmentProjection = glm::perspective(glm::radians(90.0f), (float)RenderSettings::EnvironmentWidth / (float)RenderSettings::EnvironmentHeight, RenderSettings::EnvironmentNearPlane, RenderSettings::EnvironmentFarPlane);
 	
 	glm::vec3 renderPos;
 	RenderComponent* renderComponent;
@@ -460,8 +465,6 @@ void Renderer::renderEnvironmentMaps(std::vector<Node*>& renderables, Node* dire
 
 	//render all IBL maps for all pbr materials
 	std::cout << "Rendering IBL maps..." << std::endl;
-
-	environmentProjection = glm::perspective(glm::radians(90.0f), 1.0f, RenderSettings::CubeNearPlane, RenderSettings::CubeFarPlane);
 
 	for(std::map<RenderComponent*, IBLMaps>::iterator it = _iblMaps.begin(); it != _iblMaps.end(); it++) {
 		IBLMaps* maps = &it->second;
@@ -1283,7 +1286,7 @@ void Renderer::_renderShadowMaps(std::vector<std::pair<RenderComponent*, glm::ma
 
 		//create depth cubemap shadow matrices
 		lightPos = pointLights[i];
-		glm::mat4 shadowProjection = glm::perspective(glm::radians(90.0f), (float)RenderSettings::ShadowWidth / (float)RenderSettings::ShadowHeight, RenderSettings::CubeNearPlane, RenderSettings::CubeFarPlane);
+		glm::mat4 shadowProjection = glm::perspective(glm::radians(90.0f), (float)RenderSettings::ShadowWidth / (float)RenderSettings::ShadowHeight, RenderSettings::CubeShadowNearPlane, RenderSettings::CubeShadowFarPlane);
 
 		shadowTransforms.clear();
 		shadowTransforms.push_back(shadowProjection * glm::lookAt(lightPos, lightPos + glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)));
@@ -1298,7 +1301,7 @@ void Renderer::_renderShadowMaps(std::vector<std::pair<RenderComponent*, glm::ma
 			_shadowCubeShader->setMat4("shadowMatrices[" + std::to_string(i) + "]", shadowTransforms[i]);
 		}
 
-		_shadowCubeShader->setFloat("farPlane", RenderSettings::CubeFarPlane);
+		_shadowCubeShader->setFloat("farPlane", RenderSettings::EnvironmentFarPlane);
 		_shadowCubeShader->setVec3("lightPos", lightPos);
 
 		//render all models' depth into the shadow cubemap from the lights perspective
@@ -1503,7 +1506,7 @@ void Renderer::_renderSSR(CameraComponent* cameraComponent) {
 	Framebuffer::Unbind();
 }
 
-void Renderer::_renderLighting(Texture* skybox, unsigned int pointLightCount, bool pbr) {
+void Renderer::_renderLighting(Texture* skybox, unsigned int pointLightCount, bool dirShadows, bool pbr) {
 	//bind to hdr framebuffer
 	_hdrFBO->bind();
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -1580,11 +1583,11 @@ void Renderer::_renderLighting(Texture* skybox, unsigned int pointLightCount, bo
 	Texture::SetActiveUnit(8);
 	_ssaoBlurColorBuffer->bind();
 
-	//bind shadow map
-	Texture::SetActiveUnit(11);
-	_shadowMap->bind();
+	if(dirShadows) {
+		Texture::SetActiveUnit(11);
+		_shadowMap->bind();
+	}
 
-	//bind shadow cubemap
 	for(unsigned int i = 0; i < pointLightCount; i++) {
 		Texture::SetActiveUnit(12 + i);
 		_shadowCubeMaps[i]->bind();
@@ -1596,7 +1599,7 @@ void Renderer::_renderLighting(Texture* skybox, unsigned int pointLightCount, bo
 	VertexArray::Unbind();
 }
 
-void Renderer::_renderScene(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, unsigned int pointLightCount, bool useShadows, bool bindFBO) {
+void Renderer::_renderScene(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, unsigned int pointLightCount, bool dirShadows, bool bindFBO) {
 	//bind to hdr framebuffer if needed and render each renderable 
 	if(bindFBO) {
 		_hdrFBO->bind();
@@ -1604,14 +1607,14 @@ void Renderer::_renderScene(std::vector<std::pair<RenderComponent*, glm::mat4>>&
 	}
 
 	//bind shadow maps
-	if(useShadows) {
+	if(dirShadows) {
 		Texture::SetActiveUnit(11);
 		_shadowMap->bind();
+	}
 
-		for(unsigned int i = 0; i < pointLightCount; i++) {
-			Texture::SetActiveUnit(12 + i);
-			_shadowCubeMaps[i]->bind();
-		}
+	for(unsigned int i = 0; i < pointLightCount; i++) {
+		Texture::SetActiveUnit(12 + i);
+		_shadowCubeMaps[i]->bind();
 	}
 
 	RenderComponent* renderComponent;
@@ -1669,7 +1672,7 @@ void Renderer::_renderSkybox(glm::mat4& viewMatrix, glm::mat4& projectionMatrix,
 	_skyboxShader->setMat4("viewMatrix", newViewMatrix);
 	_skyboxShader->setMat4("projectionMatrix", projectionMatrix);
 
-	//render skybox (done in the same framebuffer as the one used in _renderScene)
+	//render skybox
 	glDepthFunc(GL_LEQUAL); //set depth funtion to less than AND equal for skybox depth trick
 	_skyboxVAO->bind();
 
@@ -1830,7 +1833,7 @@ std::vector<glm::vec3> Renderer::_getClosestPointLights(glm::vec3 cameraPos, std
 	return closestPointLights;
 }
 
-void Renderer::_fillUniformBuffers(glm::mat4& viewMatrix, glm::mat4& projectionMatrix, glm::mat4& previousViewProjection, glm::mat4& lightSpaceMatrix, glm::vec3& cameraPos, glm::vec3& directionalLightPos, bool useShadows, std::vector<glm::vec3>& pointLightPositions) {
+void Renderer::_fillUniformBuffers(glm::mat4& viewMatrix, glm::mat4& projectionMatrix, glm::mat4& previousViewProjection, glm::mat4& lightSpaceMatrix, glm::vec3& cameraPos, glm::vec3& directionalLightPos, bool dirShadows, std::vector<glm::vec3>& pointLightPositions) {
 	//store the matrices in the matrices uniform buffer
 	_matricesUBO->bind();
 	_matricesUBO->bufferSubData(0, sizeof(glm::mat4), glm::value_ptr(viewMatrix)); //buffer view matrix
@@ -1842,9 +1845,9 @@ void Renderer::_fillUniformBuffers(glm::mat4& viewMatrix, glm::mat4& projectionM
 	unsigned int pointLightCount = pointLightPositions.size();
 
 	_dataUBO->bind();
-	_dataUBO->bufferSubData(0, sizeof(GLint), &useShadows); //buffer use shadows bool
+	_dataUBO->bufferSubData(0, sizeof(GLint), &dirShadows); //buffer use shadows bool
 	_dataUBO->bufferSubData(4, sizeof(GLint), &pointLightCount); //buffer point light amount
-	_dataUBO->bufferSubData(8, sizeof(GLfloat), &RenderSettings::CubeFarPlane); //buffer cube map far plane
+	_dataUBO->bufferSubData(8, sizeof(GLfloat), &RenderSettings::EnvironmentFarPlane); //buffer cube map far plane
 
 	_dataUBO->bufferSubData(sizeof(glm::vec4), sizeof(glm::vec4), glm::value_ptr(cameraPos)); //buffer cameraPos
 	_dataUBO->bufferSubData(sizeof(glm::vec4) * 2, sizeof(glm::vec4), glm::value_ptr(directionalLightPos)); //buffer directional light pos
@@ -1976,16 +1979,11 @@ void Renderer::_updateDimensions() {
 	Window::DimensionsChanged = false; //reset
 }
 
-void Renderer::_updateVSync() {
-	if(RenderSettings::VSync == _vSync) return;
+void Renderer::_applyCullMode() {
+	if(RenderSettings::CullMode != RenderSettings::CullNone) {
+		glEnable(GL_CULL_FACE);
 
-	_vSync = RenderSettings::VSync;
-
-	if(_vSync) {
-		glfwSwapInterval(1); //enable vsync
-		_vSync = true;
-	} else {
-		glfwSwapInterval(0); //disable vysnc
-		_vSync = false;
+		if(RenderSettings::CullMode == RenderSettings::CullFront) glCullFace(GL_FRONT);
+		else glCullFace(GL_BACK);
 	}
 }

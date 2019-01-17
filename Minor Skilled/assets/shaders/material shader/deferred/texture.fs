@@ -36,7 +36,7 @@ layout (std140) uniform matricesBlock {
 };
 
 layout (std140) uniform dataBlock {
-    bool useShadows;
+    bool dirShadows;
     int usedCubeShadows;
     float farPlane;
 

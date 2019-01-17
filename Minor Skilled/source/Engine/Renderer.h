@@ -161,8 +161,8 @@ class Renderer {
 		void _renderSSAO();
 		void _renderSSAOBlur();
 		void _renderSSR(CameraComponent* cameraComponent);
-		void _renderLighting(Texture* skybox, unsigned int pointLightCount, bool pbr);
-		void _renderScene(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, unsigned int pointLightCount, bool useShadows, bool bindFBO);
+		void _renderLighting(Texture* skybox, unsigned int pointLightCount, bool dirShadows, bool pbr);
+		void _renderScene(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, unsigned int pointLightCount, bool dirShadow, bool bindFBO);
 		void _renderSkybox(glm::mat4& viewMatrix, glm::mat4& projectionMatrix, Texture* skybox);
 		void _renderPostProcessingQuad();
 
@@ -170,7 +170,7 @@ class Renderer {
 		void _getSortedRenderComponents(std::vector<Node*>& renderables, glm::vec3& cameraPos, std::vector<std::pair<RenderComponent*, glm::mat4>>& solidRenderables, std::vector<std::pair<RenderComponent*, glm::mat4>>& blendRenderables);
 		std::vector<glm::vec3> _getClosestPointLights(glm::vec3 cameraPos, std::vector<std::pair<LightComponent*, glm::vec3>>& lightComponents);
 
-		void _fillUniformBuffers(glm::mat4& viewMatrix, glm::mat4& projectionMatrix, glm::mat4& previousViewProjection, glm::mat4& lightSpaceMatrix, glm::vec3& cameraPos, glm::vec3& directionalLightPos, bool useShadows, std::vector<glm::vec3>& pointLightPositions);
+		void _fillUniformBuffers(glm::mat4& viewMatrix, glm::mat4& projectionMatrix, glm::mat4& previousViewProjection, glm::mat4& lightSpaceMatrix, glm::vec3& cameraPos, glm::vec3& directionalLightPos, bool dirShadows, std::vector<glm::vec3>& pointLightPositions);
 		void _fillShaderStorageBuffers(std::vector<std::pair<LightComponent*, glm::vec3>>& lightComponents);
 
 		void _generateSSAOKernel();
@@ -179,7 +179,7 @@ class Renderer {
 		void _blitGDepthToHDR(bool pbr);
 
 		void _updateDimensions();
-		void _updateVSync();
+		void _applyCullMode();
 };
 
 #endif

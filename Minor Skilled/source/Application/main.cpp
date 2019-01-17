@@ -16,7 +16,7 @@ int main() {
 	sceneManager->addScene(new DemoScene3());
 
 	//initialize manager with scene 0
-	sceneManager->initialize(0);
+	sceneManager->initialize(1);
 	sceneManager->run();
 
 	delete sceneManager;
