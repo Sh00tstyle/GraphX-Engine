@@ -1,14 +1,15 @@
 #include "RenderSettings.h"
 
 //render mode options
-const unsigned int RenderSettings::Shadows = 1 << 0;
-const unsigned int RenderSettings::Bloom = 1 << 1;
-const unsigned int RenderSettings::FXAA = 1 << 2;
-const unsigned int RenderSettings::MotionBlur = 1 << 3;
-const unsigned int RenderSettings::Deferred = 1 << 4;
-const unsigned int RenderSettings::SSAO = 1 << 5; //deferred only
-const unsigned int RenderSettings::SSR = 1 << 6; //deferred only
-const unsigned int RenderSettings::PBR = 1 << 7; //deferred only
+const unsigned int RenderSettings::Lighting = 1 << 0;
+const unsigned int RenderSettings::Shadows = 1 << 1;
+const unsigned int RenderSettings::Bloom = 1 << 2;
+const unsigned int RenderSettings::FXAA = 1 << 3;
+const unsigned int RenderSettings::MotionBlur = 1 << 4;
+const unsigned int RenderSettings::Deferred = 1 << 5;
+const unsigned int RenderSettings::SSAO = 1 << 6; //deferred only
+const unsigned int RenderSettings::SSR = 1 << 7; //deferred only
+const unsigned int RenderSettings::PBR = 1 << 8; //deferred only
 
 //active render modes
 unsigned int RenderSettings::Options = 0;

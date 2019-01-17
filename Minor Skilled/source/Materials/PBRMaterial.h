@@ -22,6 +22,7 @@ class PBRMaterial : public Material {
 		float& getSpecular();
 		float& getRefractionFactor();
 		float& getHeightScale();
+		bool& getFlipNormals();
 
 		void setAlbedoMap(Texture* albedoMap);
 		void setNormalMap(Texture* normalMap);
@@ -34,6 +35,7 @@ class PBRMaterial : public Material {
 		void setSpecular(float specular);
 		void setRefractionFactor(float refractionFactor);
 		void setHeightScale(float heightScale);
+		void setFlipNormals(bool value);
 
 		virtual void drawSimple(Shader* shader);
 		virtual void drawForward(glm::mat4& modelMatrix);
@@ -54,6 +56,7 @@ class PBRMaterial : public Material {
 		float _specular;
 		float _refractionFactor;
 		float _heightScale;
+		bool _flipNormals;
 
 		virtual void _initShader();
 };

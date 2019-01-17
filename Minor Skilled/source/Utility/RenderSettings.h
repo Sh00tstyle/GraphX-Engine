@@ -6,6 +6,7 @@
 class RenderSettings {
 	public:
 		//render mode options
+		static const unsigned int Lighting;
 		static const unsigned int Shadows;
 		static const unsigned int Bloom;
 		static const unsigned int FXAA;

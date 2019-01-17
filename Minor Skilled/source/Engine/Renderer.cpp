@@ -1867,6 +1867,7 @@ void Renderer::_fillShaderStorageBuffers(std::vector<std::pair<LightComponent*, 
 
 	unsigned int usedLights = lightComponents.size();
 	if(usedLights > RenderSettings::MaxLights) usedLights = RenderSettings::MaxLights; //limit the amount of possible lights
+	if(!RenderSettings::IsEnabled(RenderSettings::Lighting)) usedLights = 0; //use no lights to apply no lighting and only output the albedo
 
 	_lightsSSBO->bind();
 

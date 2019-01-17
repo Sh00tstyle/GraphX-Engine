@@ -113,7 +113,7 @@ void main() {
     }
 
     if(usedLights == 0) { //in case we have no light, take a basic color
-        result = material.diffuse;
+        result = material.diffuse * shadow;
     }
 
     fragColor = vec4(result, 1.0f);

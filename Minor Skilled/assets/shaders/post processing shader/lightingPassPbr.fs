@@ -175,6 +175,10 @@ void main() {
 
     vec3 color = ambient + Lo * shadow; //add results and apply shadow
 
+    if(usedLights == 0) {
+        color = albedo * shadow;
+    }
+
     //emission
     vec3 emission = albedo * texture(gEmissionSpec, texCoord).r; //if there is no emission map, nothing will be added
     color += emission;

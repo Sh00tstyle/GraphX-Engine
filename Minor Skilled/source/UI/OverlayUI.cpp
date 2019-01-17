@@ -188,6 +188,7 @@ void OverlayUI::_setupSettings() {
 	int bloomBlur = (int)RenderSettings::BloomBlurAmount;
 
 	ImGui::Text("General");
+	ImGui::CheckboxFlags("Lighting", &RenderSettings::Options, RenderSettings::Lighting);
 	ImGui::CheckboxFlags("Shadows", &RenderSettings::Options, RenderSettings::Shadows);
 	ImGui::CheckboxFlags("Bloom", &RenderSettings::Options, RenderSettings::Bloom);
 	ImGui::CheckboxFlags("FXAA", &RenderSettings::Options, RenderSettings::FXAA);
@@ -474,6 +475,7 @@ void OverlayUI::_setupInspector() {
 
 						ImGui::Text("\nTexture Material");
 						ImGui::Text(blendModeString.c_str());
+						ImGui::Checkbox("Flip Normals", &textureMaterial->getFlipNormals());
 						ImGui::Checkbox("Casts shadows", &textureMaterial->getCastsShadows());
 						ImGui::InputFloat("Shininess", &textureMaterial->getShininess());
 						ImGui::Text("");
@@ -527,6 +529,7 @@ void OverlayUI::_setupInspector() {
 
 						ImGui::Text("\nPBR Material");
 						ImGui::Text(blendModeString.c_str());
+						ImGui::Checkbox("Flip Normals", &pbrMaterial->getFlipNormals());
 						ImGui::Checkbox("Casts shadows", &pbrMaterial->getCastsShadows());
 						ImGui::InputFloat("Specular", &pbrMaterial->getSpecular());
 						ImGui::InputFloat("Refraction", &pbrMaterial->getRefractionFactor());

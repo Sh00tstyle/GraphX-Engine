@@ -49,6 +49,7 @@ struct Material {
     float shininess;
     float refractionFactor;
     float heightScale;
+    bool flipNormals;
 
     bool hasSpecular;
     bool hasNormal;
@@ -177,7 +178,7 @@ void main() {
     }
 
     if(usedLights == 0) { //in case we have no light, simply sample from the diffuse map
-        result = texture(material.diffuse, texCoord).rgb;
+        result = texture(material.diffuse, texCoord).rgb * shadow;
     }
 
     //emission
@@ -201,9 +202,10 @@ vec3 GetNormal(vec2 texCoord) {
 
     if(material.hasNormal) {
         normal = texture(material.normal, texCoord).rgb; //range [0, 1]
-
         normal = normalize(normal * 2.0f - 1.0f); //bring to range [-1, 1]
         normal = normalize(fs_in.TBN * normal); //transform normal from tangent to world space
+
+        if(material.flipNormals) normal.y = -normal.y;
     } else {
         normal = normalize(fs_in.fragNormal);
     }

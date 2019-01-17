@@ -29,6 +29,7 @@ class TextureMaterial : public Material {
 		float& getShininess();
 		float& getRefractionFactor();
 		float& getHeightScale();
+		bool& getFlipNormals();
 
 		void setDiffuseMap(Texture* diffuseMap);
 		void setSpecularMap(Texture* specularMap);
@@ -39,6 +40,7 @@ class TextureMaterial : public Material {
 		void setShininess(float shininess);
 		void setRefractionFactor(float refrationFactor);
 		void setHeightScale(float heightScale);
+		void setFlipNormals(bool value);
 
 		virtual void drawSimple(Shader* shader);
 		virtual void drawForward(glm::mat4& modelMatrix);
@@ -57,6 +59,7 @@ class TextureMaterial : public Material {
 		float _shininess;
 		float _refractionFactor;
 		float _heightScale;
+		bool _flipNormals;
 
 		virtual void _initShader();
 

@@ -53,6 +53,7 @@ struct Material {
 
     float refractionFactor;
     float heightScale;
+    bool flipNormals;
 
     bool hasHeight;
 
@@ -219,6 +220,10 @@ void main() {
 
     vec3 color = ambient + Lo * shadow; //add results and apply shadow
 
+    if(usedLights == 0) {
+        color = albedo * shadow;
+    }
+
     //emission
     vec3 emission = albedo * texture(material.emission, texCoord).r; //if there is no emission map, nothing will be added
     color += emission;
@@ -355,6 +360,8 @@ vec3 GetNormal(vec2 texCoord) {
     vec3 normal = texture(material.normal, texCoord).rgb; //range [0, 1]
     normal = normalize(normal * 2.0f - 1.0f); //bring to range [-1, 1]
     normal = normalize(fs_in.TBN * normal); //transform normal from tangent to world space
+
+    if(material.flipNormals) normal.y = -normal.y;
 
     return normal;
 }

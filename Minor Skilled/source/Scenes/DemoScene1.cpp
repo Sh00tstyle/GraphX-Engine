@@ -203,6 +203,7 @@ void DemoScene1::initializeScene(World* world, SceneManager* manager) {
 	TextureMaterial* brickMat = new TextureMaterial(brickDiffuse, nullptr, brickNormal, BlendMode::Opaque);
 	brickMat->setHeightMap(brickHeight);
 	brickMat->setHeightScale(0.1f);
+	brickMat->setFlipNormals(true);
 
 	//create components for each node and fill with data
 	CameraComponent* cameraComponent = new CameraComponent(glm::perspective(glm::radians(45.0f), (float)Window::ScreenWidth / (float)Window::ScreenHeight, 0.1f, 100.0f), 45.0f, 0.1f, 100.0f, 5.0f, 25.0f);

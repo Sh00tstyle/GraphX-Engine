@@ -10,7 +10,7 @@ Shader* PBRMaterial::_ForwardShader = nullptr;
 Shader* PBRMaterial::_DeferredShader = nullptr;
 
 PBRMaterial::PBRMaterial(Texture * albedoMap, Texture * normalMap, Texture * metallicMap, Texture * roughnessMap, Texture * aoMap, BlendMode blendMode) : Material(MaterialType::PBR, blendMode, true),
-_albedoMap(albedoMap), _normalMap(normalMap), _metallicMap(metallicMap), _roughnessMap(roughnessMap), _aoMap(aoMap), _emissionMap(nullptr), _heightMap(nullptr), _F0(glm::vec3(0.04f)), _specular(0.0f), _refractionFactor(0.0f), _heightScale(0.0f) {
+_albedoMap(albedoMap), _normalMap(normalMap), _metallicMap(metallicMap), _roughnessMap(roughnessMap), _aoMap(aoMap), _emissionMap(nullptr), _heightMap(nullptr), _F0(glm::vec3(0.04f)), _specular(0.0f), _refractionFactor(0.0f), _heightScale(0.0f), _flipNormals(false) {
 	_initShader();
 }
 
@@ -68,6 +68,10 @@ float& PBRMaterial::getHeightScale() {
 	return _heightScale;
 }
 
+bool & PBRMaterial::getFlipNormals() {
+	return _flipNormals;
+}
+
 void PBRMaterial::setAlbedoMap(Texture * albedoMap) {
 	_albedoMap = albedoMap;
 }
@@ -110,6 +114,10 @@ void PBRMaterial::setRefractionFactor(float refractionFactor) {
 
 void PBRMaterial::setHeightScale(float heightScale) {
 	_heightScale = heightScale;
+}
+
+void PBRMaterial::setFlipNormals(bool value) {
+	_flipNormals = value;
 }
 
 void PBRMaterial::drawSimple(Shader * shader) {
@@ -196,6 +204,7 @@ void PBRMaterial::drawForward(glm::mat4& modelMatrix) {
 	_ForwardShader->setFloat("material.refractionFactor", _refractionFactor);
 	_ForwardShader->setFloat("material.heightScale", _heightScale);
 	_ForwardShader->setInt("material.blendMode", _blendMode);
+	_ForwardShader->setBool("material.flipNormals", _flipNormals);
 
 	_ForwardShader->setFloat("maxReflectionLod", (float)(RenderSettings::MaxMipLevels - 1));
 }
@@ -276,6 +285,7 @@ void PBRMaterial::drawDeferred(glm::mat4 & modelMatrix) {
 	_DeferredShader->setFloat("material.specular", _specular);
 	_DeferredShader->setFloat("material.refractionFactor", _refractionFactor);
 	_DeferredShader->setFloat("material.heightScale", _heightScale);
+	_DeferredShader->setBool("material.flipNormals", _flipNormals);
 
 	_DeferredShader->setFloat("maxReflectionLod", (float)(RenderSettings::MaxMipLevels - 1));
 }

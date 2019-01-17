@@ -137,7 +137,7 @@ void main() {
     }
 
     if(usedLights == 0) { //in case we have no light, simply take the albedo
-        result = albedo;
+        result = albedo * shadow;
     }
 
     //emission

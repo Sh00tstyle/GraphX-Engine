@@ -14,7 +14,7 @@ Shader* TextureMaterial::_ForwardShader = nullptr;
 Shader* TextureMaterial::_DeferredShader = nullptr;
 
 TextureMaterial::TextureMaterial(Texture* diffuseMap, BlendMode blendMode) :Material(MaterialType::Textures, blendMode, true), _diffuseMap(diffuseMap), _specularMap(nullptr),
-_normalMap(nullptr), _emissionMap(nullptr), _heightMap(nullptr), _shininess(32.0f), _refractionFactor(0.0f), _heightScale(0.0f) {
+_normalMap(nullptr), _emissionMap(nullptr), _heightMap(nullptr), _shininess(32.0f), _refractionFactor(0.0f), _heightScale(0.0f), _flipNormals(false) {
 	_initShader();
 }
 
@@ -68,6 +68,10 @@ float& TextureMaterial::getHeightScale() {
 	return _heightScale;
 }
 
+bool & TextureMaterial::getFlipNormals() {
+	return _flipNormals;
+}
+
 void TextureMaterial::setDiffuseMap(Texture* diffuseMap) {
 	_diffuseMap = diffuseMap;
 }
@@ -102,6 +106,10 @@ void TextureMaterial::setRefractionFactor(float refractionFactor) {
 
 void TextureMaterial::setHeightScale(float heightScale) {
 	_heightScale = heightScale;
+}
+
+void TextureMaterial::setFlipNormals(bool value) {
+	_flipNormals = value;
 }
 
 void TextureMaterial::drawSimple(Shader* shader) {
@@ -180,6 +188,7 @@ void TextureMaterial::drawForward(glm::mat4& modelMatrix) {
 	_ForwardShader->setFloat("material.shininess", _shininess);
 	_ForwardShader->setFloat("material.refractionFactor", _refractionFactor);
 	_ForwardShader->setFloat("material.heightScale", _heightScale);
+	_ForwardShader->setBool("material.flipNormals", _flipNormals);
 
 	_ForwardShader->setInt("material.blendMode", _blendMode);
 }
@@ -252,6 +261,7 @@ void TextureMaterial::drawDeferred(glm::mat4 & modelMatrix) {
 	_DeferredShader->setFloat("material.shininess", _shininess);
 	_DeferredShader->setFloat("material.refractionFactor", _refractionFactor);
 	_DeferredShader->setFloat("material.heightScale", _heightScale);
+	_DeferredShader->setBool("material.flipNormals", _flipNormals);
 }
 
 void TextureMaterial::_initShader() {

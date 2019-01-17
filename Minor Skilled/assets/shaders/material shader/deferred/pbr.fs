@@ -14,6 +14,7 @@ struct Material {
     float specular;
     float refractionFactor;
     float heightScale;
+    bool flipNormals;
 
     bool hasHeight;
 };
@@ -103,6 +104,8 @@ vec3 GetNormal(vec2 texCoord) {
     vec3 normal = texture(material.normal, texCoord).rgb; //range [0, 1]
     normal = normalize(normal * 2.0f - 1.0f); //bring to range [-1, 1]
     normal = normalize(fs_in.TBN * normal); //transform normal from tangent to view space 
+
+    if(material.flipNormals) normal.y = -normal.y;
 
     return normal;
 }
