@@ -509,9 +509,6 @@ vec3 CalculateSpotLight(Light light, vec3 V, vec3 N, vec3 F0, vec3 albedo, float
     float epsilon = light.innerCutoff - light.outerCutoff;
     float spotlightIntensity = clamp((theta - light.outerCutoff) / epsilon, 0.0f, 1.0f);
 
-    //ambient
-    vec3 ambient = light.ambient.rgb * albedo;
-
     //add to total outgoing radiance Lo
     return (kD * albedo / PI + specular) * radiance * NdotL * spotlightIntensity; //no need to multiply with kS, since it's already included in the BRDF
 }

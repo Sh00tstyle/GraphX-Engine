@@ -158,18 +158,18 @@ void DemoScene1::initializeScene(World* world, SceneManager* manager) {
 	Texture* rockDiffuse = Texture::LoadTexture(Filepath::ModelPath + "rock/Rock-Texture-Surface.jpg", TextureFilter::Repeat, true);
 
 	Texture* benchDiffuse = Texture::LoadTexture(Filepath::ModelPath + "bench/MexicanDoors_BaseColor.png", TextureFilter::Repeat, true);
-	Texture* benchSpecular = Texture::LoadTexture(Filepath::ModelPath + "bench/MexicanDoors_Glossiness.png");
-	Texture* benchNormal = Texture::LoadTexture(Filepath::ModelPath + "bench/MexicanDoors_Normal.png");
+	Texture* benchSpecular = Texture::LoadTexture(Filepath::ModelPath + "bench/MexicanDoors_Glossiness.png", TextureFilter::Repeat);
+	Texture* benchNormal = Texture::LoadTexture(Filepath::ModelPath + "bench/MexicanDoors_Normal.png", TextureFilter::Repeat);
 
 	Texture* stumpDiffuse = Texture::LoadTexture(Filepath::ModelPath + "stump/Birch stump_D.png", TextureFilter::Repeat, true);
-	Texture* stumpNormal = Texture::LoadTexture(Filepath::ModelPath + "stump/Birch stump_N.png");
+	Texture* stumpNormal = Texture::LoadTexture(Filepath::ModelPath + "stump/Birch stump_N.png", TextureFilter::Repeat);
 
 	Texture* logDiffuse = Texture::LoadTexture(Filepath::ModelPath + "log/log_diffuse.png", TextureFilter::Repeat, true);
-	Texture* logNormal = Texture::LoadTexture(Filepath::ModelPath + "log/log_normal.png");
+	Texture* logNormal = Texture::LoadTexture(Filepath::ModelPath + "log/log_normal.png", TextureFilter::Repeat);
 
 	Texture* brickDiffuse = Texture::LoadTexture(Filepath::TexturePath + "bricks2.jpg", TextureFilter::Repeat, true);
 	Texture* brickNormal = Texture::LoadTexture(Filepath::TexturePath + "bricks2_normal.jpg");
-	Texture* brickHeight = Texture::LoadTexture(Filepath::TexturePath + "bricks2_disp.jpg");
+	Texture* brickHeight = Texture::LoadTexture(Filepath::TexturePath + "bricks2_disp.jpg", TextureFilter::Repeat);
 
 	//load skybox
 	std::cout << "Loading skybox..." << std::endl;

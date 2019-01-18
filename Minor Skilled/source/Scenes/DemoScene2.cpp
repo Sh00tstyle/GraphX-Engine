@@ -48,7 +48,7 @@ void DemoScene2::initializeScene(World* world, SceneManager* manager) {
 	Node* roof = new Node(glm::vec3(0.0f, 6.0f, 0.0f), "roof");
 
 	Node* mirror = new Node(glm::vec3(2.0f, 1.0f, 2.5f), "mirror");
-	Node* glass = new Node(glm::vec3(-3.0f, 0.5f, -2.0f), "glass");
+	Node* glass = new Node(glm::vec3(-3.0f, 1.0f, -2.0f), "glass");
 
 	Node* windowFront = new Node(glm::vec3(0.0f, 3.0f, 5.0f), "windowFront");
 	Node* windowBack = new Node(glm::vec3(0.0f, 3.0f, -5.0f), "windowBack");
@@ -101,11 +101,11 @@ void DemoScene2::initializeScene(World* world, SceneManager* manager) {
 	std::cout << "Loading textures..." << std::endl;
 
 	Texture* cyborgDiffuse = Texture::LoadTexture(Filepath::ModelPath + "cyborg/cyborg_diffuse.png", TextureFilter::Repeat, true); //load diffuse textures in linear space
-	Texture* cyborgSpecular = Texture::LoadTexture(Filepath::ModelPath + "cyborg/cyborg_specular.png");
-	Texture* cyborgNormal = Texture::LoadTexture(Filepath::ModelPath + "cyborg/cyborg_normal.png");
-	Texture* cyborgEmission = Texture::LoadTexture(Filepath::ModelPath + "cyborg/cyborg_emission.png");
+	Texture* cyborgSpecular = Texture::LoadTexture(Filepath::ModelPath + "cyborg/cyborg_specular.png", TextureFilter::Repeat);
+	Texture* cyborgNormal = Texture::LoadTexture(Filepath::ModelPath + "cyborg/cyborg_normal.png", TextureFilter::Repeat);
+	Texture* cyborgEmission = Texture::LoadTexture(Filepath::ModelPath + "cyborg/cyborg_emission.png", TextureFilter::Repeat);
 
-	Texture* whiteTexture = Texture::LoadTexture(Filepath::TexturePath + "white.png");
+	Texture* whiteTexture = Texture::LoadTexture(Filepath::TexturePath + "white.png", TextureFilter::Repeat);
 
 	Texture* groundDiffuse = Texture::LoadTexture(Filepath::TexturePath + "wood.png", TextureFilter::Repeat, true);
 
@@ -118,7 +118,7 @@ void DemoScene2::initializeScene(World* world, SceneManager* manager) {
 	//load skybox
 	std::cout << "Loading skybox..." << std::endl;
 
-	Texture* skybox = Texture::LoadHDR(Filepath::SkyboxPath + "Milkyway/Milkyway_Small.hdr"); //low res
+	Texture* skybox = Texture::LoadHDR(Filepath::SkyboxPath + "Milkyway/Milkyway_Small.hdr");
 
 	//create materials
 	ColorMaterial* pointLightMat = new ColorMaterial(glm::vec3(1.5f, 1.5f, 0.0f), glm::vec3(1.5f, 1.5f, 0.0f), 0.0f);

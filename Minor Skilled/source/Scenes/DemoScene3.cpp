@@ -39,131 +39,132 @@ void DemoScene3::initializeScene(World* world, SceneManager* manager) {
 	//create scene objects which represent graph nodes
 	Node* mainCamera = new Node(glm::vec3(0.0f, 1.0f, 3.5f), "mainCamera");
 	Node* directionalLight = new Node(glm::vec3(0.0f, 0.0f, 0.0f), "directionalLight");
-	Node* cyborg = new Node(glm::vec3(0.0f, 0.0f, 0.0f), "cyborg");
-	Node* plane = new Node(glm::vec3(0.0f, -0.01f, 0.0f), "plane");
-	Node* sphereReflect = new Node(glm::vec3(2.0f, 0.8f, -1.0f), "sphereReflect");
-	Node* sphereLight = new Node(glm::vec3(-2.0f, 1.0f, 0.0f), "sphereLight");
-	Node* cube = new Node(glm::vec3(2.0f, 0.3f, 1.0f), "cube");
-	//Node* cube = new Node(glm::vec3(0.0f, -1.0f, 0.0f), "cube");
-	Node* glass = new Node(glm::vec3(3.0f, 0.3f, 3.0f), "glass");
-	Node* bricks = new Node(glm::vec3(-2.5f, 0.5f, 2.5f), "bricks");
-	Node* pbrSphere = new Node(glm::vec3(-2.5f, 0.5, -1.5f), "pbrSphere");
+	Node* pointLight = new Node(glm::vec3(2.0f, 1.0f, 0.0f), "pointLight");
+
+	Node* ground = new Node(glm::vec3(0.0f, 0.0f, 0.0f), "ground");
+
+	Node* cerberus = new Node(glm::vec3(0.0f, 1.0f, 1.0f), "cerberus");
+
+	Node* gold = new Node(glm::vec3(-2.5f, 1.0, -1.5f), "gold");
+	Node* fabric = new Node(glm::vec3(-1.5f, 1.0, -1.5f), "fabric");
+	Node* plastic = new Node(glm::vec3(-0.5f, 1.0, -1.5f), "plastic");
+	Node* rustedIron = new Node(glm::vec3(0.5f, 1.0, -1.5f), "rustedIron");
+	Node* sand = new Node(glm::vec3(1.5f, 1.0, -1.5f), "sand");
+	Node* wood = new Node(glm::vec3(2.5f, 1.0, -1.5f), "wood");
 
 	//adjust transforms
-	Transform* transform = cyborg->getTransform();
-	transform->scale(glm::vec3(0.5f));
+	Transform* transform = pointLight->getTransform();
+	transform->scale(glm::vec3(0.1f));
 
-	transform = plane->getTransform();
-	transform->scale(glm::vec3(4.0f, 1.0f, 4.0f));
+	transform = ground->getTransform();
+	transform->scale(glm::vec3(5.0f, 1.0f, 5.0f));
 
-	transform = sphereReflect->getTransform();
+	transform = cerberus->getTransform();
+	transform->setEulerRotation(-90.0f, 90.0f, 0.0f);
+	transform->scale(glm::vec3(0.007f));
+
+	transform = gold->getTransform();
 	transform->scale(glm::vec3(0.2f));
 
-	transform = sphereLight->getTransform();
+	transform = fabric->getTransform();
 	transform->scale(glm::vec3(0.2f));
 
-	transform = cube->getTransform();
-	transform->scale(glm::vec3(0.3f));
+	transform = plastic->getTransform();
+	transform->scale(glm::vec3(0.2f));
 
-	transform = glass->getTransform();
-	transform->scale(glm::vec3(0.3f));
-	transform->setEulerRotation(90.0f, 0.0f, 0.0f);
+	transform = rustedIron->getTransform();
+	transform->scale(glm::vec3(0.2f));
 
-	transform = bricks->getTransform();
-	transform->scale(glm::vec3(0.3f));
-	transform->setEulerRotation(45.0f, 0.0f, 45.0f);
+	transform = sand->getTransform();
+	transform->scale(glm::vec3(0.2f));
 
-	transform = pbrSphere->getTransform();
+	transform = wood->getTransform();
 	transform->scale(glm::vec3(0.2f));
 
 	//load models
 	std::cout << "Loading models..." << std::endl;
 
-	Model* cyborgModel = Model::LoadModel(Filepath::ModelPath + "cyborg/cyborg.obj");
 	Model* planeModel = Model::LoadModel(Filepath::ModelPath + "plane.obj");
 	Model* sphereModel = Model::LoadModel(Filepath::ModelPath + "sphere_smooth.obj");
-	Model* cubeModel = Model::LoadModel(Filepath::ModelPath + "cube_smooth.obj");
+
+	Model* cerberusModel = Model::LoadModel(Filepath::ModelPath + "cerberus/Cerberus_LP.fbx");
 
 	//load textures
 	std::cout << "Loading textures..." << std::endl;
 
-	Texture* cyborgDiffuse = Texture::LoadTexture(Filepath::ModelPath + "cyborg/cyborg_diffuse.png", TextureFilter::Repeat, true); //load diffuse textures in linear space
-	Texture* cyborgSpecular = Texture::LoadTexture(Filepath::ModelPath + "cyborg/cyborg_specular.png");
-	Texture* cyborgNormal = Texture::LoadTexture(Filepath::ModelPath + "cyborg/cyborg_normal.png");
-	Texture* cyborgEmission = Texture::LoadTexture(Filepath::ModelPath + "cyborg/cyborg_emission.png", TextureFilter::Repeat, true); //load emission textures in linear space
+	Texture* groundAlbedo = Texture::LoadTexture(Filepath::TexturePath + "pbr/metal/albedo.png", TextureFilter::Repeat, true); //load albedo textures in linear space
+	Texture* groundNormal = Texture::LoadTexture(Filepath::TexturePath + "pbr/metal/normal.png", TextureFilter::Repeat);
+	Texture* groundMetallic = Texture::LoadTexture(Filepath::TexturePath + "pbr/metal/metallic.png", TextureFilter::Repeat);
+	Texture* groundRoughness = Texture::LoadTexture(Filepath::TexturePath + "pbr/metal/roughness.png", TextureFilter::Repeat);
+	Texture* groundAo = Texture::LoadTexture(Filepath::TexturePath + "pbr/metal/ao.png", TextureFilter::Repeat);
 
-	Texture* reflectionMap = Texture::LoadTexture(Filepath::TexturePath + "white.png");
-	Texture* blendTexture = Texture::LoadTexture(Filepath::TexturePath + "window.png", TextureFilter::Repeat, true); //load diffuse textures in linear space
-	Texture* brickTexture = Texture::LoadTexture(Filepath::TexturePath + "bricks2.jpg", TextureFilter::Repeat, true); //load diffuse textures in linear space
-	Texture* brickNormal = Texture::LoadTexture(Filepath::TexturePath + "bricks2_normal.jpg", TextureFilter::Repeat);
-	Texture* heightTexture = Texture::LoadTexture(Filepath::TexturePath + "bricks2_disp.jpg", TextureFilter::Repeat);
+	Texture* cerberusAlbedo = Texture::LoadTexture(Filepath::ModelPath + "cerberus/Cerberus_A.tga", TextureFilter::Repeat, true);
+	Texture* cerberusNormal = Texture::LoadTexture(Filepath::ModelPath + "cerberus/Cerberus_N.tga", TextureFilter::Repeat);
+	Texture* cerberusMetallic = Texture::LoadTexture(Filepath::ModelPath + "cerberus/Cerberus_M.tga", TextureFilter::Repeat);
+	Texture* cerberusRoughness = Texture::LoadTexture(Filepath::ModelPath + "cerberus/Cerberus_R.tga", TextureFilter::Repeat);
+	Texture* cerberusAo = Texture::LoadTexture(Filepath::ModelPath + "cerberus/Cerberus_AO.tga", TextureFilter::Repeat);
 
-	Texture* albedo = Texture::LoadTexture(Filepath::TexturePath + "pbr/gold/albedo.png", TextureFilter::Repeat, true); //load albedo textures in linear space
-	Texture* normal = Texture::LoadTexture(Filepath::TexturePath + "pbr/gold/normal.png", TextureFilter::Repeat);
-	Texture* metallic = Texture::LoadTexture(Filepath::TexturePath + "pbr/gold/metallic.png", TextureFilter::Repeat);
-	Texture* roughness = Texture::LoadTexture(Filepath::TexturePath + "pbr/gold/roughness.png", TextureFilter::Repeat);
-	Texture* ao = Texture::LoadTexture(Filepath::TexturePath + "pbr/gold/ao.png", TextureFilter::Repeat);
+	Texture* goldAlbedo = Texture::LoadTexture(Filepath::TexturePath + "pbr/gold/albedo.png", TextureFilter::Repeat, true); //load albedo textures in linear space
+	Texture* goldNormal = Texture::LoadTexture(Filepath::TexturePath + "pbr/gold/normal.png", TextureFilter::Repeat);
+	Texture* goldMetallic = Texture::LoadTexture(Filepath::TexturePath + "pbr/gold/metallic.png", TextureFilter::Repeat);
+	Texture* goldRoughness = Texture::LoadTexture(Filepath::TexturePath + "pbr/gold/roughness.png", TextureFilter::Repeat);
+	Texture* goldAo = Texture::LoadTexture(Filepath::TexturePath + "pbr/gold/ao.png", TextureFilter::Repeat);
+
+	Texture* fabricAlbedo = Texture::LoadTexture(Filepath::TexturePath + "pbr/fabric/albedo.png", TextureFilter::Repeat, true); //load albedo textures in linear space
+	Texture* fabricNormal = Texture::LoadTexture(Filepath::TexturePath + "pbr/fabric/normal.png", TextureFilter::Repeat);
+	Texture* fabricMetallic = Texture::LoadTexture(Filepath::TexturePath + "pbr/fabric/metallic.png", TextureFilter::Repeat);
+	Texture* fabricRoughness = Texture::LoadTexture(Filepath::TexturePath + "pbr/fabric/roughness.png", TextureFilter::Repeat);
+	Texture* fabricAo = Texture::LoadTexture(Filepath::TexturePath + "pbr/fabric/ao.png", TextureFilter::Repeat);
+
+	Texture* plasticAlbedo = Texture::LoadTexture(Filepath::TexturePath + "pbr/plastic/albedo.png", TextureFilter::Repeat, true); //load albedo textures in linear space
+	Texture* plasticNormal = Texture::LoadTexture(Filepath::TexturePath + "pbr/plastic/normal.png", TextureFilter::Repeat);
+	Texture* plasticMetallic = Texture::LoadTexture(Filepath::TexturePath + "pbr/plastic/metallic.png", TextureFilter::Repeat);
+	Texture* plasticRoughness = Texture::LoadTexture(Filepath::TexturePath + "pbr/plastic/roughness.png", TextureFilter::Repeat);
+	Texture* plasticAo = Texture::LoadTexture(Filepath::TexturePath + "pbr/plastic/ao.png", TextureFilter::Repeat);
+
+	Texture* rustedIronAlbedo = Texture::LoadTexture(Filepath::TexturePath + "pbr/rusted_iron/albedo.png", TextureFilter::Repeat, true); //load albedo textures in linear space
+	Texture* rustedIronNormal = Texture::LoadTexture(Filepath::TexturePath + "pbr/rusted_iron/normal.png", TextureFilter::Repeat);
+	Texture* rustedIronMetallic = Texture::LoadTexture(Filepath::TexturePath + "pbr/rusted_iron/metallic.png", TextureFilter::Repeat);
+	Texture* rustedIronRoughness = Texture::LoadTexture(Filepath::TexturePath + "pbr/rusted_iron/roughness.png", TextureFilter::Repeat);
+	Texture* rustedIronAo = Texture::LoadTexture(Filepath::TexturePath + "pbr/rusted_iron/ao.png", TextureFilter::Repeat);
+
+	Texture* sandAlbedo = Texture::LoadTexture(Filepath::TexturePath + "pbr/sand/albedo.png", TextureFilter::Repeat, true); //load albedo textures in linear space
+	Texture* sandNormal = Texture::LoadTexture(Filepath::TexturePath + "pbr/sand/normal.png", TextureFilter::Repeat);
+	Texture* sandMetallic = Texture::LoadTexture(Filepath::TexturePath + "pbr/sand/metallic.png", TextureFilter::Repeat);
+	Texture* sandRoughness = Texture::LoadTexture(Filepath::TexturePath + "pbr/sand/roughness.png", TextureFilter::Repeat);
+	Texture* sandAo = Texture::LoadTexture(Filepath::TexturePath + "pbr/sand/ao.png", TextureFilter::Repeat);
+
+	Texture* woodAlbedo = Texture::LoadTexture(Filepath::TexturePath + "pbr/wood/albedo.png", TextureFilter::Repeat, true); //load albedo textures in linear space
+	Texture* woodNormal = Texture::LoadTexture(Filepath::TexturePath + "pbr/wood/normal.png", TextureFilter::Repeat);
+	Texture* woodMetallic = Texture::LoadTexture(Filepath::TexturePath + "pbr/wood/metallic.png", TextureFilter::Repeat);
+	Texture* woodRoughness = Texture::LoadTexture(Filepath::TexturePath + "pbr/wood/roughness.png", TextureFilter::Repeat);
+	Texture* woodAo = Texture::LoadTexture(Filepath::TexturePath + "pbr/wood/ao.png", TextureFilter::Repeat);
 
 	//load skybox
 	std::cout << "Loading skybox..." << std::endl;
 
-	/**/
-	std::vector<std::string> cubemapFaces{
-		"ocean/right.jpg",
-		"ocean/left.jpg",
-		"ocean/top.jpg",
-		"ocean/bottom.jpg",
-		"ocean/front.jpg",
-		"ocean/back.jpg",
-	};
-
-	Texture* skybox = Texture::LoadCubemap(cubemapFaces, true); //load skyboxes in linear space
-
-	/**
-
-	Texture* skybox = Texture::LoadHDR(Filepath::SkyboxPath + "Milkyway/Milkyway_Small.hdr"); //low res
-	//Texture* skybox = Texture::LoadHDR(Filepath::SkyboxPath + "Milkyway/Milkyway_BG.jpg"); //high res
-
-	/**/
+	Texture* skybox = Texture::LoadHDR(Filepath::SkyboxPath + "Hamarikyu_Bridge_B/14-Hamarikyu_Bridge_B_3k.hdr");
 
 	//create materials
-	TextureMaterial* textureMaterial = new TextureMaterial(cyborgDiffuse, cyborgSpecular, cyborgNormal, BlendMode::Opaque);
-	textureMaterial->setEmissionMap(cyborgEmission);
+	ColorMaterial* pointLightMat = new ColorMaterial(glm::vec3(1.5f, 1.5f, 0.0f), glm::vec3(1.5f, 1.5f, 0.0f), 0.0f);
 
-	TextureMaterial* reflectionMaterial = new TextureMaterial(reflectionMap, BlendMode::Opaque);
-	reflectionMaterial->setReflectionMap(reflectionMap);
-	reflectionMaterial->setRefractionFactor(1.52f);
+	PBRMaterial* groundMat = new PBRMaterial(groundAlbedo, groundNormal, groundMetallic, groundRoughness, groundAo, BlendMode::Opaque);
 
-	TextureMaterial* blendMaterial = new TextureMaterial(blendTexture, BlendMode::Opaque);
-	blendMaterial->setBlendMode(BlendMode::Transparent);
+	PBRMaterial* cerberusMat = new PBRMaterial(cerberusAlbedo, cerberusNormal, cerberusMetallic, cerberusRoughness, cerberusAo, BlendMode::Opaque);
 
-	TextureMaterial* heightMaterial = new TextureMaterial(brickTexture, BlendMode::Opaque);
-	heightMaterial->setNormalMap(brickNormal);
-	heightMaterial->setHeightMap(heightTexture);
-	heightMaterial->setHeightScale(0.15f);
-
-	ColorMaterial* colorMaterial = new ColorMaterial(glm::vec3(1.0f), glm::vec3(0.5f), 1.0f, 32.0f);
-	ColorMaterial* cubeMaterial = new ColorMaterial(glm::vec3(0.1f), glm::vec3(0.5f), 0.0f, 32.0f);
-	ColorMaterial* sphereMaterial = new ColorMaterial(glm::vec3(1.5f, 1.5f, 0.0f), glm::vec3(1.5f, 1.5f, 0.0f), 0.0f);
-
-	PBRMaterial* pbrMaterial = new PBRMaterial(albedo, normal, metallic, roughness, ao, BlendMode::Opaque);
-	//pbrMaterial->setRefractionFactor(1.52f);
+	PBRMaterial* goldMat = new PBRMaterial(goldAlbedo, goldNormal, goldMetallic, goldRoughness, goldAo, BlendMode::Opaque);
+	PBRMaterial* fabricMat = new PBRMaterial(fabricAlbedo, fabricNormal, fabricMetallic, fabricRoughness, fabricAo, BlendMode::Opaque);
+	PBRMaterial* plasticMat = new PBRMaterial(plasticAlbedo, plasticNormal, plasticMetallic, plasticRoughness, plasticAo, BlendMode::Opaque);
+	PBRMaterial* rustedIronMat = new PBRMaterial(rustedIronAlbedo, rustedIronNormal, rustedIronMetallic, rustedIronRoughness, rustedIronAo, BlendMode::Opaque);
+	PBRMaterial* sandMat = new PBRMaterial(sandAlbedo, sandNormal, sandMetallic, sandRoughness, sandAo, BlendMode::Opaque);
+	PBRMaterial* woodMat = new PBRMaterial(woodAlbedo, woodNormal, woodMetallic, woodRoughness, woodAo, BlendMode::Opaque);
 
 	//create components for each node and fill with data
-	RenderComponent* cyborgRenderComponent = new RenderComponent(cyborgModel, textureMaterial);
-	RenderComponent* planeRenderComponent = new RenderComponent(planeModel, colorMaterial);
-	RenderComponent* sphereRenderComponent = new RenderComponent(sphereModel, reflectionMaterial);
-	RenderComponent* sphereLightRenderComponent = new RenderComponent(sphereModel, sphereMaterial);
-	RenderComponent* cubeRenderComponent = new RenderComponent(cubeModel, cubeMaterial);
-	RenderComponent* glassRenderComponent = new RenderComponent(planeModel, blendMaterial);
-	RenderComponent* brickRenderComponent = new RenderComponent(planeModel, heightMaterial);
-	RenderComponent* pbrRenderComponent = new RenderComponent(sphereModel, pbrMaterial);
-
 	CameraComponent* cameraComponent = new CameraComponent(glm::perspective(glm::radians(45.0f), (float)Window::ScreenWidth / (float)Window::ScreenHeight, 0.1f, 100.0f), 45.0f, 0.1f, 100.0f, 5.0f, 25.0f);
+	
 	LightComponent* spotLightComponent = new LightComponent(LightType::Spot);
 	spotLightComponent->lightAmbient = glm::vec3(0.1f);
 	spotLightComponent->lightDiffuse = glm::vec3(0.5f, 0.0f, 0.0f);
-	//spotLightComponent->lightDiffuse = glm::vec3(1.0f);
 	spotLightComponent->lightSpecular = glm::vec3(0.8f);
 	spotLightComponent->constantAttenuation = 1.0f;
 	spotLightComponent->linearAttenuation = 0.09f;
@@ -174,7 +175,6 @@ void DemoScene3::initializeScene(World* world, SceneManager* manager) {
 	LightComponent* pointLightComponent = new LightComponent(LightType::Point);
 	pointLightComponent->lightAmbient = glm::vec3(0.1f);
 	pointLightComponent->lightDiffuse = glm::vec3(0.5f, 0.5f, 0.0f);
-	//pointLightComponent->lightDiffuse = glm::vec3(1.0f);
 	pointLightComponent->lightSpecular = glm::vec3(0.8f);
 	pointLightComponent->constantAttenuation = 1.0f;
 	pointLightComponent->linearAttenuation = 0.09f;
@@ -186,40 +186,59 @@ void DemoScene3::initializeScene(World* world, SceneManager* manager) {
 	directionalLightComponent->lightSpecular = glm::vec3(0.1f);
 	directionalLightComponent->lightDirection = glm::vec3(1.0f, -2.0f, -1.0f);
 
+	RenderComponent* pointLightRenderComponent = new RenderComponent(sphereModel, pointLightMat);
+
+	RenderComponent* groundRenderComponent = new RenderComponent(planeModel, groundMat);
+
+	RenderComponent* cerberusRenderComponent = new RenderComponent(cerberusModel, cerberusMat);
+
+	RenderComponent* goldRenderComponent = new RenderComponent(sphereModel, goldMat);
+	RenderComponent* fabricRenderComponent = new RenderComponent(sphereModel, fabricMat);
+	RenderComponent* plasticRenderComponent = new RenderComponent(sphereModel, plasticMat);
+	RenderComponent* rustedIronRenderComponent = new RenderComponent(sphereModel, rustedIronMat);
+	RenderComponent* sandRenderComponent = new RenderComponent(sphereModel, sandMat);
+	RenderComponent* woodRenderComponent = new RenderComponent(sphereModel, woodMat);
+
 	//add components to their respective nodes
 	mainCamera->addComponent(cameraComponent);
 	mainCamera->addComponent(spotLightComponent);
+
 	directionalLight->addComponent(directionalLightComponent);
-	sphereLight->addComponent(sphereLightRenderComponent);
-	sphereLight->addComponent(pointLightComponent);
 
-	cyborg->addComponent(cyborgRenderComponent);
-	plane->addComponent(planeRenderComponent);
-	sphereReflect->addComponent(sphereRenderComponent);
-	cube->addComponent(cubeRenderComponent);
-	glass->addComponent(glassRenderComponent);
-	bricks->addComponent(brickRenderComponent);
-	pbrSphere->addComponent(pbrRenderComponent);
+	pointLight->addComponent(pointLightRenderComponent);
+	pointLight->addComponent(pointLightComponent);
 
-	//set children
-	//mainCamera->addChild(cube);
+	ground->addComponent(groundRenderComponent);
+
+	cerberus->addComponent(cerberusRenderComponent);
+
+	gold->addComponent(goldRenderComponent);
+	fabric->addComponent(fabricRenderComponent);
+	plastic->addComponent(plasticRenderComponent);
+	rustedIron->addComponent(rustedIronRenderComponent);
+	sand->addComponent(sandRenderComponent);
+	wood->addComponent(woodRenderComponent);
 
 	//add nodes to the world
 	world->addChild(mainCamera);
 	world->addChild(directionalLight);
-	world->addChild(cyborg);
-	world->addChild(plane);
-	world->addChild(sphereReflect);
-	world->addChild(sphereLight);
-	world->addChild(cube);
-	world->addChild(glass);
-	world->addChild(bricks);
-	world->addChild(pbrSphere);
+	world->addChild(pointLight);
+
+	world->addChild(ground);
+
+	world->addChild(cerberus);
+
+	world->addChild(gold);
+	world->addChild(fabric);
+	world->addChild(plastic);
+	world->addChild(rustedIron);
+	world->addChild(sand);
+	world->addChild(wood);
 
 	//set main camera, (main) directional light and skybox
 	manager->setMainCamera(mainCamera);
 	manager->setDirectionalLight(directionalLight);
-	manager->setSkybox(skybox, false);
+	manager->setSkybox(skybox, true);
 
 	std::cout << "Scene initialized" << std::endl;
 }
