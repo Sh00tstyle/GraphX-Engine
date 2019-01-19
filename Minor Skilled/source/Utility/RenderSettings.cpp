@@ -28,7 +28,7 @@ const unsigned int RenderSettings::ShadowHeight = 1024;
 bool RenderSettings::ShowDirectionalShadows = true;
 bool RenderSettings::ShowCubeShadows = true;
 
-float RenderSettings::CubeShadowNearPlane = 0.5f;
+float RenderSettings::CubeShadowNearPlane = 0.1f;
 float RenderSettings::CubeShadowFarPlane = 12.0f;
 const unsigned int RenderSettings::MaxCubeShadows = 5;
 
@@ -38,7 +38,7 @@ float RenderSettings::DirectionalShadowSize = 15.0f;
 float RenderSettings::DirectionalLightOffset = 6.0f;
 
 //cubemap render configurations
-const float RenderSettings::EnvironmentNearPlane = 0.5f;
+const float RenderSettings::EnvironmentNearPlane = 0.1f;
 const float RenderSettings::EnvironmentFarPlane = 10.0f;
 
 //equirectangular to cubemap configurations
@@ -62,6 +62,7 @@ const unsigned int RenderSettings::MaxMipLevels = 5;
 //SSAO configurations
 const unsigned int RenderSettings::SsaoKernelSize = 64;
 
+int RenderSettings::SsaoUsedSamples = SsaoKernelSize;
 float RenderSettings::SsaoRadius = 0.3f;
 float RenderSettings::SsaoBias = 0.025f;
 float RenderSettings::SsaoPower = 5.0f;

@@ -101,7 +101,7 @@ void SceneManager::initialize(unsigned int sceneIndex) {
 	Debug::Log("Engine initialized");
 	Debug::Log("Hold the right mouse button to control the camera");
 	Debug::Log("Use W/A/S/D to move");
-	Debug::Log("Use Space/LShift to ascend/decend");
+	Debug::Log("Use Space/LShift to ascend/descend");
 	Debug::Log("Use RShift to reset the camera");
 	Debug::Log("Use Enter to toggle the UI");
 	Debug::Log("Use Escape to close the application");

@@ -457,7 +457,7 @@ void Renderer::renderEnvironmentMaps(std::vector<Node*>& renderables, Node* dire
 		renderPos = renderComponents[i].second[3]; //world position component of the model matrix
 
 		//render low quality environment map
-		environmentMap = _renderEnvironmentMap(renderComponents, environmentProjection, renderPos, skybox, directionalLightComponent, materialType == MaterialType::PBR);
+		environmentMap = _renderEnvironmentMap(renderComponents, environmentProjection, renderPos, renderComponent, skybox, directionalLightComponent, materialType == MaterialType::PBR);
 
 		if(materialType == MaterialType::Textures) {
 			//add environment map to the map for texture materials
@@ -1026,7 +1026,7 @@ void Renderer::_initSSRFBO() {
 	Framebuffer::Unbind();
 }
 
-Texture* Renderer::_renderEnvironmentMap(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, glm::mat4& environmentProjection, glm::vec3& renderPos, Texture* skybox, LightComponent* dirLight, bool pbr) {
+Texture* Renderer::_renderEnvironmentMap(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, glm::mat4& environmentProjection, glm::vec3& renderPos, RenderComponent* currentRenderComponent, Texture* skybox, LightComponent* dirLight, bool pbr) {
 	//create environment cubemap
 	Texture* environmentMap = new Texture(GL_TEXTURE_CUBE_MAP);
 	environmentMap->bind();
@@ -1054,13 +1054,13 @@ Texture* Renderer::_renderEnvironmentMap(std::vector<std::pair<RenderComponent*,
 
 	//forward render the scene objects without any special effects for each face
 	glm::mat4 modelMatrix;
+	RenderComponent* renderComponent;
 	Material* material;
 	Model* model;
 
 	//bind shadow map
 	Texture::SetActiveUnit(1);
 	_shadowMap->bind();
-
 
 	for(unsigned int i = 0; i < 6; i++) {
 		//attach respective face to render to to the framebuffer
@@ -1084,9 +1084,13 @@ Texture* Renderer::_renderEnvironmentMap(std::vector<std::pair<RenderComponent*,
 
 		//render each scene object
 		for(unsigned int i = 0; i < renderComponents.size(); i++) {
+			renderComponent = renderComponents[i].first;
+
+			if(renderComponent == currentRenderComponent) continue; //skip the current object to avoid rendering the inside of the mesh to the cubemap
+
 			modelMatrix = renderComponents[i].second;
-			material = renderComponents[i].first->material;
-			model = renderComponents[i].first->model;
+			material = renderComponent->material;
+			model = renderComponent->model;
 
 			_environmentShader->setMat4("modelMatrix", modelMatrix);
 
@@ -1436,7 +1440,7 @@ void Renderer::_renderSSAO() {
 	_ssaoShader->setFloat("screenWidth", (float)Window::ScreenWidth);
 	_ssaoShader->setFloat("screenHeight", (float)Window::ScreenHeight);
 
-	_ssaoShader->setInt("kernelSize", RenderSettings::SsaoKernelSize);
+	_ssaoShader->setInt("kernelSize", RenderSettings::SsaoUsedSamples);
 	_ssaoShader->setFloat("radius", RenderSettings::SsaoRadius);
 	_ssaoShader->setFloat("bias", RenderSettings::SsaoBias);
 	_ssaoShader->setFloat("power", RenderSettings::SsaoPower);

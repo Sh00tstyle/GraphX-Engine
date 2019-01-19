@@ -48,7 +48,7 @@ void DemoScene2::initializeScene(World* world, SceneManager* manager) {
 	Node* roof = new Node(glm::vec3(0.0f, 6.0f, 0.0f), "roof");
 
 	Node* mirror = new Node(glm::vec3(2.0f, 1.0f, 2.5f), "mirror");
-	Node* glass = new Node(glm::vec3(-3.0f, 1.0f, -2.0f), "glass");
+	Node* glass = new Node(glm::vec3(-3.0f, 0.5f, -2.0f), "glass");
 
 	Node* windowFront = new Node(glm::vec3(0.0f, 3.0f, 5.0f), "windowFront");
 	Node* windowBack = new Node(glm::vec3(0.0f, 3.0f, -5.0f), "windowBack");

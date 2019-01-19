@@ -149,7 +149,7 @@ class Renderer {
 		void _initSSRFBO();
 		
 		//environment render functions
-		Texture* _renderEnvironmentMap(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, glm::mat4& environmentProjection, glm::vec3& renderPos, Texture* skybox, LightComponent* dirLight, bool pbr);
+		Texture* _renderEnvironmentMap(std::vector<std::pair<RenderComponent*, glm::mat4>>& renderComponents, glm::mat4& environmentProjection, glm::vec3& renderPos, RenderComponent* currentRenderComponent, Texture* skybox, LightComponent* dirLight, bool pbr);
 		Texture* _renderIrradianceMap(Texture* environmentMap, glm::mat4& irradianceProjection);
 		Texture* _renderPrefilterMap(Texture* environmentMap, glm::mat4& prefilterProjection);
 		void _renderBrdfLUT();

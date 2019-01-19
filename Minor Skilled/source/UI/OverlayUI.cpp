@@ -257,6 +257,7 @@ void OverlayUI::_setupSettings() {
 	}
 
 	if(ImGui::CollapsingHeader("SSAO Settings")) {
+		ImGui::SliderInt("Kernel Size", &RenderSettings::SsaoUsedSamples, 0, RenderSettings::SsaoKernelSize);
 		ImGui::InputFloat("Radius", &RenderSettings::SsaoRadius);
 		ImGui::InputFloat("Bias", &RenderSettings::SsaoBias);
 		ImGui::InputFloat("Power", &RenderSettings::SsaoPower);

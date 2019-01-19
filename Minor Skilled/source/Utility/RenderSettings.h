@@ -60,6 +60,7 @@ class RenderSettings {
 
 		static const unsigned int SsaoKernelSize;
 
+		static int SsaoUsedSamples;
 		static float SsaoRadius;
 		static float SsaoBias;
 		static float SsaoPower;
