@@ -1285,10 +1285,12 @@ void Renderer::_renderShadowMaps(std::vector<std::pair<RenderComponent*, glm::ma
 
 	//use shadow cubemap shader
 	_shadowCubeShader->use();
+	_shadowCubeShader->setFloat("farPlane", RenderSettings::CubeShadowFarPlane);
 
 	//render a cubemap for each point light
 	std::vector<glm::mat4> shadowTransforms;
 	glm::vec3 lightPos;
+	glm::vec3 modelPos;
 
 	for(unsigned int i = 0; i < pointLights.size(); i++) {
 		//bind to correct cubemap shadow framebuffer
@@ -1313,7 +1315,6 @@ void Renderer::_renderShadowMaps(std::vector<std::pair<RenderComponent*, glm::ma
 			_shadowCubeShader->setMat4("shadowMatrices[" + std::to_string(i) + "]", shadowTransforms[i]);
 		}
 
-		_shadowCubeShader->setFloat("farPlane", RenderSettings::CubeShadowFarPlane);
 		_shadowCubeShader->setVec3("lightPos", lightPos);
 
 		//render all models' depth into the shadow cubemap from the lights perspective
@@ -1328,6 +1329,10 @@ void Renderer::_renderShadowMaps(std::vector<std::pair<RenderComponent*, glm::ma
 			}
 
 			modelMatrix = renderComponents[i].second;
+			modelPos = modelMatrix[3];
+
+			if(lightPos == modelPos) continue; //skip the model if it is at the exact same position as the point light to avoid rendering potential model attached to the point light
+
 			model = renderComponent->model;
 
 			if(!material->getCastsShadows()) continue; //skip this model, if it should not cast shadows (e.g. like glass)
