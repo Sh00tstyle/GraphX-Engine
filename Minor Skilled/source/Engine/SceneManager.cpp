@@ -82,7 +82,7 @@ void SceneManager::setDirectionalLight(Node * directionalLight) {
 void SceneManager::initialize(unsigned int sceneIndex) {
 	std::cout << "---Initializing Engine---" << std::endl;
 
-	_window = new Window(1920, 1017, 0, 27, "GraphX Engine");
+	_window = new Window(1920, 1017, 0, 27, "GraphX Engine v1.0");
 	_world = new World(); //scene graph
 	_profiler = new Debug();
 	_renderer = new Renderer(_profiler);
