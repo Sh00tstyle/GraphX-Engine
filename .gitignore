@@ -34,4 +34,5 @@
 *.app
 
 # Built program
-*/Debug/
+*/Debug/*
+*/.vs/*
