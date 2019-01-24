@@ -42,20 +42,20 @@ const float RenderSettings::EnvironmentNearPlane = 0.1f;
 const float RenderSettings::EnvironmentFarPlane = 10.0f;
 
 //equirectangular to cubemap configurations
-const unsigned int RenderSettings::SkyboxHeight = 512;
-const unsigned int RenderSettings::SkyboxWidth = 512;
+const unsigned int RenderSettings::SkyboxHeight = 1024;
+const unsigned int RenderSettings::SkyboxWidth = 1024;
 
 //enviroment cubemap configurations
-const unsigned int RenderSettings::EnvironmentHeight = 256;
-const unsigned int RenderSettings::EnvironmentWidth = 256;
+const unsigned int RenderSettings::EnvironmentHeight = 1024;
+const unsigned int RenderSettings::EnvironmentWidth = 1024;
 
 //irradiance cubemap configurations
-const unsigned int RenderSettings::IrradianceHeight = 32;
-const unsigned int RenderSettings::IrradianceWidth = 32;
+const unsigned int RenderSettings::IrradianceHeight = 128;
+const unsigned int RenderSettings::IrradianceWidth = 128;
 
 //prefilter cubemap configurations
-const unsigned int RenderSettings::PrefilterHeight = 128;
-const unsigned int RenderSettings::PrefilterWidth = 128;
+const unsigned int RenderSettings::PrefilterHeight = 256;
+const unsigned int RenderSettings::PrefilterWidth = 256;
 
 const unsigned int RenderSettings::MaxMipLevels = 5;
 
