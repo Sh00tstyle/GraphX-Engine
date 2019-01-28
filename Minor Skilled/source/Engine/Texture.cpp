@@ -64,7 +64,7 @@ void Texture::filter(GLenum minFilter, GLenum magFilter, GLenum wrap) {
 
 Texture * Texture::LoadTexture(std::string path, TextureFilter filter, bool sRGB) { 
 	//sRGB textures are essentially gamma corrected already and usually the colorspace they are created in
-	//when setting the sRGB parameter to true, OpenGL transform the texture from gamma corrected/sRGB color space back to linear color space so that they can/have to be gamma corrected in the shaders
+	//when setting the sRGB parameter to true, OpenGL transforms  the texture from gamma corrected/sRGB color space back to linear color space so that they can/have to be gamma corrected in the shaders
 	//diffuse and color textures are almost always in sRGB space - specular map, normals maps, etc. are almost always in linear space
 
 	stbi_set_flip_vertically_on_load(false);
